@@ -10,9 +10,11 @@ export async function getTeacherUser() {
   return user ?? null;
 }
 
-export async function requireTeacher(nextPath = "/dashboard") {
+export async function requireTeacher(nextPath = "/dashboard", authMode: "signin" | "signup" = "signin") {
   if (!isSupabaseConfigured) return null;
   const user = await getTeacherUser();
-  if (!user) redirect(`/auth?next=${encodeURIComponent(nextPath)}`);
+  if (!user) {
+    redirect(`/auth?mode=${authMode}&next=${encodeURIComponent(nextPath)}`);
+  }
   return user;
 }
