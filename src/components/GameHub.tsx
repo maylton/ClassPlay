@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { addGameResult } from "@/lib/storage";
 import { loadActivity } from "@/lib/repositories/activity-repository";
 import type { ActivitySet, GameType } from "@/lib/types";
+import { AppIcon } from "./AppIcon";
 import { SettingsPanel } from "./settings/SettingsPanel";
 import { FlashcardsGame } from "./games/FlashcardsGame";
 import { MemoryGame } from "./games/MemoryGame";
@@ -14,12 +15,12 @@ import { GapFillGame } from "./games/GapFillGame";
 import { QuizGame } from "./games/QuizGame";
 
 const gameInfo: Record<GameType, { icon: string; name: string; description: string; className: string }> = {
-  flashcards: { icon: "🃏", name: "Flashcards", description: "Reveal, remember and self-check", className: "mint" },
-  memory: { icon: "🧠", name: "Memory", description: "Find matching pairs", className: "violet" },
-  matching: { icon: "🔗", name: "Matching", description: "Connect English and meaning", className: "blue" },
-  "sentence-builder": { icon: "🧩", name: "Sentence Builder", description: "Put chunks in the right order", className: "orange" },
-  "gap-fill": { icon: "✏️", name: "Gap Fill", description: "Complete the missing language", className: "pink" },
-  quiz: { icon: "🏆", name: "Quiz", description: "Fast multiple-choice challenge", className: "yellow" },
+  flashcards: { icon: "card-text", name: "Flashcards", description: "Reveal, remember and self-check", className: "mint" },
+  memory: { icon: "grid-3x3-gap", name: "Memory", description: "Find matching pairs", className: "violet" },
+  matching: { icon: "link-45deg", name: "Matching", description: "Connect English and meaning", className: "blue" },
+  "sentence-builder": { icon: "puzzle", name: "Sentence Builder", description: "Put chunks in the right order", className: "orange" },
+  "gap-fill": { icon: "pencil-square", name: "Gap Fill", description: "Complete the missing language", className: "pink" },
+  quiz: { icon: "trophy", name: "Quiz", description: "Fast multiple-choice challenge", className: "yellow" },
 };
 
 export function GameHub({ activityId }: { activityId: string }) {
@@ -38,8 +39,8 @@ export function GameHub({ activityId }: { activityId: string }) {
     return () => { active = false; };
   }, [activityId]);
 
-  if (error) return <main className="not-found"><span>⚠</span><h1>Could not open activity</h1><p>{error}</p><Link className="button button-primary" href="/dashboard">Back to library</Link></main>;
-  if (missing) return <main className="not-found"><span>🔎</span><h1>Activity not found</h1><p>This activity may have been deleted or belongs to another workspace.</p><Link className="button button-primary" href="/dashboard">Back to library</Link></main>;
+  if (error) return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Could not open activity</h1><p>{error}</p><Link className="button button-primary" href="/dashboard">Back to library</Link></main>;
+  if (missing) return <main className="not-found"><span><AppIcon name="search" /></span><h1>Activity not found</h1><p>This activity may have been deleted or belongs to another workspace.</p><Link className="button button-primary" href="/dashboard">Back to library</Link></main>;
   if (!activity) return <main className="loading-screen">Loading ClassPlay…</main>;
 
   function complete(game: GameType, score: number, correct: number, total: number) {
@@ -53,7 +54,7 @@ export function GameHub({ activityId }: { activityId: string }) {
         <header className="play-header">
           <button className="play-brand" onClick={() => setMode(null)}><b>C</b><span>ClassPlay</span></button>
           <div className="play-title"><small>{activity.topic}</small><strong>{activity.title}</strong></div>
-          <div className="play-header-actions"><SettingsPanel compact /><button className="button button-soft button-small" onClick={() => setMode(null)}>← Game modes</button></div>
+          <div className="play-header-actions"><SettingsPanel compact /><button className="button button-soft button-small" onClick={() => setMode(null)}><AppIcon name="arrow-left" /> Game modes</button></div>
         </header>
         <section className="play-canvas">
           {mode === "flashcards" && <FlashcardsGame {...common} />}
@@ -69,20 +70,20 @@ export function GameHub({ activityId }: { activityId: string }) {
 
   return (
     <main className="mode-screen">
-      <header className="mode-header"><Link className="play-brand" href="/dashboard"><b>C</b><span>ClassPlay</span></Link><div className="mode-header-actions"><SettingsPanel compact /><Link href={`/edit/${activity.id}`} className="button button-soft button-small">Edit</Link><Link href="/dashboard" className="button button-soft button-small">← Library</Link></div></header>
+      <header className="mode-header"><Link className="play-brand" href="/dashboard"><b>C</b><span>ClassPlay</span></Link><div className="mode-header-actions"><SettingsPanel compact /><Link href={`/edit/${activity.id}`} className="button button-soft button-small">Edit</Link><Link href="/dashboard" className="button button-soft button-small"><AppIcon name="arrow-left" /> Library</Link></div></header>
       <section className="mode-hero">
         <span className="eyebrow">Ready to play</span>
         <h1>{activity.title}</h1>
         <p>{activity.description}</p>
         <div className="mode-meta"><span>{activity.grade}</span><span>{activity.level}</span><span>{activity.items.length} items</span></div>
-        <div className="connected-cta"><div><b>📡 Connected Classroom</b><span>Students join by code or QR. Play individually or in teams.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room →</Link></div>
+        <div className="connected-cta"><div><b><AppIcon name="wifi" /> Connected Classroom</b><span>Students join by code or QR. Play individually or in teams.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room <AppIcon name="arrow-right" /></Link></div>
       </section>
       <section className="mode-picker">
         <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{activity.enabledGames.length} games available</span></div>
         <div className="mode-grid">
           {activity.enabledGames.map((game) => {
             const info = gameInfo[game];
-            return <button key={game} className={`mode-card ${info.className}`} onClick={() => setMode(game)}><span className="mode-icon">{info.icon}</span><span><strong>{info.name}</strong><small>{info.description}</small></span><i>→</i></button>;
+            return <button key={game} className={`mode-card ${info.className}`} onClick={() => setMode(game)}><span className="mode-icon"><AppIcon name={info.icon} /></span><span><strong>{info.name}</strong><small>{info.description}</small></span><i><AppIcon name="arrow-right" /></i></button>;
           })}
         </div>
       </section>
