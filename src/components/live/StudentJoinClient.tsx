@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { AppIcon } from "@/components/AppIcon";
 import { ActivityImage } from "@/components/media/ActivityImage";
 import { normalizeRoomCode, validateNickname } from "@/lib/live/live-engine";
 import { broadcastRoomEvent, joinLiveRoom, openLiveChannel, resumeLiveRoom, submitLiveAnswer } from "@/lib/live/room-service";
@@ -51,7 +52,6 @@ export function StudentJoinClient({ initialCode = "" }: { initialCode?: string }
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-
   async function submit(event: FormEvent) {
     event.preventDefault();
     const cleanCode = normalizeRoomCode(code);
@@ -75,7 +75,7 @@ export function StudentJoinClient({ initialCode = "" }: { initialCode?: string }
   }
 
   if (!isSupabaseConfigured) {
-    return <main className="student-join-screen"><section className="student-join-card"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="student-emoji">📡</span><h1>Live rooms need cloud setup.</h1><p>This ClassPlay installation is running in local mode. Your teacher can still use all six projected games.</p><Link href="/" className="button button-primary">ClassPlay home</Link></section></main>;
+    return <main className="student-join-screen"><section className="student-join-card"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="student-emoji"><AppIcon name="cloud-slash" /></span><h1>Live rooms need cloud setup.</h1><p>This ClassPlay installation is running in local mode. Your teacher can still use all six projected games.</p><Link href="/" className="button button-primary">ClassPlay home</Link></section></main>;
   }
 
   if (credentials) return <StudentLiveRoom credentials={credentials} initialJoin={joinResult} onLeave={leave} />;
@@ -89,7 +89,7 @@ export function StudentJoinClient({ initialCode = "" }: { initialCode?: string }
           <label><span>Room code</span><input inputMode="numeric" pattern="[0-9]*" maxLength={6} value={code} onChange={(event) => setCode(normalizeRoomCode(event.target.value))} placeholder="123456" autoFocus={!code} /></label>
           <label><span>Your name</span><input maxLength={24} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="Ana" autoFocus={Boolean(code)} /></label>
           {error && <div className="student-error">{error}</div>}
-          <button disabled={busy} className="button button-primary button-large">{busy ? "Joining…" : "Join game →"}</button>
+          <button disabled={busy} className="button button-primary button-large">{busy ? "Joining…" : <>Join game <AppIcon name="arrow-right" /></>}</button>
         </form>
       </section>
     </main>
@@ -186,11 +186,11 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   };
 
   if (state === "final_results" || state === "closed") {
-    return <main className="student-live-screen"><section className="student-result-card"><span>🏆</span><small>GAME COMPLETE</small><h1>Great job, {credentials.nickname}!</h1><strong>{score}</strong><p>points</p>{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>Team {teamName}</div>}<button className="button button-primary button-large" onClick={onLeave}>Done</button></section></main>;
+    return <main className="student-live-screen"><section className="student-result-card"><span><AppIcon name="trophy" /></span><small>GAME COMPLETE</small><h1>Great job, {credentials.nickname}!</h1><strong>{score}</strong><p>points</p>{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>Team {teamName}</div>}<button className="button button-primary button-large" onClick={onLeave}>Done</button></section></main>;
   }
 
   if (state === "lobby" || !question) {
-    return <main className="student-live-screen"><header className="student-live-header"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="connection-pill">● {connection}</span></header><section className="student-wait-card"><div className="waiting-orbit">✦</div><span className="eyebrow">YOU’RE IN</span><h1>Hi, {credentials.nickname}!</h1><p>Waiting for your teacher to start <strong>{credentials.activityTitle}</strong>.</p>{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>You’re on {teamName}</div>}<div className="room-mini-code">Room {credentials.roomCode}</div>{error && <div className="student-error">{error}</div>}<button className="student-leave" onClick={onLeave}>{error ? "Rejoin with another name/code" : "Leave room"}</button></section></main>;
+    return <main className="student-live-screen"><header className="student-live-header"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="connection-pill">● {connection}</span></header><section className="student-wait-card"><div className="waiting-orbit"><AppIcon name="hourglass-split" /></div><span className="eyebrow">YOU’RE IN</span><h1>Hi, {credentials.nickname}!</h1><p>Waiting for your teacher to start <strong>{credentials.activityTitle}</strong>.</p>{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>You’re on {teamName}</div>}<div className="room-mini-code">Room {credentials.roomCode}</div>{error && <div className="student-error">{error}</div>}<button className="student-leave" onClick={onLeave}>{error ? "Rejoin with another name/code" : "Leave room"}</button></section></main>;
   }
 
   return (
@@ -202,7 +202,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
         {question.imageUrl && <ActivityImage refValue={question.imageUrl} alt={question.prompt} className="student-question-image" />}
         <h1>{question.prompt}</h1>{question.hint && <p>{question.hint}</p>}
         <div className="student-answer-grid">{question.options.map((option, index) => <button disabled={Boolean(selected) || state !== "playing" || (remaining !== null && remaining <= 0)} className={answerClass(option)} onClick={() => void answer(option)} key={option}><span>{String.fromCharCode(65 + index)}</span><b>{option}</b></button>)}</div>
-        {answerResult && state === "playing" && <div className={`student-feedback ${answerResult.correct ? "correct" : "wrong"}`}>{answerResult.correct ? `✓ Nice! +${answerResult.points}` : "Not this one — wait for the reveal."}</div>}
+        {answerResult && state === "playing" && <div className={`student-feedback ${answerResult.correct ? "correct" : "wrong"}`}>{answerResult.correct ? <><AppIcon name="check-lg" /> Nice! +{answerResult.points}</> : "Not this one — wait for the reveal."}</div>}
         {state === "round_results" && <div className="student-feedback correct">Correct answer: <strong>{correctAnswer}</strong><small>Waiting for the next question…</small></div>}
         {remaining === 0 && !selected && <div className="student-feedback wrong">Time’s up. Wait for the answer.</div>}
         {error && <div className="student-error">{error}</div>}
