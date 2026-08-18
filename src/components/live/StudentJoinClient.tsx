@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { ActivityImage } from "@/components/media/ActivityImage";
 import { normalizeRoomCode, validateNickname } from "@/lib/live/live-engine";
-import { joinLiveRoom, openLiveChannel, resumeLiveRoom, submitLiveAnswer } from "@/lib/live/room-service";
+import { broadcastRoomEvent, joinLiveRoom, openLiveChannel, resumeLiveRoom, submitLiveAnswer } from "@/lib/live/room-service";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { speakEnglish } from "@/lib/tts";
 import type { ClassroomSettings, JoinRoomResult, LiveAnswerResult, LiveQuestion, ResumeRoomResult, SessionState } from "@/lib/types";
@@ -166,6 +166,12 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
     try {
       const result = await submitLiveAnswer(credentials.playerId, credentials.playerToken, question, option, 0);
       setAnswerResult(result); setScore(result.score);
+      if (channelRef.current) {
+        void broadcastRoomEvent(channelRef.current, "answer-submitted", {
+          playerId: credentials.playerId,
+          itemId: question.itemId,
+        }).catch(() => {});
+      }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not send your answer.");
       setSelected(null);
