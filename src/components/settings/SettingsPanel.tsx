@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { AppIcon } from "@/components/AppIcon";
 import { useClassroomSettings } from "@/hooks/useClassroomSettings";
 
 export function SettingsPanel({ compact = false }: { compact?: boolean }) {
@@ -20,11 +21,11 @@ export function SettingsPanel({ compact = false }: { compact?: boolean }) {
   return (
     <div className="settings-wrap">
       <button className={compact ? "icon-settings-button" : "button button-soft button-small"} onClick={() => setOpen((value) => !value)} aria-expanded={open} aria-label="Classroom settings">
-        ⚙ {compact ? "" : "Settings"}
+        <AppIcon name="gear" />{compact ? "" : " Settings"}
       </button>
       {open && (
         <div className="settings-popover" role="dialog" aria-label="Classroom settings">
-          <div className="settings-heading"><div><small>CLASSROOM</small><strong>Accessibility & play</strong></div><button onClick={() => setOpen(false)} aria-label="Close settings">×</button></div>
+          <div className="settings-heading"><div><small>CLASSROOM</small><strong>Accessibility & play</strong></div><button onClick={() => setOpen(false)} aria-label="Close settings"><AppIcon name="x-lg" /></button></div>
           <div className="settings-list">
             {toggles.map(({ key, label, description }) => (
               <label className="setting-row" key={key}>
