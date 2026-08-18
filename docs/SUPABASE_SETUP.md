@@ -32,6 +32,7 @@ Apply the migrations in order:
 supabase/migrations/0001_connected_classroom.sql
 supabase/migrations/0002_security_hardening.sql
 supabase/migrations/0003_rls_and_index_optimization.sql
+supabase/migrations/0004_fix_live_room_join_ambiguity.sql
 ```
 
 The migrations create and configure:
@@ -45,7 +46,8 @@ The migrations create and configure:
 - Realtime publication entries;
 - profile creation and server-side round timing triggers;
 - hardened RPC permissions/search paths;
-- RLS query optimizations and foreign-key indexes.
+- RLS query optimizations and foreign-key indexes;
+- qualified live-room join lookup columns to avoid PostgreSQL output-column ambiguity.
 
 ## 3. Configure authentication URLs
 
@@ -172,7 +174,7 @@ Check the Supabase Site URL and allowed redirect URL, then verify `NEXT_PUBLIC_A
 
 ### Students cannot join
 
-Confirm all migrations ran fully, the room is still in the lobby, it is not locked, and the six-digit code is correct.
+Confirm all migrations ran fully, including `0004_fix_live_room_join_ambiguity.sql`, and verify the room is still in the lobby, is not locked, and the six-digit code is correct.
 
 ### Live host does not update after answers
 
