@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
+import { AppIcon } from "@/components/AppIcon";
 import { ActivityImage } from "@/components/media/ActivityImage";
 import { useClassroomSettings } from "@/hooks/useClassroomSettings";
 import { speakEnglish } from "@/lib/tts";
@@ -43,7 +44,7 @@ export function FlashcardsGame({ activity, onComplete }: GameProps) {
       <div className="game-progress-label"><span>Card {index + 1} of {activity.items.length}</span><span>{known} mastered</span></div>
       <div className="game-progress"><span style={{ width: `${((index + 1) / activity.items.length) * 100}%` }} /></div>
       <div className="flashcard-shell">
-        {settings.soundEnabled && <button className="tts-button" onClick={(event) => { event.stopPropagation(); speakEnglish(item.prompt); }} aria-label="Read English prompt aloud">🔊</button>}
+        {settings.soundEnabled && <button className="tts-button" onClick={(event) => { event.stopPropagation(); speakEnglish(item.prompt); }} aria-label="Read English prompt aloud"><AppIcon name="volume-up" /></button>}
         <button className={`big-flashcard ${flipped ? "flipped" : ""}`} onClick={() => setFlipped((value) => !value)}>
           {item.imageUrl ? <ActivityImage refValue={item.imageUrl} alt={item.prompt} className="flashcard-image" /> : <span className="flashcard-hint">{item.hint || "Aa"}</span>}
           <small>{flipped ? "ANSWER" : "ENGLISH"}</small>
@@ -52,7 +53,7 @@ export function FlashcardsGame({ activity, onComplete }: GameProps) {
           <em>{flipped ? "Tap to see the prompt" : "Tap to reveal"}</em>
         </button>
       </div>
-      {flipped && <div className="self-check"><button className="button button-soft" onClick={() => respond(false)}>↻ Review again</button><button className="button button-success" onClick={() => respond(true)}>✓ Got it</button></div>}
+      {flipped && <div className="self-check"><button className="button button-soft" onClick={() => respond(false)}><AppIcon name="arrow-repeat" /> Review again</button><button className="button button-success" onClick={() => respond(true)}><AppIcon name="check-lg" /> Got it</button></div>}
     </div>
   );
 }
