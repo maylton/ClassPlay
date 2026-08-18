@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { AppIcon } from "@/components/AppIcon";
 import { isCorrectAnswer, sentenceAnswer, shuffle } from "@/lib/game-engine";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
@@ -18,7 +19,7 @@ function SortableToken({ token, onRemove }: { token: Token; onRemove: () => void
       style={{ transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 2 : undefined }}
       className={`sortable-token ${isDragging ? "dragging" : ""}`}
     >
-      <button className="drag-handle" {...attributes} {...listeners} aria-label={`Drag ${token.text} to reorder`} title="Drag to reorder">⋮⋮</button>
+      <button className="drag-handle" {...attributes} {...listeners} aria-label={`Drag ${token.text} to reorder`} title="Drag to reorder"><AppIcon name="grip-vertical" /></button>
       <button className="token-text" onClick={onRemove} title="Tap to return this chunk">{token.text}</button>
     </div>
   );
@@ -39,7 +40,7 @@ export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  if (!item) return <div className="empty-game"><span>🧩</span><h2>This set needs sentence chunks.</h2><p>Add chunks such as <b>She | goes to school | every day</b> in the activity editor.</p></div>;
+  if (!item) return <div className="empty-game"><span><AppIcon name="puzzle" /></span><h2>This set needs sentence chunks.</h2><p>Add chunks such as <b>She | goes to school | every day</b> in the activity editor.</p></div>;
 
   function resetQuestion(nextIndex: number) {
     setAnswer([]); setFeedback(null);
@@ -75,7 +76,7 @@ export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
     <div className="game-stage builder-stage">
       <div className="game-progress-label"><span>Sentence {index + 1} of {questions.length}</span><span>{score} points</span></div>
       <div className="game-progress"><span style={{ width: `${((index + 1) / questions.length) * 100}%` }} /></div>
-      <div className="game-question"><span className="question-icon">🧩</span><small>SENTENCE BUILDER</small><h2>Put the sentence in order</h2>{item.hint && <p>Hint: {item.hint} {item.answer}</p>}<p className="drag-help">Tap chunks to add/remove them. Drag chosen chunks to reorder.</p></div>
+      <div className="game-question"><span className="question-icon"><AppIcon name="puzzle" /></span><small>SENTENCE BUILDER</small><h2>Put the sentence in order</h2>{item.hint && <p>Hint: {item.hint} {item.answer}</p>}<p className="drag-help">Tap chunks to add/remove them. Drag chosen chunks to reorder.</p></div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={answer.map((token) => token.id)} strategy={horizontalListSortingStrategy}>
           <div className={`builder-answer ${feedback ? `feedback-${feedback}` : ""}`}>
@@ -85,7 +86,7 @@ export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
         </SortableContext>
       </DndContext>
       <div className="builder-pool">{pool.map((token) => <button key={token.id} onClick={() => addToken(token)}>{token.text}</button>)}</div>
-      {feedback && <div className={`feedback-message ${feedback}`}>{feedback === "correct" ? "✓ Excellent!" : `Not quite — ${sentenceAnswer(item)}`}</div>}
+      {feedback && <div className={`feedback-message ${feedback}`}>{feedback === "correct" ? <><AppIcon name="check-lg" /> Excellent!</> : `Not quite — ${sentenceAnswer(item)}`}</div>}
       <button className="button button-primary button-large builder-check" disabled={answer.length !== item.sentenceParts?.length || !!feedback} onClick={check}>Check answer</button>
     </div>
   );
