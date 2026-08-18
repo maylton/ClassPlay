@@ -60,7 +60,9 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   useEffect(() => {
-    void refresh();
+    const initialRefresh = window.setTimeout(() => {
+      void refresh();
+    }, 0);
     const stopDb = subscribeHostChanges(sessionId, () => void refresh());
     const channel = openLiveChannel(sessionId, `host-${sessionId}`);
     channelRef.current = channel;
@@ -73,6 +75,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
         if (status === "SUBSCRIBED") await channel.track({ role: "host", onlineAt: new Date().toISOString() });
       });
     return () => {
+      window.clearTimeout(initialRefresh);
       stopDb();
       void channel.untrack();
       void channel.unsubscribe();
