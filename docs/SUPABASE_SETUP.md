@@ -2,36 +2,54 @@
 
 ClassPlay keeps all six local/projector games available without a backend. The connected features in v0.2 — teacher accounts, cloud sync, image storage and live rooms — activate when Supabase is configured.
 
-## 1. Create a project
+## Production target
 
-Create a Supabase project for ClassPlay. For classroom testing, the free project is enough to validate the flow before choosing a production plan.
+The current production hostname target is:
+
+```text
+https://classplay.langspot.app
+```
+
+This keeps ClassPlay technically independent from the LangSpot portfolio while reusing the existing `langspot.app` domain.
+
+## 1. Supabase project
+
+The ClassPlay Supabase project has been created in São Paulo (`sa-east-1`).
+
+Project URL:
+
+```text
+https://oxzrrsbrhyqaobzysyhc.supabase.co
+```
+
+The repository deliberately does not commit the publishable key. Keep environment values in `.env.local` locally and in deployment-platform environment variables for hosted environments.
 
 ## 2. Apply the ClassPlay schema
 
-Open the Supabase SQL Editor and run the complete migration:
+Apply the migrations in order:
 
 ```text
 supabase/migrations/0001_connected_classroom.sql
+supabase/migrations/0002_security_hardening.sql
+supabase/migrations/0003_rls_and_index_optimization.sql
 ```
 
-The migration creates:
+The migrations create and configure:
 
 - teacher profiles;
 - Activity Sets, items and enabled games;
 - live sessions, teams, anonymous players, answers and results;
 - Row Level Security policies;
 - the private `activity-media` Storage bucket;
-- accountless student RPCs;
+- narrow accountless student RPCs;
 - Realtime publication entries;
-- profile creation and server-side round timing triggers.
-
-It is safe to rerun the migration during early testing: triggers and policies are replaced where necessary and tables use `if not exists`.
+- profile creation and server-side round timing triggers;
+- hardened RPC permissions/search paths;
+- RLS query optimizations and foreign-key indexes.
 
 ## 3. Configure authentication URLs
 
-In **Authentication → URL Configuration**, use your current ClassPlay URL as the Site URL.
-
-For local testing:
+For local testing, set the Supabase Site URL to:
 
 ```text
 http://localhost:3000
@@ -43,7 +61,12 @@ Allow this redirect URL:
 http://localhost:3000/auth/callback
 ```
 
-When ClassPlay is deployed, add the production `/auth/callback` URL too.
+For production, add:
+
+```text
+https://classplay.langspot.app
+https://classplay.langspot.app/auth/callback
+```
 
 Email/password and magic-link authentication are both supported by the app. If email confirmation is enabled, the teacher completes confirmation before the first signed-in session.
 
@@ -58,12 +81,18 @@ cp .env.example .env.local
 Fill in:
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://oxzrrsbrhyqaobzysyhc.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
 Use the project's **publishable** client key. Never put a service-role/secret key in a `NEXT_PUBLIC_*` variable.
+
+In production, use:
+
+```env
+NEXT_PUBLIC_APP_URL=https://classplay.langspot.app
+```
 
 ## 5. Restart ClassPlay
 
@@ -125,7 +154,7 @@ Confirm:
 ## Security model
 
 - Teacher-owned tables use RLS and are accessible only to their owner.
-- Students do not receive database table access for joining or answering; accountless operations go through narrow `security definer` RPCs protected by a random player token.
+- Students do not receive direct table access for joining or answering; accountless operations go through narrow `security definer` RPCs protected by room state and, after join, a random player token.
 - The hidden correct answer stays in the host-owned session record and is removed from the student's question payload until reveal.
 - Speed points are calculated from server-side round time, not a browser-supplied timer.
 - Uploaded files live in a private Storage bucket and are served through temporary signed URLs.
@@ -143,8 +172,8 @@ Check the Supabase Site URL and allowed redirect URL, then verify `NEXT_PUBLIC_A
 
 ### Students cannot join
 
-Confirm the migration ran fully, the room is still in the lobby, it is not locked, and the six-digit code is correct.
+Confirm all migrations ran fully, the room is still in the lobby, it is not locked, and the six-digit code is correct.
 
 ### Live host does not update after answers
 
-Confirm the migration added `players`, `answers` and `game_sessions` to the `supabase_realtime` publication. Rerunning the migration is safe during this test phase.
+Confirm `players`, `answers` and `game_sessions` are present in the `supabase_realtime` publication.
