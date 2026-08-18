@@ -72,6 +72,9 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
         const state = channel.presenceState();
         setPresenceCount(Object.values(state).flat().length);
       })
+      .on("broadcast", { event: "answer-submitted" }, () => {
+        void refresh();
+      })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") await channel.track({ role: "host", onlineAt: new Date().toISOString() });
       });
