@@ -39,6 +39,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   const [presenceCount, setPresenceCount] = useState(0);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const loadedActivityIdRef = useRef<string | null>(null);
+  const revealInFlightRef = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -84,12 +85,19 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   }, [sessionId, refresh]);
 
   const scoreboard = useMemo(() => [...players].sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname)), [players]);
-  const currentAnswerCount = session?.currentQuestion ? answers.filter((answer) => answer.itemId === session.currentQuestion?.itemId).length : 0;
+  const currentAnswerCount = useMemo(() => {
+    if (!session?.currentQuestion) return 0;
+    return new Set(
+      answers
+        .filter((answer) => answer.itemId === session.currentQuestion?.itemId)
+        .map((answer) => answer.playerId),
+    ).size;
+  }, [answers, session?.currentQuestion]);
   const currentCorrect = (session?.currentQuestion as (HostLiveQuestion | null))?.correctAnswer;
 
-  async function send(event: string, payload: Record<string, unknown>) {
+  const send = useCallback(async (event: string, payload: Record<string, unknown>) => {
     if (channelRef.current) await broadcastRoomEvent(channelRef.current, event, payload);
-  }
+  }, []);
 
   async function publishQuestion(index: number) {
     if (!activity || !session) return;
@@ -105,15 +113,44 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     finally { setBusy(false); }
   }
 
-  async function reveal() {
-    if (!session?.currentQuestion) return;
+  const reveal = useCallback(async () => {
+    if (!session?.currentQuestion || session.state !== "playing" || revealInFlightRef.current) return;
+    revealInFlightRef.current = true;
     setBusy(true);
     try {
       await updateHostSession(session.id, { state: "round_results" });
       await send("reveal", { itemId: session.currentQuestion.itemId, correctAnswer: currentCorrect ?? "", state: "round_results" });
       await refresh();
-    } finally { setBusy(false); }
-  }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not reveal this answer.");
+    } finally {
+      revealInFlightRef.current = false;
+      setBusy(false);
+    }
+  }, [currentCorrect, refresh, send, session]);
+
+  useEffect(() => {
+    if (session?.state !== "playing" || !session.currentQuestion || players.length === 0) return;
+    if (currentAnswerCount < players.length) return;
+
+    const timeout = window.setTimeout(() => {
+      void reveal();
+    }, 250);
+    return () => window.clearTimeout(timeout);
+  }, [currentAnswerCount, players.length, reveal, session?.currentQuestion, session?.state]);
+
+  useEffect(() => {
+    if (session?.state !== "playing" || !session.currentQuestion || !session.settings.timerEnabled) return;
+    const startedAt = new Date(session.currentQuestion.startedAt).getTime();
+    if (!Number.isFinite(startedAt)) return;
+
+    const timerMs = Math.max(1, session.settings.timerSeconds) * 1000;
+    const remainingMs = Math.max(0, startedAt + timerMs - Date.now());
+    const timeout = window.setTimeout(() => {
+      void reveal();
+    }, remainingMs + 100);
+    return () => window.clearTimeout(timeout);
+  }, [reveal, session?.currentQuestion, session?.settings.timerEnabled, session?.settings.timerSeconds, session?.state]);
 
   async function nextQuestion() {
     if (!session || !activity) return;
@@ -214,7 +251,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
           </>}
           {session.state === "round_results" && <div className="round-answer-reveal">✓ Correct answer: <strong>{currentCorrect}</strong></div>}
           <div className="host-question-controls">
-            {session.state === "playing" ? <button className="button button-soft button-large" disabled={busy} onClick={() => void reveal()}>Reveal answer</button> : <button className="button button-primary button-large" disabled={busy} onClick={() => void nextQuestion()}>{session.currentItemIndex + 1 >= activity.items.length ? "Finish game →" : "Next question →"}</button>}
+            {session.state === "playing" ? <button className="button button-soft button-large" disabled={busy} onClick={() => void reveal()}>Reveal answer now</button> : <button className="button button-primary button-large" disabled={busy} onClick={() => void nextQuestion()}>{session.currentItemIndex + 1 >= activity.items.length ? "Finish game →" : "Next question →"}</button>}
             <button className="text-danger" disabled={busy} onClick={() => void endSession()}>End session</button>
           </div>
         </div>
