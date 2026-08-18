@@ -2,14 +2,14 @@ name: ClassPlay CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "agent/**"]
   pull_request:
     branches: [main]
 
 jobs:
   validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 12
 
     steps:
       - name: Checkout
@@ -23,8 +23,14 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Game engine smoke tests
+      - name: Core game engine smoke tests
         run: npm run test:engine
+
+      - name: Live engine and security contract tests
+        run: npm run test:live
+
+      - name: Type check
+        run: npm run typecheck
 
       - name: Lint
         run: npm run lint
