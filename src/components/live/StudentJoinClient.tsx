@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { ActivityImage } from "@/components/media/ActivityImage";
@@ -13,22 +13,44 @@ import type { ClassroomSettings, JoinRoomResult, LiveAnswerResult, LiveQuestion,
 const CREDENTIAL_KEY = "classplay.live.player.v2";
 type Credentials = { sessionId: string; playerId: string; playerToken: string; roomCode: string; activityTitle: string; nickname: string; teamName?: string | null; teamColor?: string | null };
 
+const CREDENTIAL_EVENT = "classplay:player-credentials";
+
+function subscribeCredentials(callback: () => void) {
+  window.addEventListener("storage", callback);
+  window.addEventListener(CREDENTIAL_EVENT, callback);
+  return () => {
+    window.removeEventListener("storage", callback);
+    window.removeEventListener(CREDENTIAL_EVENT, callback);
+  };
+}
+
+function readCredentialSnapshot() {
+  return localStorage.getItem(CREDENTIAL_KEY) ?? "";
+}
+
+function writeCredentials(credentials: Credentials | null) {
+  if (credentials) localStorage.setItem(CREDENTIAL_KEY, JSON.stringify(credentials));
+  else localStorage.removeItem(CREDENTIAL_KEY);
+  window.dispatchEvent(new Event(CREDENTIAL_EVENT));
+}
+
 export function StudentJoinClient({ initialCode = "" }: { initialCode?: string }) {
   const [code, setCode] = useState(normalizeRoomCode(initialCode));
   const [nickname, setNickname] = useState("");
-  const [credentials, setCredentials] = useState<Credentials | null>(null);
+  const credentialSnapshot = useSyncExternalStore(subscribeCredentials, readCredentialSnapshot, () => "");
+  const credentials = useMemo(() => {
+    if (!credentialSnapshot) return null;
+    try {
+      const saved = JSON.parse(credentialSnapshot) as Credentials;
+      return !initialCode || saved.roomCode === normalizeRoomCode(initialCode) ? saved : null;
+    } catch {
+      return null;
+    }
+  }, [credentialSnapshot, initialCode]);
   const [joinResult, setJoinResult] = useState<JoinRoomResult | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(CREDENTIAL_KEY);
-      if (!raw) return;
-      const saved = JSON.parse(raw) as Credentials;
-      if (!initialCode || saved.roomCode === normalizeRoomCode(initialCode)) setCredentials(saved);
-    } catch { /* ignore invalid old credentials */ }
-  }, [initialCode]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -40,16 +62,16 @@ export function StudentJoinClient({ initialCode = "" }: { initialCode?: string }
     try {
       const result = await joinLiveRoom(cleanCode, validation.nickname);
       const saved: Credentials = { sessionId: result.sessionId, playerId: result.playerId, playerToken: result.playerToken, roomCode: cleanCode, activityTitle: result.activityTitle, nickname: validation.nickname, teamName: result.teamName, teamColor: result.teamColor };
-      localStorage.setItem(CREDENTIAL_KEY, JSON.stringify(saved));
-      setJoinResult(result); setCredentials(saved);
+      writeCredentials(saved);
+      setJoinResult(result);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not join this room.");
     } finally { setBusy(false); }
   }
 
   function leave() {
-    localStorage.removeItem(CREDENTIAL_KEY);
-    setCredentials(null); setJoinResult(null); setError("");
+    writeCredentials(null);
+    setJoinResult(null); setError("");
   }
 
   if (!isSupabaseConfigured) {
@@ -62,7 +84,7 @@ export function StudentJoinClient({ initialCode = "" }: { initialCode?: string }
     <main className="student-join-screen">
       <section className="student-join-card">
         <div className="student-brand"><b>C</b><span>ClassPlay</span></div>
-        <span className="eyebrow">Join your class</span><h1>Ready to play?</h1><p>Ask your teacher for the room code. You don't need an account.</p>
+        <span className="eyebrow">Join your class</span><h1>Ready to play?</h1><p>Ask your teacher for the room code. You don’t need an account.</p>
         <form className="student-join-form" onSubmit={submit}>
           <label><span>Room code</span><input inputMode="numeric" pattern="[0-9]*" maxLength={6} value={code} onChange={(event) => setCode(normalizeRoomCode(event.target.value))} placeholder="123456" autoFocus={!code} /></label>
           <label><span>Your name</span><input maxLength={24} value={nickname} onChange={(event) => setNickname(event.target.value)} placeholder="Ana" autoFocus={Boolean(code)} /></label>
@@ -88,7 +110,6 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState<number | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
-  const questionReceivedAt = useRef(Date.now());
 
   async function hydrate() {
     try {
@@ -96,20 +117,18 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
       setState(snapshot.state); setQuestion(snapshot.currentQuestion ?? null); setSettings(snapshot.settings); setScore(snapshot.player.score);
       setCorrectAnswer(snapshot.revealedAnswer ?? null);
       setTeamName(snapshot.team?.name ?? teamName); setTeamColor(snapshot.team?.color ?? teamColor);
-      if (snapshot.currentQuestion) questionReceivedAt.current = Date.now();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not restore your room.");
     }
   }
 
   useEffect(() => {
-    void hydrate();
     const channel = openLiveChannel(credentials.sessionId, `player-${credentials.playerId}`);
     channelRef.current = channel;
     channel
       .on("broadcast", { event: "question" }, ({ payload }) => {
         const next = payload.question as LiveQuestion;
-        setQuestion(next); setState("playing"); setSelected(null); setAnswerResult(null); setCorrectAnswer(null); questionReceivedAt.current = Date.now();
+        setQuestion(next); setState("playing"); setSelected(null); setAnswerResult(null); setCorrectAnswer(null);
         if ((payload.settings as ClassroomSettings | undefined)?.readAloud && (payload.settings as ClassroomSettings).soundEnabled) speakEnglish(next.prompt);
         if (payload.settings) setSettings(payload.settings as ClassroomSettings);
       })
@@ -130,22 +149,22 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   }, [credentials.sessionId, credentials.playerId, credentials.playerToken]);
 
   useEffect(() => {
-    if (!question || !settings?.timerEnabled || state !== "playing") { setRemaining(null); return; }
+    if (!question || !settings?.timerEnabled || state !== "playing") return;
     const tick = () => {
       const started = new Date(question.startedAt).getTime();
       const left = Math.max(0, settings.timerSeconds - Math.floor((Date.now() - started) / 1000));
       setRemaining(left);
     };
-    tick();
+    const initial = window.setTimeout(tick, 0);
     const interval = window.setInterval(tick, 250);
-    return () => window.clearInterval(interval);
+    return () => { window.clearTimeout(initial); window.clearInterval(interval); };
   }, [question, settings, state]);
 
   async function answer(option: string) {
     if (!question || selected || (remaining !== null && remaining <= 0)) return;
     setSelected(option); setError("");
     try {
-      const result = await submitLiveAnswer(credentials.playerId, credentials.playerToken, question, option, Date.now() - questionReceivedAt.current);
+      const result = await submitLiveAnswer(credentials.playerId, credentials.playerToken, question, option, 0);
       setAnswerResult(result); setScore(result.score);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not send your answer.");
@@ -165,7 +184,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   }
 
   if (state === "lobby" || !question) {
-    return <main className="student-live-screen"><header className="student-live-header"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="connection-pill">● {connection}</span></header><section className="student-wait-card"><div className="waiting-orbit">✦</div><span className="eyebrow">YOU'RE IN</span><h1>Hi, {credentials.nickname}!</h1><p>Waiting for your teacher to start <strong>{credentials.activityTitle}</strong>.</p>{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>You’re on {teamName}</div>}<div className="room-mini-code">Room {credentials.roomCode}</div>{error && <div className="student-error">{error}</div>}<button className="student-leave" onClick={onLeave}>{error ? "Rejoin with another name/code" : "Leave room"}</button></section></main>;
+    return <main className="student-live-screen"><header className="student-live-header"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="connection-pill">● {connection}</span></header><section className="student-wait-card"><div className="waiting-orbit">✦</div><span className="eyebrow">YOU’RE IN</span><h1>Hi, {credentials.nickname}!</h1><p>Waiting for your teacher to start <strong>{credentials.activityTitle}</strong>.</p>{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>You’re on {teamName}</div>}<div className="room-mini-code">Room {credentials.roomCode}</div>{error && <div className="student-error">{error}</div>}<button className="student-leave" onClick={onLeave}>{error ? "Rejoin with another name/code" : "Leave room"}</button></section></main>;
   }
 
   return (

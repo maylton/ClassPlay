@@ -11,25 +11,28 @@ export function useClassroomSettings() {
 
   useEffect(() => {
     let cancelled = false;
-    const local = getLocalClassroomSettings();
-    setSettingsState(local);
-    applyClassroomSettings(local);
+    const hydrate = window.setTimeout(() => {
+      if (cancelled) return;
+      const local = getLocalClassroomSettings();
+      setSettingsState(local);
+      applyClassroomSettings(local);
 
-    (async () => {
-      const supabase = getBrowserSupabaseClient();
-      if (!supabase) return;
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data } = await supabase.from("profiles").select("classroom_settings").eq("id", user.id).maybeSingle();
-      if (!cancelled && data?.classroom_settings) {
-        const cloud = { ...local, ...(data.classroom_settings as Partial<ClassroomSettings>) };
-        setSettingsState(cloud);
-        saveLocalClassroomSettings(cloud);
-        applyClassroomSettings(cloud);
-      }
-    })().finally(() => !cancelled && setReady(true));
+      void (async () => {
+        const supabase = getBrowserSupabaseClient();
+        if (!supabase) return;
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const { data } = await supabase.from("profiles").select("classroom_settings").eq("id", user.id).maybeSingle();
+        if (!cancelled && data?.classroom_settings) {
+          const cloud = { ...local, ...(data.classroom_settings as Partial<ClassroomSettings>) };
+          setSettingsState(cloud);
+          saveLocalClassroomSettings(cloud);
+          applyClassroomSettings(cloud);
+        }
+      })().finally(() => !cancelled && setReady(true));
+    }, 0);
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; window.clearTimeout(hydrate); };
   }, []);
 
   const setSettings = useCallback((next: ClassroomSettings | ((current: ClassroomSettings) => ClassroomSettings)) => {

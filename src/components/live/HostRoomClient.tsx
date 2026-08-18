@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -21,17 +21,24 @@ import {
 } from "@/lib/live/room-service";
 import type { ActivitySet, GameSession, LivePlayer, Team } from "@/lib/types";
 
+const subscribeToBrowserLocation = () => () => {};
+
 export function HostRoomClient({ sessionId }: { sessionId: string }) {
   const [session, setSession] = useState<GameSession | null>(null);
   const [activity, setActivity] = useState<ActivitySet | null>(null);
   const [players, setPlayers] = useState<LivePlayer[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [answers, setAnswers] = useState<{ playerId: string; itemId: string }[]>([]);
-  const [joinUrl, setJoinUrl] = useState("");
+  const joinUrl = useSyncExternalStore(
+    subscribeToBrowserLocation,
+    () => `${window.location.origin}/join`,
+    () => "/join",
+  );
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [presenceCount, setPresenceCount] = useState(0);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const loadedActivityIdRef = useRef<string | null>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -40,17 +47,19 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       setPlayers(snapshot.players);
       setTeams(snapshot.teams);
       setAnswers(snapshot.answers);
-      if (!activity || activity.id !== snapshot.session.activitySetId) {
+      if (loadedActivityIdRef.current !== snapshot.session.activitySetId) {
         const loaded = await loadActivity(snapshot.session.activitySetId);
-        if (loaded) setActivity(loaded);
+        if (loaded) {
+          loadedActivityIdRef.current = loaded.id;
+          setActivity(loaded);
+        }
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not refresh live room.");
     }
-  }, [sessionId, activity]);
+  }, [sessionId]);
 
   useEffect(() => {
-    setJoinUrl(`${window.location.origin}/join`);
     void refresh();
     const stopDb = subscribeHostChanges(sessionId, () => void refresh());
     const channel = openLiveChannel(sessionId, `host-${sessionId}`);
