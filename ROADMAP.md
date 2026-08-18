@@ -1,8 +1,8 @@
 # ClassPlay — Product & Engineering Roadmap
 
 > **Status:** Definitive roadmap
-> **Current target:** MVP / v0.1.0
-> **Next target:** v0.2.0 after classroom/local validation
+> **Current target:** v0.2.0 release candidate / Connected Classroom
+> **Stable baseline:** v0.1.0 MVP — accepted after local validation
 > **Product:** ClassPlay — interactive language-learning activities for teachers and students
 
 ---
@@ -99,6 +99,8 @@ ClassPlay
 
 ## 5. Canonical data model
 
+### ActivitySet
+
 ```ts
 interface ActivitySet {
   id: string;
@@ -106,7 +108,7 @@ interface ActivitySet {
   description: string;
   subject: string;
   topic: string;
-  level: string;
+  level: string;        // CEFR-friendly label
   grade: string;
   kind: "vocabulary" | "grammar" | "mixed";
   items: ActivityItem[];
@@ -114,7 +116,11 @@ interface ActivitySet {
   createdAt: string;
   updatedAt: string;
 }
+```
 
+### ActivityItem
+
+```ts
 interface ActivityItem {
   id: string;
   prompt: string;
@@ -126,9 +132,23 @@ interface ActivityItem {
   sentenceParts?: string[];
   gapSentence?: string;
 }
+```
 
-type GameType = "flashcards" | "memory" | "matching" | "sentence-builder" | "gap-fill" | "quiz";
+### GameType
 
+```ts
+type GameType =
+  | "flashcards"
+  | "memory"
+  | "matching"
+  | "sentence-builder"
+  | "gap-fill"
+  | "quiz";
+```
+
+### GameResult
+
+```ts
 interface GameResult {
   game: GameType;
   activityId: string;
@@ -161,7 +181,7 @@ Deliver a genuinely usable local classroom product, not a static prototype. A te
 
 ### Storage abstraction
 
-UI components call storage functions rather than accessing `localStorage` directly. This makes the v0.2 Supabase migration incremental.
+UI components must call storage functions rather than accessing `localStorage` directly. This makes the v0.2 Supabase migration incremental.
 
 ```text
 UI → storage.ts → localStorage        (v0.1)
@@ -253,7 +273,7 @@ Flow:
 Acceptance criteria:
 - Cards have readable projector-scale text.
 - Input locks briefly while an incorrect pair is visible.
-- Initial implementation uses up to eight source items per board.
+- Maximum of a practical number of cards per board; initial implementation uses up to eight source items.
 - Replay reshuffles.
 
 ### Matching
@@ -268,7 +288,7 @@ Flow:
 
 Acceptance criteria:
 - No drag dependency.
-- Completed pairs visually fade from interaction.
+- Completed pairs visually disappear/fade from interaction.
 - Works on touch screens.
 
 ### Sentence Builder
@@ -334,6 +354,7 @@ Scoring is not yet pedagogical analytics. That becomes a dedicated subsystem aft
 
 Required now:
 - large tap targets;
+- visible focus behavior inherited/maintained by native controls;
 - semantic buttons rather than clickable `<div>` elements;
 - strong text/background contrast;
 - no essential information communicated only by animation;
@@ -363,7 +384,7 @@ Items include:
 - play games;
 - go to bed.
 
-This demo contains enough metadata to exercise every game mode.
+This demo must contain enough metadata to exercise every game mode.
 
 ## 6.8 MVP definition of done
 
@@ -744,19 +765,45 @@ Minimum expectations:
 Games should be implemented as independent renderers consuming Activity Set data.
 
 Candidate modes:
-- True or False;
-- Spin the Wheel;
-- Random Cards;
-- Categorize;
-- Word Unscramble;
-- Missing Letters;
-- Word Search;
-- Who Said It?;
-- This or That;
-- Speaking Cards;
-- Hot Seat;
-- Bingo;
-- Verb Sprint.
+
+### True or False
+Statements + boolean answer.
+
+### Spin the Wheel
+Random prompt selector for speaking/review.
+
+### Random Cards
+Draw-a-card classroom speaking prompts.
+
+### Categorize
+Drag/click terms into categories: regular/irregular, countable/uncountable, positive/negative, etc.
+
+### Word Unscramble
+Reorder letters.
+
+### Missing Letters
+Spelling-focused practice.
+
+### Word Search
+Vocabulary recognition.
+
+### Who Said It?
+Dialogue/character matching.
+
+### This or That
+Fast comparative/opinion prompts.
+
+### Speaking Cards
+Full-screen prompt + optional timer + useful language scaffold.
+
+### Hot Seat
+Projected clue mode for teams.
+
+### Bingo
+Generate randomized boards from an Activity Set.
+
+### Verb Sprint
+Infinitive → past → participle quick rounds.
 
 ---
 
@@ -853,13 +900,13 @@ src/
 │   ├── activity/[id]/
 │   ├── play/[id]/
 │   ├── join/
-│   └── api/
+│   └── api/                       # only where server routes are justified
 ├── components/
 │   ├── ui/
 │   ├── editor/
 │   ├── classroom/
 │   └── games/
-├── games/
+├── games/                         # future game packages/registry
 ├── lib/
 │   ├── activity-engine/
 │   ├── scoring/
@@ -895,6 +942,7 @@ Benefits:
 
 # 17. Validation strategy
 
+## Activity validation
 A shared validator should eventually verify:
 - title length;
 - minimum item count;
@@ -905,7 +953,8 @@ A shared validator should eventually verify:
 - gap contains exactly one intended blank where required;
 - distractors do not duplicate correct answer.
 
-Answer normalization may handle:
+## Answer normalization
+Normalization may handle:
 - trim whitespace;
 - collapse repeated whitespace;
 - case normalization where appropriate;
@@ -1155,10 +1204,40 @@ These omissions are deliberate and represented in later milestones.
 - [x] Game result persistence.
 - [x] Responsive visual system.
 - [x] Engine smoke-test script.
-- [ ] Local classroom acceptance test by project owner.
+- [x] Local classroom acceptance test by project owner.
 
-### v0.2
-**Blocked intentionally until MVP acceptance test is complete.**
+### v0.2 — Connected Classroom
+- [x] MVP gate approved; implementation unblocked.
+- [x] Repository/data-access abstraction cleanup.
+- [x] Supabase environment/configuration layer.
+- [x] Database schema + migration.
+- [x] RLS policies + security contract tests.
+- [x] Teacher authentication UI and SSR session refresh.
+- [x] Local-to-cloud Activity Set migration.
+- [x] Cloud CRUD + edit autosave.
+- [x] Private image upload/storage.
+- [x] Flashcard TTS/audio controls.
+- [x] Game-session schema.
+- [x] Host lobby.
+- [x] Expiring six-digit room codes.
+- [x] Anonymous student join flow.
+- [x] Realtime Presence/Broadcast and host DB subscriptions.
+- [x] Live question synchronization.
+- [x] Server-validated student answer submission.
+- [x] Live scoring.
+- [x] Leaderboard controls.
+- [x] Team Mode.
+- [x] QR Code.
+- [x] Accessibility settings.
+- [x] Sentence Builder drag-and-drop enhancement with click/tap fallback.
+- [x] Student reconnect/resume implementation.
+- [x] Core/live security smoke tests and CI validation added.
+- [ ] Supabase-backed integration acceptance test.
+- [ ] Mobile device acceptance test with real room.
+- [ ] Projector acceptance test with real room.
+- [ ] v0.2 release candidate accepted and merged to `main`.
+
+**Current state:** code-complete release candidate; connected acceptance testing is the remaining gate.
 
 ---
 

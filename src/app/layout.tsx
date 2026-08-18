@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
+import "bootstrap-icons/font/bootstrap-icons.css";
 import "./globals.css";
+import "./v02.css";
 
 export const metadata: Metadata = {
   title: "ClassPlay — Playful English practice",
@@ -7,5 +9,9 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
 }

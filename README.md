@@ -2,30 +2,59 @@
 
 **Create once. Play many ways.**
 
-ClassPlay is a classroom-first web app for creating reusable English-learning Activity Sets and playing them as Flashcards, Memory, Matching, Sentence Builder, Gap Fill and Quiz activities.
+ClassPlay is a classroom-first web app for creating reusable English-learning Activity Sets and playing the same language through Flashcards, Memory, Matching, Sentence Builder, Gap Fill and Quiz activities.
 
-## MVP status
+The current stable baseline is **v0.2.0 — Connected Classroom**. It combines the accepted local/projector MVP with teacher accounts, cloud persistence and live multiplayer classrooms.
 
-The current codebase is **v0.1.0 (MVP)** and uses browser-local storage so it can be tested without a backend or account.
+## What ClassPlay can do
 
-Included now:
-- modern landing page;
-- teacher dashboard/library;
-- local teacher display name;
-- Activity Set creator;
-- local persistence;
-- duplicate/delete workflow;
-- six playable game modes;
-- responsive classroom/mobile UI;
-- sample `Daily Routine — Present Simple` Activity Set;
-- local game result count.
+### Local / projector mode
 
-The full product plan is in [`ROADMAP.md`](./ROADMAP.md).
+Works with no backend or account:
+
+- modern landing page and teacher library;
+- Activity Set creation and editing;
+- browser-local persistence;
+- six game modes;
+- Flashcard English TTS;
+- Sentence Builder tap/click plus accessible drag-to-reorder;
+- images stored as small local data URLs when cloud is unavailable;
+- classroom accessibility settings;
+- responsive projector, desktop and phone layouts;
+- canonical `Daily Routine — Present Simple` demo.
+
+### Connected Classroom — v0.2
+
+Activated when Supabase environment variables are configured:
+
+- teacher accounts with password or magic link;
+- teacher signup before creating cloud activities;
+- cloud Activity Set sync and autosave;
+- one-click import of activities created in v0.1 local mode;
+- private image storage;
+- live rooms with six-digit codes and QR codes;
+- nickname-only student joining with no student account;
+- Realtime lobby presence, questions and answer counts;
+- automatic host refresh as answers arrive;
+- early round reveal when all active students answer;
+- timer-based round reveal and teacher-controlled next-question flow;
+- individual scores and optional leaderboard;
+- Team Mode with 2–8 teams;
+- timer and ranking controls;
+- reconnect/resume after a student refresh;
+- RLS-protected teacher data and narrow anonymous student RPCs.
+
+### Product UI
+
+ClassPlay uses Tailwind/product CSS for layout and **Bootstrap Icons** for interface iconography through a shared `AppIcon` component. Emojis remain valid inside teacher-authored activity content, but product controls use consistent vector icons.
+
+The complete product plan is in [`ROADMAP.md`](./ROADMAP.md). Connected backend setup is in [`docs/SUPABASE_SETUP.md`](./docs/SUPABASE_SETUP.md).
 
 ## Run locally
 
 Requirements:
-- Node.js 20.9 or newer.
+
+- Node.js 22 recommended (Node 20.9+ supported by the current Next.js line);
 - npm.
 
 ```bash
@@ -35,78 +64,138 @@ npm install
 npm run dev
 ```
 
-Then open:
+Open:
 
 ```text
 http://localhost:3000
 ```
 
-## Useful commands
+With no `.env.local`, ClassPlay automatically runs in **Local mode** and all six teacher-led games remain available.
+
+## Enable v0.2 cloud/live features
 
 ```bash
-npm run dev
-npm run build
-npm run lint
-npm run test:engine
+cp .env.example .env.local
 ```
 
-## MVP data storage
+Then configure:
 
-Activity Sets, teacher name and recent game results are saved in browser `localStorage`.
+```env
+NEXT_PUBLIC_SUPABASE_URL=https://YOUR_PROJECT.supabase.co
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+```
 
-This means:
-- no account is required;
-- data stays in the current browser/profile;
-- clearing site data removes local ClassPlay content;
-- activities created in one browser are not automatically visible in another.
+Apply the migrations in order:
 
-Cloud persistence and teacher accounts are planned for v0.2 after MVP acceptance testing.
+```text
+supabase/migrations/0001_connected_classroom.sql
+supabase/migrations/0002_security_hardening.sql
+supabase/migrations/0003_rls_and_index_optimization.sql
+supabase/migrations/0004_fix_live_room_join_ambiguity.sql
+```
+
+See [`docs/SUPABASE_SETUP.md`](./docs/SUPABASE_SETUP.md) for the full setup and acceptance-test sequence.
+
+## Validation commands
+
+```bash
+npm run test:engine
+npm run test:live
+npm run typecheck
+npm run lint
+npm run build
+```
+
+GitHub Actions runs the same validation on `main`, `agent/**` branches and pull requests to `main`.
+
+## Core architecture
+
+Learning content is separate from game renderers:
+
+```text
+Activity Set
+    ↓
+Repository layer
+(localStorage or Supabase)
+    ↓
+Game / Classroom engine
+    ↓
+┌────────────┬────────┬──────────┬───────────────┐
+Flashcards  Memory   Matching   Sentence Builder …
+└────────────┴────────┴──────────┴───────────────┘
+```
+
+This lets teachers create language once and change the type of practice without recreating the material.
+
+### Connected Classroom flow
+
+```text
+Teacher account
+      ↓
+Cloud Activity Set
+      ↓
+Live session ──────→ Realtime host screen
+      │
+      ├── 6-digit room code
+      ├── QR join URL
+      │
+      └── Anonymous player token
+               ↓
+        Student answer RPC
+               ↓
+      server validation/scoring
+               ↓
+       Realtime host refresh
+```
+
+The correct answer remains host-side until reveal. Speed scoring is based on server round time rather than client-reported timing.
 
 ## Project structure
 
 ```text
 src/
 ├── app/
+│   ├── auth/
 │   ├── create/
 │   ├── dashboard/
-│   ├── play/[id]/
-│   ├── globals.css
-│   ├── layout.tsx
-│   └── page.tsx
+│   ├── edit/[id]/
+│   ├── host/
+│   ├── join/
+│   └── play/[id]/
 ├── components/
 │   ├── games/
-│   ├── ActivityEditor.tsx
-│   ├── AppHeader.tsx
-│   ├── Brand.tsx
-│   ├── DashboardClient.tsx
-│   └── GameHub.tsx
-└── lib/
-    ├── game-engine.ts
-    ├── sample-data.ts
-    ├── storage.ts
-    └── types.ts
+│   ├── live/
+│   ├── media/
+│   └── settings/
+├── hooks/
+├── lib/
+│   ├── live/
+│   ├── repositories/
+│   └── supabase/
+└── proxy.ts
+
+supabase/
+└── migrations/
 ```
 
-## Core architecture
+## Data safety in v0.2
 
-The game components do not own their learning content. They receive the same `ActivitySet` contract and interpret the fields needed for that interaction.
+- teacher-owned database rows use Row Level Security;
+- students do not need accounts;
+- accountless joins/answers use limited RPCs and a random per-player token;
+- media is stored in a private bucket;
+- hidden answers are not sent to student clients before reveal;
+- no service-role/secret key belongs in browser environment variables.
 
-```text
-Activity Set
-    ↓
-Game mode selector
-    ↓
-┌────────────┬────────┬──────────┐
-Flashcards  Memory   Matching  ...
-└────────────┴────────┴──────────┘
-```
+## Release status
 
-This is the key design decision that lets ClassPlay reuse content and add new games later.
+- **v0.1.0 MVP:** accepted after local testing.
+- **v0.2.0 Connected Classroom:** accepted after Supabase-backed cloud/live testing and now the stable baseline.
+- **Next target:** v0.3 — Classes, Assignments & Insights.
 
-## Next milestone
-
-Do **not** begin v0.2 until the MVP has been tested locally and accepted. The next release adds Supabase, teacher authentication, cloud sync, images, TTS, live rooms, QR codes, student joining, realtime scoring and Team Mode.
+See [`CHANGELOG.md`](./CHANGELOG.md) for release details.
 
 ## License
 
-License decision pending before public release.
+License decision pending before broad public release.
