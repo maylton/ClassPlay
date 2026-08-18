@@ -4,7 +4,7 @@
 
 ClassPlay is a classroom-first web app for creating reusable English-learning Activity Sets and playing the same language through Flashcards, Memory, Matching, Sentence Builder, Gap Fill and Quiz activities.
 
-The project is currently preparing **v0.2.0 — Connected Classroom**. The accepted v0.1 MVP remains the stable baseline on `main`; v0.2 development lives on `agent/v0.2-connected-classroom` until connected-room acceptance testing is complete.
+The current stable baseline is **v0.2.0 — Connected Classroom**. It combines the accepted local/projector MVP with teacher accounts, cloud persistence and live multiplayer classrooms.
 
 ## What ClassPlay can do
 
@@ -23,22 +23,30 @@ Works with no backend or account:
 - responsive projector, desktop and phone layouts;
 - canonical `Daily Routine — Present Simple` demo.
 
-### Connected Classroom — v0.2 RC
+### Connected Classroom — v0.2
 
 Activated when Supabase environment variables are configured:
 
 - teacher accounts with password or magic link;
+- teacher signup before creating cloud activities;
 - cloud Activity Set sync and autosave;
 - one-click import of activities created in v0.1 local mode;
 - private image storage;
 - live rooms with six-digit codes and QR codes;
 - nickname-only student joining with no student account;
 - Realtime lobby presence, questions and answer counts;
+- automatic host refresh as answers arrive;
+- early round reveal when all active students answer;
+- timer-based round reveal and teacher-controlled next-question flow;
 - individual scores and optional leaderboard;
 - Team Mode with 2–8 teams;
 - timer and ranking controls;
 - reconnect/resume after a student refresh;
 - RLS-protected teacher data and narrow anonymous student RPCs.
+
+### Product UI
+
+ClassPlay uses Tailwind/product CSS for layout and **Bootstrap Icons** for interface iconography through a shared `AppIcon` component. Emojis remain valid inside teacher-authored activity content, but product controls use consistent vector icons.
 
 The complete product plan is in [`ROADMAP.md`](./ROADMAP.md). Connected backend setup is in [`docs/SUPABASE_SETUP.md`](./docs/SUPABASE_SETUP.md).
 
@@ -78,10 +86,13 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=YOUR_PUBLISHABLE_KEY
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-Apply:
+Apply the migrations in order:
 
 ```text
 supabase/migrations/0001_connected_classroom.sql
+supabase/migrations/0002_security_hardening.sql
+supabase/migrations/0003_rls_and_index_optimization.sql
+supabase/migrations/0004_fix_live_room_join_ambiguity.sql
 ```
 
 See [`docs/SUPABASE_SETUP.md`](./docs/SUPABASE_SETUP.md) for the full setup and acceptance-test sequence.
@@ -180,7 +191,8 @@ supabase/
 ## Release status
 
 - **v0.1.0 MVP:** accepted after local testing.
-- **v0.2.0-rc.1:** implementation stage complete; connected backend/mobile/projector acceptance test pending before merge to `main`.
+- **v0.2.0 Connected Classroom:** accepted after Supabase-backed cloud/live testing and now the stable baseline.
+- **Next target:** v0.3 — Classes, Assignments & Insights.
 
 See [`CHANGELOG.md`](./CHANGELOG.md) for release details.
 
