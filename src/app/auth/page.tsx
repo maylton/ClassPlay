@@ -3,9 +3,10 @@ import { AuthClient } from "@/components/AuthClient";
 import { getTeacherUser } from "@/lib/supabase/auth";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 
-export default async function AuthPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+export default async function AuthPage({ searchParams }: { searchParams: Promise<{ next?: string; mode?: string }> }) {
   const params = await searchParams;
   const nextPath = params.next?.startsWith("/") ? params.next : "/dashboard";
+  const initialMode = params.mode === "signup" ? "signup" : "signin";
   if (isSupabaseConfigured && await getTeacherUser()) redirect(nextPath);
-  return <AuthClient nextPath={nextPath} />;
+  return <AuthClient nextPath={nextPath} initialMode={initialMode} />;
 }
