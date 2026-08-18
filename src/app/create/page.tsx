@@ -3,6 +3,6 @@ import { ActivityEditor } from "@/components/ActivityEditor";
 import { requireTeacher } from "@/lib/supabase/auth";
 
 export default async function CreatePage() {
-  await requireTeacher("/create");
+  await requireTeacher("/create", "signup");
   return <div className="app-shell"><AppHeader /><ActivityEditor /></div>;
 }
