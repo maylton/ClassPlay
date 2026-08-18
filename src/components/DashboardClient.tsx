@@ -13,6 +13,7 @@ import {
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { ActivitySet, TeacherProfile } from "@/lib/types";
+import { AppIcon } from "./AppIcon";
 
 const gameLabels: Record<string, string> = {
   flashcards: "Flashcards",
@@ -22,6 +23,12 @@ const gameLabels: Record<string, string> = {
   "gap-fill": "Gap fill",
   quiz: "Quiz",
 };
+
+const activityKindIcons = {
+  vocabulary: "type",
+  grammar: "braces",
+  mixed: "layers",
+} as const;
 
 export function DashboardClient() {
   const [activities, setActivities] = useState<ActivitySet[]>([]);
@@ -111,12 +118,12 @@ export function DashboardClient() {
             </form>
           )}
         </div>
-        <div className="welcome-actions"><Link className="button button-soft button-large" href="/join">Join a room</Link><Link className="button button-primary button-large" href="/create">+ New activity</Link></div>
+        <div className="welcome-actions"><Link className="button button-soft button-large" href="/join">Join a room</Link><Link className="button button-primary button-large" href="/create"><AppIcon name="plus-lg" /> New activity</Link></div>
       </section>
 
       {cloud && localImportCount > 0 && (
         <section className="migration-banner">
-          <div><span>☁</span><div><strong>Bring your MVP activities with you</strong><p>{localImportCount} local {localImportCount === 1 ? "activity is" : "activities are"} ready to move into your cloud library. Duplicates are skipped safely.</p>{importMessage && <small>{importMessage}</small>}</div></div>
+          <div><span><AppIcon name="cloud-arrow-up" /></span><div><strong>Bring your MVP activities with you</strong><p>{localImportCount} local {localImportCount === 1 ? "activity is" : "activities are"} ready to move into your cloud library. Duplicates are skipped safely.</p>{importMessage && <small>{importMessage}</small>}</div></div>
           <button className="button button-primary" onClick={() => void importLocal()}>Import local activities</button>
         </section>
       )}
@@ -137,7 +144,7 @@ export function DashboardClient() {
           {activities.map((activity, index) => (
             <article className={`activity-card activity-accent-${index % 4}`} key={activity.id}>
               <div className="activity-card-top">
-                <div className="activity-icon">{activity.kind === "vocabulary" ? "Aa" : activity.kind === "grammar" ? "✦" : "A+"}</div>
+                <div className="activity-icon"><AppIcon name={activityKindIcons[activity.kind]} /></div>
                 <span className="activity-level">{activity.level}</span>
               </div>
               <div>
@@ -150,7 +157,7 @@ export function DashboardClient() {
                 {activity.enabledGames.length > 4 && <span>+{activity.enabledGames.length - 4}</span>}
               </div>
               <div className="activity-actions">
-                <Link className="button button-dark" href={`/play/${activity.id}`}>▶ Play</Link>
+                <Link className="button button-dark" href={`/play/${activity.id}`}><AppIcon name="play-fill" /> Play</Link>
                 <Link className="button button-soft" href={`/edit/${activity.id}`}>Edit</Link>
                 <button className="button button-soft" onClick={() => void handleDuplicate(activity.id)}>Duplicate</button>
                 {activity.id !== "daily-routine-present-simple" && <button className="text-danger" onClick={() => void handleDelete(activity.id)}>Delete</button>}
@@ -158,7 +165,7 @@ export function DashboardClient() {
             </article>
           ))}
           <Link className="new-activity-card" href="/create">
-            <span>+</span>
+            <span><AppIcon name="plus-lg" /></span>
             <strong>Create an activity</strong>
             <small>Build once. Play it six ways.</small>
           </Link>
