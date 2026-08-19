@@ -99,12 +99,12 @@ export function deriveSentenceParts(item: ActivityItem) {
 }
 
 /**
- * Runtime adapter for a game mode. Generated values are deliberately not
- * persisted unless the teacher entered an explicit override. This keeps the
- * source content canonical: edit the sentence once and every automatic variant
- * follows it.
+ * Runtime adapter for a game mode. `derive` defaults to false so editor state
+ * never becomes a second persisted copy of generated content. Game/runtime
+ * consumers opt in to derivation through getPlayableItemsForMode().
  */
-export function materializeItemsForMode(items: ActivityItem[], mode: GameType) {
+export function materializeItemsForMode(items: ActivityItem[], mode: GameType, derive = false) {
+  if (!derive) return items;
   if (mode === "gap-fill") {
     return items.map((item) => item.gapSentence?.includes("_____") ? item : { ...item, gapSentence: deriveGapSentence(item) || item.gapSentence });
   }
@@ -144,7 +144,7 @@ export function normalizeItemsForModes(items: ActivityItem[], modes: readonly Ga
 }
 
 export function getPlayableItemsForMode(items: ActivityItem[], mode: GameType) {
-  const prepared = materializeItemsForMode(items, mode);
+  const prepared = materializeItemsForMode(items, mode, true);
 
   if (mode === "sentence-builder") {
     return prepared.filter((item) => (item.sentenceParts?.length ?? 0) > 1);
