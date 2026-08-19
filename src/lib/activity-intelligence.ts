@@ -162,8 +162,13 @@ function deriveMatchingItem(item: ActivityItem): ActivityItem {
   return pair ? { ...item, prompt: pair.prompt, answer: pair.answer } : item;
 }
 
+/**
+ * Pair games should judge the relationship shown on their own cards. A stored
+ * gapSentence is merely another generated variant of the same item and must
+ * not make a lexical/form pair look like a sentence-completion exercise.
+ */
 function sentenceCompletion(item: ActivityItem) {
-  return hasBlank(item.prompt) || hasBlank(item.gapSentence);
+  return hasBlank(item.prompt);
 }
 
 function lexicalOrFormPair(item: ActivityItem) {
