@@ -5,6 +5,7 @@ import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, us
 import { SortableContext, arrayMove, horizontalListSortingStrategy, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AppIcon } from "@/components/AppIcon";
+import { getPlayableItemsForMode, materializeItemsForMode } from "@/lib/activity-intelligence";
 import { isCorrectAnswer, sentenceAnswer, shuffle } from "@/lib/game-engine";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
@@ -26,9 +27,9 @@ function SortableToken({ token, onRemove }: { token: Token; onRemove: () => void
 }
 
 export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
-  const questions = useMemo(() => activity.items.filter((item) => (item.sentenceParts?.length ?? 0) > 1), [activity]);
+  const questions = useMemo(() => getPlayableItemsForMode(materializeItemsForMode(activity.items, "sentence-builder"), "sentence-builder"), [activity.items]);
   const [index, setIndex] = useState(0);
-  const [pool, setPool] = useState<Token[]>(() => shuffle((questions[0]?.sentenceParts ?? []).map((text, i) => ({ id: `${i}-${text}`, text }))));
+  const [pool, setPool] = useState<Token[]>(() => shuffle((questions[0]?.sentenceParts ?? []).map((text, tokenIndex) => ({ id: `${tokenIndex}-${text}`, text }))));
   const [answer, setAnswer] = useState<Token[]>([]);
   const [correct, setCorrect] = useState(0);
   const [score, setScore] = useState(0);
@@ -40,12 +41,13 @@ export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
 
-  if (!item) return <div className="empty-game"><span><AppIcon name="puzzle" /></span><h2>This set needs sentence chunks.</h2><p>Add chunks such as <b>She | goes to school | every day</b> in the activity editor.</p></div>;
+  if (!item) return <div className="empty-game"><span><AppIcon name="puzzle" /></span><h2>This set needs full sentences.</h2><p>Add at least two sentences. ClassPlay will split them into draggable chunks automatically.</p></div>;
 
   function resetQuestion(nextIndex: number) {
     setAnswer([]); setFeedback(null);
-    setPool(shuffle((questions[nextIndex]?.sentenceParts ?? []).map((text, i) => ({ id: `${i}-${text}`, text }))));
+    setPool(shuffle((questions[nextIndex]?.sentenceParts ?? []).map((text, tokenIndex) => ({ id: `${tokenIndex}-${text}`, text }))));
   }
+
   function addToken(token: Token) { setPool((current) => current.filter((entry) => entry.id !== token.id)); setAnswer((current) => [...current, token]); }
   function removeToken(token: Token) { if (feedback) return; setAnswer((current) => current.filter((entry) => entry.id !== token.id)); setPool((current) => [...current, token]); }
   function handleDragEnd(event: DragEndEvent) {
@@ -57,6 +59,7 @@ export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
       return oldIndex >= 0 && newIndex >= 0 ? arrayMove(current, oldIndex, newIndex) : current;
     });
   }
+
   function check() {
     if (answer.length !== item.sentenceParts?.length) return;
     const isCorrect = isCorrectAnswer(answer.map((token) => token.text).join(" "), sentenceAnswer(item));
@@ -69,6 +72,7 @@ export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
       else { const next = index + 1; setIndex(next); resetQuestion(next); }
     }, 850);
   }
+
   function replay() { setIndex(0); setCorrect(0); setScore(0); setFinished(false); resetQuestion(0); }
   if (finished) return <CompletionCard score={score} correct={correct} total={questions.length} onReplay={replay} />;
 
@@ -76,7 +80,7 @@ export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
     <div className="game-stage builder-stage">
       <div className="game-progress-label"><span>Sentence {index + 1} of {questions.length}</span><span>{score} points</span></div>
       <div className="game-progress"><span style={{ width: `${((index + 1) / questions.length) * 100}%` }} /></div>
-      <div className="game-question"><span className="question-icon"><AppIcon name="puzzle" /></span><small>SENTENCE BUILDER</small><h2>Put the sentence in order</h2>{item.hint && <p>Hint: {item.hint} {item.answer}</p>}<p className="drag-help">Tap chunks to add/remove them. Drag chosen chunks to reorder.</p></div>
+      <div className="game-question"><span className="question-icon"><AppIcon name="puzzle" /></span><small>SENTENCE BUILDER</small><h2>Put the sentence in order</h2>{item.hint && <p>Hint: {item.hint}</p>}<p className="drag-help">Tap chunks to add/remove them. Drag chosen chunks to reorder.</p></div>
       <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext items={answer.map((token) => token.id)} strategy={horizontalListSortingStrategy}>
           <div className={`builder-answer ${feedback ? `feedback-${feedback}` : ""}`}>
