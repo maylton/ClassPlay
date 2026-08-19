@@ -44,6 +44,9 @@ assert.match(liveStudent, /function StudentLiveSpaceBlaster/, "Students must rec
 assert.match(liveStudent, /> FIRE</, "Live Space Blaster must submit the aimed answer only when the student fires.");
 assert.match(liveStudent, /question\.gameMode === "space-blaster"/, "Student UI must switch renderers from the live question mode.");
 assert.match(liveEngine, /delete publicQuestion\.correctAnswer/, "Live question broadcasts must continue hiding the answer before reveal.");
+assert.match(liveHost, /const \[hostRemaining, setHostRemaining\]/, "Teacher live UI must track the same countdown shown to students.");
+assert.match(liveHost, /session\.currentQuestion\.startedAt/, "Teacher countdown must derive from the authoritative live question start time.");
+assert.match(liveHost, /hostRemaining \?\? session\.settings\.timerSeconds/, "Teacher UI must render the remaining live round time.");
 
 const sql = fs.readFileSync(new URL("../supabase/migrations/0001_connected_classroom.sql", import.meta.url), "utf8");
 for (const table of ["profiles", "activity_sets", "activity_items", "activity_games", "game_sessions", "teams", "players", "answers", "game_results"]) {
