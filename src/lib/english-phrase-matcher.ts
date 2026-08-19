@@ -87,7 +87,7 @@ function inflectionForms(value: string) {
     if (stem.length > 2 && stem.at(-1) === stem.at(-2)) forms.add(stem.slice(0, -1));
   }
 
-  if (token.endsWith("ing") && token.length > 5) {
+  if (token.endsWith("ing") && token.length > 4) {
     const stem = token.slice(0, -3);
     forms.add(stem);
     forms.add(`${stem}e`);
