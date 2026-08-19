@@ -22,25 +22,51 @@ export function quizOptions(item: ActivityItem) {
   return shuffle(Array.from(new Set(options))).slice(0, 4);
 }
 
+/**
+ * Gap Fill options must always contain the correct answer. Older versions mixed
+ * answers from other items into the candidate pool and shuffled before slicing,
+ * which could remove the correct answer entirely. Keep each question local:
+ * one correct answer plus up to three curated distractors from that item.
+ */
 export function gapOptions(item: ActivityItem) {
   const correct = sentenceGapAnswer(item);
-  const options = [correct, ...(item.distractors ?? [])].filter(Boolean);
-  return shuffle(Array.from(new Set(options))).slice(0, 4);
+  const correctKey = normalizeAnswer(correct);
+  const distractors = Array.from(
+    new Map(
+      (item.distractors ?? [])
+        .filter(Boolean)
+        .filter((value) => normalizeAnswer(value) !== correctKey)
+        .map((value) => [normalizeAnswer(value), value] as const),
+    ).values(),
+  );
+  return shuffle([correct, ...shuffle(distractors).slice(0, 3)]);
+}
+
+function singleGapParts(value?: string) {
+  const sentence = value ?? "";
+  const matches = Array.from(sentence.matchAll(/_{2,}/g));
+  if (matches.length !== 1) return null;
+  const match = matches[0];
+  const start = match.index ?? 0;
+  const end = start + match[0].length;
+  return { before: sentence.slice(0, start), after: sentence.slice(end) };
 }
 
 export function sentenceGapAnswer(item: ActivityItem) {
-  if (!item.gapSentence || !item.example) return item.prompt;
-  const [before = "", after = ""] = item.gapSentence.split("_____");
-  const normalizedBefore = before.trim();
-  const normalizedAfter = after.trim();
-  let answer = item.example;
-  if (normalizedBefore && answer.startsWith(normalizedBefore)) {
-    answer = answer.slice(normalizedBefore.length).trim();
+  const parts = singleGapParts(item.gapSentence);
+  const example = item.example?.trim() ?? "";
+
+  if (parts && example.startsWith(parts.before) && example.endsWith(parts.after)) {
+    const start = parts.before.length;
+    const end = example.length - parts.after.length;
+    const extracted = example.slice(start, end).trim().replace(/^[,.;:!?\s]+|[,.;:!?\s]+$/g, "");
+    if (extracted) return extracted;
   }
-  if (normalizedAfter && answer.endsWith(normalizedAfter)) {
-    answer = answer.slice(0, answer.length - normalizedAfter.length).trim();
-  }
-  return answer.replace(/^[,.;:!?\s]+|[,.;:!?\s]+$/g, "") || item.prompt;
+
+  // If the sentence/example pair cannot be aligned, prefer the explicit target
+  // over the prompt. This keeps legacy content playable while the editor flags
+  // structurally ambiguous items for revision.
+  return item.answer?.trim() || item.prompt?.trim() || "";
 }
 
 export function sentenceAnswer(item: ActivityItem) {
