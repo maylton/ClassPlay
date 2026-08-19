@@ -39,6 +39,7 @@ export function MatchingGame({ activity, onComplete }: GameProps) {
     const isComparatives = context.includes("comparative") || context.includes("superlative");
     const isConditional = context.includes("conditional");
     const isThereIsAre = context.includes("there is") || context.includes("there are");
+    const isReportedSpeech = context.includes("reported speech");
     const lexicalKeywords = [
       "vocabulary", "phrasal verb", "idiom", "slang", "gaming", "anime", "manga",
       "environment", "job interview", "school life", "social media", "technology",
@@ -70,6 +71,22 @@ export function MatchingGame({ activity, onComplete }: GameProps) {
       };
     }
 
+    if (isConditional) {
+      return {
+        instruction: "Match each condition to the result that completes it",
+        leftLabel: "CONDITION",
+        rightLabel: "RESULT",
+      };
+    }
+
+    if (isReportedSpeech) {
+      return {
+        instruction: "Connect what was said to the reported version",
+        leftLabel: "DIRECT SPEECH",
+        rightLabel: "REPORTED SPEECH",
+      };
+    }
+
     if (isLexicalActivity) {
       const definitionFirst = averageLength(playableItems, "prompt") > averageLength(playableItems, "answer");
       return definitionFirst
@@ -85,7 +102,7 @@ export function MatchingGame({ activity, onComplete }: GameProps) {
           };
     }
 
-    if (isConditional || isThereIsAre) {
+    if (isThereIsAre) {
       return {
         instruction: "Connect each clue to the sentence that expresses it",
         leftLabel: "CLUE",
@@ -109,7 +126,7 @@ export function MatchingGame({ activity, onComplete }: GameProps) {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [finished, setFinished] = useState(false);
 
-  if (playableItems.length < 2) return <div className="empty-game"><span><AppIcon name="link-45deg" /></span><h2>This set needs at least two unique matches.</h2><p>Matching hides duplicate visible answers so students never have to guess between identical cards.</p></div>;
+  if (playableItems.length < 2) return <div className="empty-game"><span><AppIcon name="link-45deg" /></span><h2>This set does not have enough clear relationships for Matching.</h2><p>ClassPlay now hides Matching when the content behaves more like sentence completion than association.</p></div>;
 
   function evaluate(leftId: string | null, rightId: string | null) {
     if (!leftId || !rightId) return;
