@@ -5,6 +5,7 @@ import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import type {
   ActivitySet,
   ClassroomSettings,
+  DynamiteAttemptResult,
   GameSession,
   JoinRoomResult,
   LiveAnswerResult,
@@ -188,6 +189,20 @@ export async function submitLiveAnswer(playerId: string, playerToken: string, qu
   return data as LiveAnswerResult;
 }
 
+export async function submitDynamiteAttempt(playerId: string, playerToken: string, question: LiveQuestion, answer: string): Promise<DynamiteAttemptResult> {
+  if (!question.dynamiteTurnId) throw new Error("This Dynamite turn is missing its server token.");
+  const supabase = requireSupabase();
+  const { data, error } = await supabase.rpc("submit_dynamite_attempt", {
+    p_player_id: playerId,
+    p_player_token: playerToken,
+    p_item_id: question.itemId,
+    p_turn_id: question.dynamiteTurnId,
+    p_answer_text: answer,
+  });
+  if (error) throw error;
+  return data as DynamiteAttemptResult;
+}
+
 export async function updateHostSession(sessionId: string, patch: Partial<{
   state: SessionState;
   locked: boolean;
@@ -235,6 +250,7 @@ export function subscribeHostChanges(sessionId: string, onChange: () => void) {
     .channel(`classplay-host-db:${sessionId}`)
     .on("postgres_changes", { event: "*", schema: "public", table: "players", filter: `session_id=eq.${sessionId}` }, onChange)
     .on("postgres_changes", { event: "INSERT", schema: "public", table: "answers", filter: `session_id=eq.${sessionId}` }, onChange)
+    .on("postgres_changes", { event: "UPDATE", schema: "public", table: "game_sessions", filter: `id=eq.${sessionId}` }, onChange)
     .subscribe();
   return () => { void supabase.removeChannel(channel); };
 }
