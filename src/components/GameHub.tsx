@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { addGameResult } from "@/lib/storage";
 import { loadActivity } from "@/lib/repositories/activity-repository";
+import { GAME_MODE_CATALOG } from "@/lib/game-catalog";
 import type { ActivitySet, GameType } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
 import { SettingsPanel } from "./settings/SettingsPanel";
@@ -13,15 +14,6 @@ import { MatchingGame } from "./games/MatchingGame";
 import { SentenceBuilderGame } from "./games/SentenceBuilderGame";
 import { GapFillGame } from "./games/GapFillGame";
 import { QuizGame } from "./games/QuizGame";
-
-const gameInfo: Record<GameType, { icon: string; name: string; description: string; className: string }> = {
-  flashcards: { icon: "card-text", name: "Flashcards", description: "Reveal, remember and self-check", className: "mint" },
-  memory: { icon: "grid-3x3-gap", name: "Memory", description: "Find matching pairs", className: "violet" },
-  matching: { icon: "link-45deg", name: "Matching", description: "Connect English and meaning", className: "blue" },
-  "sentence-builder": { icon: "puzzle", name: "Sentence Builder", description: "Put chunks in the right order", className: "orange" },
-  "gap-fill": { icon: "pencil-square", name: "Gap Fill", description: "Complete the missing language", className: "pink" },
-  quiz: { icon: "trophy", name: "Quiz", description: "Fast multiple-choice challenge", className: "yellow" },
-};
 
 export function GameHub({ activityId }: { activityId: string }) {
   const [activity, setActivity] = useState<ActivitySet | null>(null);
@@ -82,8 +74,8 @@ export function GameHub({ activityId }: { activityId: string }) {
         <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{activity.enabledGames.length} games available</span></div>
         <div className="mode-grid">
           {activity.enabledGames.map((game) => {
-            const info = gameInfo[game];
-            return <button key={game} className={`mode-card ${info.className}`} onClick={() => setMode(game)}><span className="mode-icon"><AppIcon name={info.icon} /></span><span><strong>{info.name}</strong><small>{info.description}</small></span><i><AppIcon name="arrow-right" /></i></button>;
+            const info = GAME_MODE_CATALOG[game];
+            return <button key={game} className={`mode-card ${info.colorClass}`} onClick={() => setMode(game)}><span className="mode-icon"><AppIcon name={info.icon} /></span><span><strong>{info.name}</strong><small>{info.pickerDescription}</small></span><i><AppIcon name="arrow-right" /></i></button>;
           })}
         </div>
       </section>

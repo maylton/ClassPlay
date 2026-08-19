@@ -4,18 +4,10 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppIcon } from "@/components/AppIcon";
 import { ActivityImage } from "@/components/media/ActivityImage";
+import { GAME_MODE_CATALOG, GAME_MODE_ORDER } from "@/lib/game-catalog";
 import { loadActivity, saveActivity } from "@/lib/repositories/activity-repository";
 import { removeActivityImage, uploadActivityImage } from "@/lib/media";
 import type { ActivityItem, ActivityKind, ActivitySet, GameType } from "@/lib/types";
-
-const games: { id: GameType; icon: string; label: string; description: string }[] = [
-  { id: "flashcards", icon: "card-text", label: "Flashcards", description: "Reveal prompt and answer" },
-  { id: "memory", icon: "grid-3x3-gap", label: "Memory", description: "Find matching pairs" },
-  { id: "matching", icon: "link-45deg", label: "Matching", description: "Connect prompts and answers" },
-  { id: "sentence-builder", icon: "puzzle", label: "Sentence Builder", description: "Put chunks in order" },
-  { id: "gap-fill", icon: "pencil-square", label: "Gap Fill", description: "Complete the sentence" },
-  { id: "quiz", icon: "trophy", label: "Quiz", description: "Quick multiple choice" },
-];
 
 function createId(prefix: string) {
   return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -34,7 +26,7 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   const [level, setLevel] = useState("A1–A2");
   const [grade, setGrade] = useState("7th grade");
   const [kind, setKind] = useState<ActivityKind>("mixed");
-  const [enabledGames, setEnabledGames] = useState<GameType[]>(games.map((game) => game.id));
+  const [enabledGames, setEnabledGames] = useState<GameType[]>([...GAME_MODE_ORDER]);
   const [items, setItems] = useState<ActivityItem[]>([emptyItem(1), emptyItem(2), emptyItem(3), emptyItem(4)]);
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
   const [error, setError] = useState("");
@@ -165,11 +157,15 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
         <section className="editor-panel editor-games-panel">
           <div className="panel-heading"><span>2</span><div><h2>Choose game modes</h2><p>You can reuse the same content across all of them.</p></div></div>
           <div className="game-picker-grid">
-            {games.map((game) => (
-              <button key={game.id} className={`game-picker ${enabledGames.includes(game.id) ? "selected" : ""}`} onClick={() => toggleGame(game.id)}>
-                <b><AppIcon name={game.icon} /></b><span><strong>{game.label}</strong><small>{game.description}</small></span><i>{enabledGames.includes(game.id) ? <AppIcon name="check-lg" /> : <AppIcon name="plus-lg" />}</i>
-              </button>
-            ))}
+            {GAME_MODE_ORDER.map((gameId) => {
+              const game = GAME_MODE_CATALOG[gameId];
+              const selected = enabledGames.includes(gameId);
+              return (
+                <button key={gameId} className={`game-picker ${selected ? "selected" : ""}`} onClick={() => toggleGame(gameId)}>
+                  <b><AppIcon name={game.icon} /></b><span><strong>{game.name}</strong><small>{game.editorDescription}</small></span><i>{selected ? <AppIcon name="check-lg" /> : <AppIcon name="plus-lg" />}</i>
+                </button>
+              );
+            })}
           </div>
         </section>
 

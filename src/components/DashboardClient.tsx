@@ -10,19 +10,11 @@ import {
   migrateLocalActivitiesToCloud,
   removeActivity,
 } from "@/lib/repositories/activity-repository";
+import { GAME_MODE_CATALOG } from "@/lib/game-catalog";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { ActivitySet, TeacherProfile } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
-
-const gameLabels: Record<string, string> = {
-  flashcards: "Flashcards",
-  memory: "Memory",
-  matching: "Matching",
-  "sentence-builder": "Builder",
-  "gap-fill": "Gap fill",
-  quiz: "Quiz",
-};
 
 const activityKindIcons = {
   vocabulary: "type",
@@ -102,15 +94,15 @@ export function DashboardClient() {
   }
 
   return (
-    <main className="dashboard-main">
-      <section className="welcome-row">
-        <div>
+    <main className="dashboard-main studio-dashboard">
+      <section className="welcome-row studio-welcome">
+        <div className="welcome-copy">
           <span className="eyebrow">Teacher workspace</span>
           <div className="welcome-title-row">
             <h1>Good to see you, {profile.name}.</h1>
-            <button className="icon-text-button" onClick={() => setEditingName((value) => !value)}>Edit name</button>
           </div>
-          <p>{cloud ? "Your ClassPlay library is synced to your teacher account." : "Pick up an activity or create a new one for your next class."}</p>
+          <p>{cloud ? "Your library is synced and ready for your next class." : "Pick up an activity or create something new for your next class."}</p>
+          <button className="icon-text-button" onClick={() => setEditingName((value) => !value)}><AppIcon name="pencil" /> Edit name</button>
           {editingName && (
             <form className="inline-profile" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void updateName(String(form.get("name") ?? "")); }}>
               <input name="name" defaultValue={profile.name} autoFocus aria-label="Teacher name" />
@@ -118,7 +110,15 @@ export function DashboardClient() {
             </form>
           )}
         </div>
-        <div className="welcome-actions"><Link className="button button-soft button-large" href="/join">Join a room</Link><Link className="button button-primary button-large" href="/create"><AppIcon name="plus-lg" /> New activity</Link></div>
+        <aside className="welcome-studio-card" aria-label="Create your next classroom activity">
+          <span className="studio-card-kicker">Ready when you are</span>
+          <h2>Make the next class more interactive.</h2>
+          <p>Create once, then switch between game modes whenever you need.</p>
+          <div className="studio-card-actions">
+            <Link className="button studio-primary-action" href="/create"><AppIcon name="plus-lg" /> New activity</Link>
+            <Link className="studio-link" href="/join">Join a room <AppIcon name="arrow-right" /></Link>
+          </div>
+        </aside>
       </section>
 
       {cloud && localImportCount > 0 && (
@@ -129,45 +129,61 @@ export function DashboardClient() {
       )}
       {error && <div className="alert-error">{error}</div>}
 
-      <section className="stats-grid" aria-label="ClassPlay stats">
-        <div className="stat-card"><strong>{loading ? "…" : activities.length}</strong><span>Activity sets</span></div>
-        <div className="stat-card"><strong>{loading ? "…" : totalGames}</strong><span>Playable modes</span></div>
-        <div className="stat-card"><strong>{resultsCount}</strong><span>Local rounds</span></div>
+      <section className="stats-grid studio-stats" aria-label="ClassPlay stats">
+        <div className="stat-card"><span className="stat-icon"><AppIcon name="collection-play" /></span><strong>{loading ? "…" : activities.length}</strong><span>Activity sets</span></div>
+        <div className="stat-card"><span className="stat-icon"><AppIcon name="controller" /></span><strong>{loading ? "…" : totalGames}</strong><span>Modes enabled</span></div>
+        <div className="stat-card"><span className="stat-icon"><AppIcon name="activity" /></span><strong>{resultsCount}</strong><span>Local rounds</span></div>
       </section>
 
-      <section className="library-section">
+      <section className="library-section studio-library">
         <div className="section-toolbar">
-          <div><span className="eyebrow">My library</span><h2>Recent activities</h2></div>
-          <span className={`storage-pill ${cloud ? "cloud" : ""}`}>● {cloud ? "Cloud sync on" : isSupabaseConfigured ? "Local session" : "Local-first mode"}</span>
+          <div><span className="eyebrow">My library</span><h2>Recent activities</h2><p className="section-subcopy">Jump back into a lesson or turn the same content into a different game.</p></div>
+          <span className={`storage-pill ${cloud ? "cloud" : ""}`}><AppIcon name={cloud ? "cloud-check" : "hdd"} /> {cloud ? "Cloud sync on" : isSupabaseConfigured ? "Local session" : "Local-first mode"}</span>
         </div>
-        <div className="activity-grid">
-          {activities.map((activity, index) => (
-            <article className={`activity-card activity-accent-${index % 4}`} key={activity.id}>
-              <div className="activity-card-top">
-                <div className="activity-icon"><AppIcon name={activityKindIcons[activity.kind]} /></div>
-                <span className="activity-level">{activity.level}</span>
-              </div>
-              <div>
-                <span className="activity-meta">{activity.grade} · {activity.topic}</span>
-                <h3>{activity.title}</h3>
-                <p>{activity.description}</p>
-              </div>
-              <div className="game-tags">
-                {activity.enabledGames.slice(0, 4).map((game) => <span key={game}>{gameLabels[game]}</span>)}
-                {activity.enabledGames.length > 4 && <span>+{activity.enabledGames.length - 4}</span>}
-              </div>
-              <div className="activity-actions">
-                <Link className="button button-dark" href={`/play/${activity.id}`}><AppIcon name="play-fill" /> Play</Link>
-                <Link className="button button-soft" href={`/edit/${activity.id}`}>Edit</Link>
-                <button className="button button-soft" onClick={() => void handleDuplicate(activity.id)}>Duplicate</button>
-                {activity.id !== "daily-routine-present-simple" && <button className="text-danger" onClick={() => void handleDelete(activity.id)}>Delete</button>}
-              </div>
-            </article>
-          ))}
-          <Link className="new-activity-card" href="/create">
+        <div className="activity-grid studio-activity-grid">
+          {activities.map((activity) => {
+            const previewImage = activity.items.find((item) => item.imageUrl)?.imageUrl;
+
+            return (
+              <article className="activity-card" key={activity.id}>
+                <div
+                  className={`activity-visual ${previewImage ? "has-image" : ""}`}
+                  style={previewImage ? { backgroundImage: `linear-gradient(180deg, rgba(18,15,45,.08), rgba(18,15,45,.76)), url("${previewImage}")` } : undefined}
+                >
+                  <div className="activity-icon"><AppIcon name={activityKindIcons[activity.kind]} /></div>
+                  <span className="activity-level">{activity.level}</span>
+                  <div className="activity-visual-copy">
+                    <small>{activity.kind === "mixed" ? "Mixed practice" : `${activity.kind} practice`}</small>
+                    <strong>{activity.topic}</strong>
+                  </div>
+                </div>
+                <div className="activity-card-body">
+                  <span className="activity-meta">{activity.grade} · {activity.items.length} items</span>
+                  <h3>{activity.title}</h3>
+                  <p>{activity.description}</p>
+                  <div className="activity-mode-summary" aria-label={`${activity.enabledGames.length} game modes enabled`}>
+                    <span>Game modes</span><b>{activity.enabledGames.length} enabled</b>
+                  </div>
+                  <div className="game-tags">
+                    {activity.enabledGames.slice(0, 4).map((game) => <span key={game}>{GAME_MODE_CATALOG[game].shortName}</span>)}
+                    {activity.enabledGames.length > 4 && <span>+{activity.enabledGames.length - 4}</span>}
+                  </div>
+                  <div className="activity-actions">
+                    <Link className="button button-dark" href={`/play/${activity.id}`}><AppIcon name="play-fill" /> Play</Link>
+                    <Link className="button button-soft" href={`/edit/${activity.id}`}>Edit</Link>
+                    <button className="button button-soft" onClick={() => void handleDuplicate(activity.id)}>Duplicate</button>
+                    {activity.id !== "daily-routine-present-simple" && <button className="text-danger" onClick={() => void handleDelete(activity.id)}>Delete</button>}
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+          <Link className="new-activity-card studio-create-card" href="/create">
             <span><AppIcon name="plus-lg" /></span>
-            <strong>Create an activity</strong>
-            <small>Build once. Play it six ways.</small>
+            <small>CLASSPLAY STUDIO</small>
+            <strong>Create something<br />for your next class.</strong>
+            <p>Start with your content. Pick the game later.</p>
+            <b>New activity <AppIcon name="arrow-right" /></b>
           </Link>
         </div>
       </section>
