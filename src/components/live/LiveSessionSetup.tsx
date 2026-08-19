@@ -19,12 +19,12 @@ const LIVE_MODE_OPTIONS: { mode: LiveGameMode; label: string; description: strin
   { mode: "dynamite", label: "Dynamite", description: "Pass the fuse by answering before time runs out. Last player alive wins.", icon: "fire" },
 ];
 
-export function LiveSessionSetup({ activityId }: { activityId: string }) {
+export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { activityId: string; initialGameMode?: LiveGameMode }) {
   const router = useRouter();
   const { settings } = useClassroomSettings();
   const [activity, setActivity] = useState<ActivitySet | null>(null);
   const [mode, setMode] = useState<SessionMode>("individual");
-  const [liveGameMode, setLiveGameMode] = useState<LiveGameMode>("quiz");
+  const [liveGameMode, setLiveGameMode] = useState<LiveGameMode>(initialGameMode);
   const [dynamiteTimerSeconds, setDynamiteTimerSeconds] = useState<DynamiteTimerSeconds>(10);
   const [teamCount, setTeamCount] = useState(4);
   const [busy, setBusy] = useState(false);
