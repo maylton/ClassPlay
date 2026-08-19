@@ -1,8 +1,6 @@
 import { getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import { gapOptions, quizOptions, sentenceGapAnswer } from "@/lib/game-engine";
-import type { ActivitySet, GameType, LiveQuestion } from "@/lib/types";
-
-export type LiveGameMode = Extract<GameType, "gap-fill" | "quiz" | "space-blaster">;
+import type { ActivitySet, LiveGameMode, LiveQuestion } from "@/lib/types";
 
 export const LIVE_GAME_MODES: readonly LiveGameMode[] = ["gap-fill", "quiz", "space-blaster"];
 
