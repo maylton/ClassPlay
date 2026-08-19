@@ -9,6 +9,41 @@ import { CompletionCard } from "./CompletionCard";
 
 export function MatchingGame({ activity, onComplete }: GameProps) {
   const playableItems = useMemo(() => getPlayableItemsForMode(activity.items, "matching"), [activity.items]);
+  const matchingCopy = useMemo(() => {
+    const context = `${activity.title} ${activity.topic}`.toLocaleLowerCase();
+    const isAdviceActivity = context.includes("advice") || context.includes("should");
+
+    if (isAdviceActivity) {
+      return {
+        instruction: "Connect each situation to the best advice",
+        leftLabel: "SITUATION",
+        rightLabel: "ADVICE",
+      };
+    }
+
+    if (activity.kind === "vocabulary") {
+      return {
+        instruction: "Connect each English phrase to its meaning",
+        leftLabel: "ENGLISH",
+        rightLabel: "MEANING",
+      };
+    }
+
+    if (activity.kind === "grammar") {
+      return {
+        instruction: "Connect each prompt to the best sentence",
+        leftLabel: "PROMPT",
+        rightLabel: "BEST SENTENCE",
+      };
+    }
+
+    return {
+      instruction: "Connect each prompt to its correct match",
+      leftLabel: "PROMPT",
+      rightLabel: "MATCH",
+    };
+  }, [activity.kind, activity.title, activity.topic]);
+
   const [left, setLeft] = useState(() => shuffle(playableItems));
   const [right, setRight] = useState(() => shuffle(playableItems));
   const [selectedLeft, setSelectedLeft] = useState<string | null>(null);
@@ -45,5 +80,5 @@ export function MatchingGame({ activity, onComplete }: GameProps) {
 
   if (finished) return <CompletionCard score={Math.max(200, playableItems.length * 120 - (attempts - playableItems.length) * 40)} correct={playableItems.length} total={attempts} onReplay={replay} />;
 
-  return <div className="game-stage"><div className="game-progress-label"><span>Connect each English phrase to its meaning</span><span>{matched.length}/{playableItems.length} matched</span></div><div className={`matching-board ${feedback ? `feedback-${feedback}` : ""}`}><div className="matching-column"><small>ENGLISH</small>{left.map((item) => <button key={item.id} disabled={matched.includes(item.id)} onClick={() => { setSelectedLeft(item.id); evaluate(item.id, selectedRight); }} className={selectedLeft === item.id ? "selected" : ""}>{item.hint && <span>{item.hint}</span>}{item.prompt}{matched.includes(item.id) && <i><AppIcon name="check-lg" /></i>}</button>)}</div><div className="matching-column"><small>MEANING</small>{right.map((item) => <button key={item.id} disabled={matched.includes(item.id)} onClick={() => { setSelectedRight(item.id); evaluate(selectedLeft, item.id); }} className={selectedRight === item.id ? "selected" : ""}>{item.answer}{matched.includes(item.id) && <i><AppIcon name="check-lg" /></i>}</button>)}</div></div></div>;
+  return <div className="game-stage"><div className="game-progress-label"><span>{matchingCopy.instruction}</span><span>{matched.length}/{playableItems.length} matched</span></div><div className={`matching-board ${feedback ? `feedback-${feedback}` : ""}`}><div className="matching-column"><small>{matchingCopy.leftLabel}</small>{left.map((item) => <button key={item.id} disabled={matched.includes(item.id)} onClick={() => { setSelectedLeft(item.id); evaluate(item.id, selectedRight); }} className={selectedLeft === item.id ? "selected" : ""}>{item.hint && <span>{item.hint}</span>}{item.prompt}{matched.includes(item.id) && <i><AppIcon name="check-lg" /></i>}</button>)}</div><div className="matching-column"><small>{matchingCopy.rightLabel}</small>{right.map((item) => <button key={item.id} disabled={matched.includes(item.id)} onClick={() => { setSelectedRight(item.id); evaluate(selectedLeft, item.id); }} className={selectedRight === item.id ? "selected" : ""}>{item.answer}{matched.includes(item.id) && <i><AppIcon name="check-lg" /></i>}</button>)}</div></div></div>;
 }
