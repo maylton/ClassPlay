@@ -28,12 +28,17 @@ assert.doesNotMatch(studentRepo, /signInAnonymously/, "v0.5 student account flow
 assert.match(studentRepo, /register_student_profile/, "the client must register a server-validated username");
 assert.match(studentRepo, /join_classroom_account/, "the client must use the permanent-account class join RPC");
 assert.match(studentRepo, /password\.length < 8/, "student signup should require at least 8 characters client-side");
+const studentAuthState = studentRepo.match(/export async function getStudentAuthState\(\): Promise<StudentAuthState> \{[\s\S]*?\n\}/)?.[0] ?? "";
+assert.match(studentAuthState, /auth\.getSession\(\)/, "shared class links must treat an absent Supabase session as a normal first-time visitor state");
+assert.match(studentAuthState, /if \(!session\?\.user\) return \{ signedIn: false, profile: null \}/, "signed-out students must resolve immediately instead of hanging on account checks");
+assert.doesNotMatch(studentAuthState, /auth\.getUser\(\)/, "initial student auth detection must not throw AuthSessionMissingError for signed-out visitors");
 
 assert.match(joinClient, /Username/, "first-time student UI must request a username");
 assert.match(joinClient, /Email/, "student account UI must request email");
 assert.match(joinClient, /Password/, "student account UI must request password");
 assert.match(joinClient, /Class key \(optional\)/, "returning students must be able to sign in without a class key");
 assert.match(joinClient, /completeStudentSignup/, "email-confirmation callback must resume class onboarding");
+assert.match(joinClient, /setAuthState\(\{ signedIn: false, profile: null \}\)/, "student join UI must always escape the initial loading state when auth bootstrap fails");
 
 assert.match(serverAuth, /student_profiles/, "teacher route guards must recognize student accounts server-side");
 assert.match(serverAuth, /redirect\("\/student"\)/, "student accounts must be redirected out of teacher workspaces");
