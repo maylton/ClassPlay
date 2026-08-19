@@ -256,7 +256,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     );
   }
 
-  const questionTotal = session.currentQuestion?.total ?? liveQuestionTotal || activity.items.length;
+  const questionTotal = session.currentQuestion?.total ?? (liveQuestionTotal || activity.items.length);
   const liveEyebrow = session.currentQuestion?.gameMode === "space-blaster" ? "SPACE BLASTER · LIVE" : session.currentQuestion?.gameMode === "gap-fill" ? "FILL THE GAPS · LIVE" : "QUIZ · LIVE";
 
   return (
