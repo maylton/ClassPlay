@@ -1,0 +1,51 @@
+/* Memory Game — adaptive board structure
+   Board size comes from src/lib/memory-board.ts. Keep Classroom Studio colors
+   in studio.css; this file only handles density and responsive layout. */
+
+.memory-grid.memory-grid-adaptive {
+  grid-template-columns: repeat(var(--memory-columns), minmax(0, 1fr));
+  align-items: stretch;
+}
+
+.memory-grid.memory-grid-adaptive .memory-card {
+  min-height: var(--memory-card-min-height);
+}
+
+.memory-grid.memory-grid-adaptive .memory-front {
+  padding: clamp(.5rem, 1vw, .9rem);
+}
+
+.memory-grid.memory-grid-adaptive .memory-front b {
+  font-size: var(--memory-card-font-size);
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.memory-grid.memory-grid-adaptive .memory-front small {
+  font-size: .55rem;
+}
+
+@media (max-width: 1000px) {
+  .memory-grid.memory-grid-adaptive {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .memory-grid.memory-grid-adaptive .memory-card {
+    min-height: max(92px, calc(var(--memory-card-min-height) - 12px));
+  }
+}
+
+@media (max-width: 720px) {
+  .memory-grid.memory-grid-adaptive {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .55rem;
+  }
+
+  .memory-grid.memory-grid-adaptive .memory-card {
+    min-height: 88px;
+  }
+
+  .memory-grid.memory-grid-adaptive .memory-front b {
+    font-size: min(var(--memory-card-font-size), .76rem);
+  }
+}
