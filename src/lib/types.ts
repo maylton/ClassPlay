@@ -4,7 +4,9 @@ export type GameType =
   | "matching"
   | "sentence-builder"
   | "gap-fill"
-  | "quiz";
+  | "quiz"
+  | "space-blaster"
+  | "word-maze";
 
 export type ActivityKind = "vocabulary" | "grammar" | "mixed";
 export type ActivityVisibility = "private" | "unlisted";
