@@ -1,3 +1,4 @@
+import { findEnglishPhraseMatch, type EnglishPhraseMatch } from "./english-phrase-matcher";
 import { GAME_MODE_CATALOG, GAME_MODE_ORDER } from "./game-catalog";
 import type { ActivityItem, ActivitySet, GameType } from "./types";
 
@@ -42,18 +43,12 @@ function targetCandidates(item: ActivityItem, sentence: string) {
     .filter((candidate) => normalized(candidate) !== normalized(sentence));
 }
 
-function findTarget(item: ActivityItem, sentence: string) {
-  const lowerSentence = sentence.toLocaleLowerCase();
+function findTarget(item: ActivityItem, sentence: string): EnglishPhraseMatch | null {
   for (const candidate of targetCandidates(item, sentence)) {
-    if (lowerSentence.includes(candidate.toLocaleLowerCase())) return candidate;
+    const match = findEnglishPhraseMatch(sentence, candidate);
+    if (match) return match;
   }
-  return "";
-}
-
-function replaceFirstInsensitive(source: string, needle: string, replacement: string) {
-  const index = source.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase());
-  if (index < 0) return source;
-  return `${source.slice(0, index)}${replacement}${source.slice(index + needle.length)}`;
+  return null;
 }
 
 export function deriveGapSentence(item: ActivityItem) {
@@ -62,7 +57,7 @@ export function deriveGapSentence(item: ActivityItem) {
   const sentence = canonicalSentence(item);
   if (!sentence) return "";
   const target = findTarget(item, sentence);
-  return target ? replaceFirstInsensitive(sentence, target, "_____") : "";
+  return target ? `${sentence.slice(0, target.start)}_____${sentence.slice(target.end)}` : "";
 }
 
 function chunkWords(value: string) {
@@ -89,12 +84,9 @@ export function deriveSentenceParts(item: ActivityItem) {
   const target = findTarget(item, sentence);
   if (!target) return chunkWords(sentence);
 
-  const index = sentence.toLocaleLowerCase().indexOf(target.toLocaleLowerCase());
-  if (index < 0) return chunkWords(sentence);
-  const before = sentence.slice(0, index).trim();
-  const targetText = sentence.slice(index, index + target.length).trim();
-  const after = sentence.slice(index + target.length).trim();
-  const chunks = [...chunkWords(before), targetText, ...chunkWords(after)].filter(Boolean);
+  const before = sentence.slice(0, target.start).trim();
+  const after = sentence.slice(target.end).trim();
+  const chunks = [...chunkWords(before), target.text, ...chunkWords(after)].filter(Boolean);
   return chunks.length > 1 ? chunks : chunkWords(sentence);
 }
 
