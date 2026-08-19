@@ -1,3 +1,4 @@
+import { materializeItemsForMode } from "@/lib/activity-intelligence";
 import { sentenceGapAnswer } from "@/lib/game-engine";
 import type { ActivitySet, LiveQuestion } from "@/lib/types";
 
@@ -13,20 +14,23 @@ export function shuffle<T>(items: T[]): T[] {
 export type HostLiveQuestion = LiveQuestion & { correctAnswer: string };
 
 export function buildLiveQuestion(activity: ActivitySet, index: number): HostLiveQuestion {
-  const item = activity.items[index];
+  const items = activity.enabledGames.includes("gap-fill")
+    ? materializeItemsForMode(activity.items, "gap-fill", true)
+    : activity.items;
+  const item = items[index];
   if (!item) throw new Error("Live question index is outside the activity.");
 
   const usesGap = Boolean(item.gapSentence && item.example);
   const correctAnswer = usesGap ? sentenceGapAnswer(item) : item.answer;
   const distractors = usesGap
     ? (item.distractors ?? [])
-    : activity.items.filter((other) => other.id !== item.id).map((other) => other.answer);
+    : items.filter((other) => other.id !== item.id).map((other) => other.answer);
   const uniqueDistractors = distractors.filter((value, position, values) => value && value !== correctAnswer && values.indexOf(value) === position);
 
   return {
     itemId: item.id,
     index,
-    total: activity.items.length,
+    total: items.length,
     prompt: usesGap ? item.gapSentence! : item.prompt,
     hint: item.hint,
     imageUrl: item.imageUrl,
