@@ -44,6 +44,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [presenceCount, setPresenceCount] = useState(0);
+  const [hostRemaining, setHostRemaining] = useState<number | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const loadedActivityIdRef = useRef<string | null>(null);
   const revealInFlightRef = useRef(false);
@@ -164,6 +165,28 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     return () => window.clearTimeout(timeout);
   }, [reveal, session?.currentQuestion, session?.settings.timerEnabled, session?.settings.timerSeconds, session?.state]);
 
+  useEffect(() => {
+    if (session?.state !== "playing" || !session.currentQuestion || !session.settings.timerEnabled) {
+      setHostRemaining(null);
+      return;
+    }
+    const startedAt = new Date(session.currentQuestion.startedAt).getTime();
+    if (!Number.isFinite(startedAt)) {
+      setHostRemaining(null);
+      return;
+    }
+    const tick = () => {
+      const left = Math.max(0, session.settings.timerSeconds - Math.floor((Date.now() - startedAt) / 1000));
+      setHostRemaining(left);
+    };
+    const initial = window.setTimeout(tick, 0);
+    const interval = window.setInterval(tick, 250);
+    return () => {
+      window.clearTimeout(initial);
+      window.clearInterval(interval);
+    };
+  }, [session?.currentQuestion, session?.settings.timerEnabled, session?.settings.timerSeconds, session?.state]);
+
   async function nextQuestion() {
     if (!session || !activity) return;
     const next = session.currentItemIndex + 1;
@@ -261,11 +284,11 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
 
   return (
     <main className="host-room live-playing-screen">
-      <header className="live-host-header"><Link href="/dashboard" className="play-brand"><b>C</b><span>ClassPlay</span></Link><div className="host-round-meta"><span>Room {session.roomCode}</span><span>{players.length} students</span><span>{currentAnswerCount}/{players.length} answered</span></div><div><button className={`toggle-chip ${session.settings.leaderboardEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("leaderboardEnabled")} aria-label="Toggle leaderboard"><AppIcon name="trophy" /></button><SettingsPanel compact /></div></header>
+      <header className="live-host-header"><Link href="/dashboard" className="play-brand"><b>C</b><span>ClassPlay</span></Link><div className="host-round-meta"><span>Room {session.roomCode}</span><span>{players.length} students</span><span>{currentAnswerCount}/{players.length} answered</span>{session.settings.timerEnabled && <span className={`student-timer ${(hostRemaining ?? 99) <= 5 ? "urgent" : ""}`}><AppIcon name="clock" /> {hostRemaining ?? session.settings.timerSeconds}s</span>}</div><div><button className={`toggle-chip ${session.settings.leaderboardEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("leaderboardEnabled")} aria-label="Toggle leaderboard"><AppIcon name="trophy" /></button><SettingsPanel compact /></div></header>
       {error && <div className="alert-error live-alert">{error}</div>}
       <section className="host-play-layout">
         <div className="host-question-panel">
-          <div className="game-progress-label"><span>Question {session.currentItemIndex + 1} of {questionTotal}</span><span>{currentAnswerCount} answers</span></div>
+          <div className="game-progress-label"><span>Question {session.currentItemIndex + 1} of {questionTotal}</span><span>{session.settings.timerEnabled ? <><AppIcon name="clock" /> {hostRemaining ?? session.settings.timerSeconds}s · </> : null}{currentAnswerCount} answers</span></div>
           <div className="game-progress"><span style={{ width: `${((session.currentItemIndex + 1) / questionTotal) * 100}%` }} /></div>
           {session.currentQuestion && <>
             {session.currentQuestion.imageUrl && <ActivityImage refValue={session.currentQuestion.imageUrl} alt={session.currentQuestion.prompt} className="live-question-image" />}
