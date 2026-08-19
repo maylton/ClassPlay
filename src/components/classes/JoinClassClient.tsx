@@ -47,7 +47,13 @@ export function JoinClassClient({
           if (active) router.replace(`/student/classes/${classroom.classroomId}`);
         }
       } catch (cause) {
-        if (active) setError(cause instanceof Error ? cause.message : "Could not finish student sign-in.");
+        if (active) {
+          setError(cause instanceof Error ? cause.message : "Could not finish student sign-in.");
+          // Never leave a shared class link trapped in the loading state. If the
+          // initial auth check fails, expose the normal account form plus the error
+          // so the student can retry instead of seeing an endless spinner.
+          setAuthState({ signedIn: false, profile: null });
+        }
       } finally {
         if (active) setBusy(false);
       }
