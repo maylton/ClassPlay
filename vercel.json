@@ -1,0 +1,8 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "env": {
+    "NEXT_PUBLIC_SUPABASE_URL": "https://oxzrrsbrhyqaobzysyhc.supabase.co",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY": "sb_publishable_IAmn8jU2nmKUbCR7OTXXSQ_yZBqwFE9",
+    "NEXT_PUBLIC_APP_URL": "https://class-play-five.vercel.app"
+  }
+}
