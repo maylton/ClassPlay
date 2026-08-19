@@ -1,5 +1,5 @@
 import { materializeItemsForMode } from "@/lib/activity-intelligence";
-import { sentenceGapAnswer } from "@/lib/game-engine";
+import { buildChoiceOptions, sentenceGapAnswer } from "@/lib/game-engine";
 import type { ActivitySet, LiveQuestion } from "@/lib/types";
 
 export function shuffle<T>(items: T[]): T[] {
@@ -22,15 +22,11 @@ export function buildLiveQuestion(activity: ActivitySet, index: number): HostLiv
 
   const usesGap = Boolean(item.gapSentence && item.example);
   const correctAnswer = usesGap ? sentenceGapAnswer(item) : item.answer;
-  const distractors = usesGap
-    ? [
-        ...(item.distractors ?? []),
-        ...items
-          .filter((other) => other.id !== item.id && other.gapSentence && other.example)
-          .map(sentenceGapAnswer),
-      ]
+  const fallbackDistractors = usesGap
+    ? items
+        .filter((other) => other.id !== item.id && other.gapSentence && other.example)
+        .map(sentenceGapAnswer)
     : items.filter((other) => other.id !== item.id).map((other) => other.answer);
-  const uniqueDistractors = distractors.filter((value, position, values) => value && value !== correctAnswer && values.indexOf(value) === position);
 
   return {
     itemId: item.id,
@@ -39,7 +35,7 @@ export function buildLiveQuestion(activity: ActivitySet, index: number): HostLiv
     prompt: usesGap ? item.gapSentence! : item.prompt,
     hint: item.hint,
     imageUrl: item.imageUrl,
-    options: shuffle([correctAnswer, ...shuffle(uniqueDistractors).slice(0, 3)]),
+    options: buildChoiceOptions(correctAnswer, item.distractors ?? [], fallbackDistractors, 4),
     startedAt: new Date().toISOString(),
     correctAnswer,
   };
