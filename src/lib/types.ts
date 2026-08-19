@@ -35,6 +35,7 @@ export interface ActivitySet {
   visibility?: ActivityVisibility;
   ownerId?: string;
   sourceLocalId?: string;
+  aiGenerated?: boolean;
   items: ActivityItem[];
   enabledGames: GameType[];
   createdAt: string;
