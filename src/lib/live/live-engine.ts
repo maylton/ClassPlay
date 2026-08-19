@@ -23,7 +23,12 @@ export function buildLiveQuestion(activity: ActivitySet, index: number): HostLiv
   const usesGap = Boolean(item.gapSentence && item.example);
   const correctAnswer = usesGap ? sentenceGapAnswer(item) : item.answer;
   const distractors = usesGap
-    ? (item.distractors ?? [])
+    ? [
+        ...(item.distractors ?? []),
+        ...items
+          .filter((other) => other.id !== item.id && other.gapSentence && other.example)
+          .map(sentenceGapAnswer),
+      ]
     : items.filter((other) => other.id !== item.id).map((other) => other.answer);
   const uniqueDistractors = distractors.filter((value, position, values) => value && value !== correctAnswer && values.indexOf(value) === position);
 
