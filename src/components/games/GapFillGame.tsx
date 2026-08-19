@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { getPlayableItemsForMode, materializeItemsForMode } from "@/lib/activity-intelligence";
-import { gapOptions, sentenceGapAnswer } from "@/lib/game-engine";
+import { sentenceGapAnswer, shuffle } from "@/lib/game-engine";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
 
@@ -15,7 +15,13 @@ export function GapFillGame({ activity, onComplete }: GameProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
   const item = questions[index];
-  const options = useMemo(() => item ? gapOptions(item) : [], [item]);
+  const options = useMemo(() => {
+    if (!item) return [];
+    const correctAnswer = sentenceGapAnswer(item);
+    const activityDistractors = questions.filter((candidate) => candidate.id !== item.id).map(sentenceGapAnswer);
+    const candidates = [correctAnswer, ...(item.distractors ?? []), ...activityDistractors].filter(Boolean);
+    return shuffle(Array.from(new Set(candidates))).slice(0, 4);
+  }, [item, questions]);
 
   if (!item) return <div className="empty-game"><span><AppIcon name="pencil-square" /></span><h2>This set needs sentence targets.</h2><p>Add a full sentence and choose the word or expression to hide. ClassPlay will build the gap automatically.</p></div>;
 
