@@ -1,8 +1,9 @@
 "use client";
 
+import { compatibleEnabledGames } from "@/lib/activity-intelligence";
 import { ensureCloudActivity, listActivities } from "@/lib/repositories/activity-repository";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
-import type { ActivitySet, GameType } from "@/lib/types";
+import type { ActivityItem, ActivitySet, GameType } from "@/lib/types";
 
 export interface CommunityActivity {
   activityId: string;
@@ -56,6 +57,20 @@ function mapCatalog(row: Record<string, unknown>): CommunityActivity {
   };
 }
 
+function mapCommunityItem(row: Record<string, unknown>): ActivityItem {
+  return {
+    id: String(row.id),
+    prompt: String(row.prompt ?? ""),
+    answer: String(row.answer ?? ""),
+    hint: row.hint ? String(row.hint) : undefined,
+    imageUrl: row.image_url ? String(row.image_url) : undefined,
+    example: row.example ? String(row.example) : undefined,
+    gapSentence: row.gap_sentence ? String(row.gap_sentence) : undefined,
+    distractors: Array.isArray(row.distractors) ? row.distractors.map(String) : [],
+    sentenceParts: Array.isArray(row.sentence_parts) ? row.sentence_parts.map(String) : [],
+  };
+}
+
 export async function listCommunityActivities(): Promise<CommunityActivity[]> {
   const supabase = clientOrThrow();
   const { data, error } = await supabase
@@ -63,7 +78,33 @@ export async function listCommunityActivities(): Promise<CommunityActivity[]> {
     .select("activity_set_id,author_name,published_at,title,description,subject,topic,cefr_level,grade,kind,cover_image_url,item_count,game_modes,ai_generated")
     .order("published_at", { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((row) => mapCatalog(row as unknown as Record<string, unknown>));
+
+  const catalog = (data ?? []).map((row) => mapCatalog(row as unknown as Record<string, unknown>));
+  const activityIds = catalog.map((activity) => activity.activityId);
+  if (!activityIds.length) return catalog;
+
+  // Community cards should advertise the same modes the student will actually
+  // see after opening the deck. One batched item query lets old published decks
+  // benefit from the current compatibility engine without rewriting them first.
+  const { data: itemRows, error: itemError } = await supabase
+    .from("activity_items")
+    .select("id,activity_set_id,prompt,answer,hint,image_url,example,gap_sentence,distractors,sentence_parts")
+    .in("activity_set_id", activityIds);
+  if (itemError) throw itemError;
+
+  const itemsByActivity = new Map<string, ActivityItem[]>();
+  for (const raw of itemRows ?? []) {
+    const row = raw as unknown as Record<string, unknown>;
+    const activityId = String(row.activity_set_id);
+    const items = itemsByActivity.get(activityId) ?? [];
+    items.push(mapCommunityItem(row));
+    itemsByActivity.set(activityId, items);
+  }
+
+  return catalog.map((activity) => ({
+    ...activity,
+    gameModes: compatibleEnabledGames(itemsByActivity.get(activity.activityId) ?? [], activity.gameModes),
+  }));
 }
 
 export async function loadCommunityTeacherState(): Promise<CommunityTeacherState> {
