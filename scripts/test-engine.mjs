@@ -22,9 +22,25 @@ function sentenceGapAnswer(item) {
   if (normalizedAfter && answer.endsWith(normalizedAfter)) answer = answer.slice(0, answer.length - normalizedAfter.length).trim();
   return answer.replace(/^[,.;:!?\s]+|[,.;:!?\s]+$/g, "") || item.prompt;
 }
+function sentenceAnswer(item) {
+  return (item.sentenceParts ?? []).join(" ").replace(/\s+([,.!?])/g, "$1");
+}
+function sentenceWords(item) {
+  return sentenceAnswer(item).trim().split(/\s+/).filter(Boolean);
+}
 
 assert.equal(normalizeAnswer("  Goes to School!  "), "goes to school");
 assert.equal(isCorrectAnswer("GOES to school", "goes to school."), true);
 assert.deepEqual(shuffle([1, 2, 3], () => 0), [2, 3, 1]);
 assert.equal(sentenceGapAnswer({ prompt: "have breakfast", example: "She has breakfast before school.", gapSentence: "She _____ before school." }), "has breakfast");
+assert.deepEqual(
+  sentenceWords({ sentenceParts: ["She", "has breakfast", "before school."] }),
+  ["She", "has", "breakfast", "before", "school."],
+  "Sentence Builder should expose one draggable token per written word",
+);
+assert.deepEqual(
+  sentenceWords({ sentenceParts: ["I", "don't have", "any coffee", "at home."] }),
+  ["I", "don't", "have", "any", "coffee", "at", "home."],
+  "Contractions should stay intact while multi-word chunks are split",
+);
 console.log("ClassPlay game engine smoke tests passed.");
