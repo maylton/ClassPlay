@@ -4,6 +4,7 @@ import "./globals.css";
 import "./v02.css";
 import "./identity.css";
 import "./identity-v2.css";
+import "./identity-v3.css";
 
 export const metadata: Metadata = {
   title: "ClassPlay — Playful English practice",
