@@ -8,7 +8,8 @@ export type GameType =
   | "space-blaster"
   | "word-maze";
 
-export type LiveGameMode = Extract<GameType, "gap-fill" | "quiz" | "space-blaster">;
+export type LiveGameMode = "gap-fill" | "quiz" | "space-blaster" | "dynamite";
+export type DynamiteTimerSeconds = 10 | 15 | 20;
 export type ActivityKind = "vocabulary" | "grammar" | "mixed";
 export type ActivityVisibility = "private" | "unlisted";
 
@@ -60,6 +61,22 @@ export interface GameResult {
   completedAt: string;
 }
 
+export interface DynamitePlayerRef {
+  id: string;
+  name: string;
+}
+
+export interface DynamiteState {
+  order: DynamitePlayerRef[];
+  aliveIds: string[];
+  eliminatedIds: string[];
+  currentPlayerId: string;
+  turnNumber: number;
+  questionCursor: number;
+  questionOrder: number[];
+  winnerId?: string | null;
+}
+
 export interface ClassroomSettings {
   reducedMotion: boolean;
   largeText: boolean;
@@ -70,6 +87,8 @@ export interface ClassroomSettings {
   leaderboardEnabled: boolean;
   readAloud: boolean;
   liveGameMode?: LiveGameMode;
+  dynamiteTimerSeconds?: DynamiteTimerSeconds;
+  dynamiteState?: DynamiteState | null;
 }
 
 export type SessionMode = "individual" | "team";
@@ -106,6 +125,12 @@ export interface LiveQuestion {
   imageUrl?: string;
   options: string[];
   startedAt: string;
+  sourceMode?: "quiz" | "gap-fill";
+  dynamiteTurnId?: string;
+  activePlayerId?: string;
+  activePlayerName?: string;
+  passedBy?: string;
+  passedAt?: string;
 }
 
 export interface GameSession {
@@ -154,4 +179,13 @@ export interface LiveAnswerResult {
   points: number;
   score: number;
   alreadyAnswered?: boolean;
+}
+
+export interface DynamiteAttemptResult {
+  correct: boolean;
+  passed: boolean;
+  timeUp: boolean;
+  points: number;
+  score: number;
+  alreadyPassed?: boolean;
 }
