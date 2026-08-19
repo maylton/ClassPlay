@@ -9,7 +9,17 @@ import { ActivityImage } from "@/components/media/ActivityImage";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { loadActivity } from "@/lib/repositories/activity-repository";
 import { resolveActivityImageUrl } from "@/lib/media";
-import { buildLiveQuestion, liveModeQuestionCount, publicLiveQuestion, teamScore, type HostLiveQuestion } from "@/lib/live/live-engine";
+import {
+  advanceDynamiteQuestion,
+  buildLiveQuestion,
+  createDynamiteState,
+  eliminateDynamitePlayer,
+  liveModeQuestionCount,
+  nextAlivePlayerId,
+  publicLiveQuestion,
+  teamScore,
+  type HostLiveQuestion,
+} from "@/lib/live/live-engine";
 import {
   broadcastRoomEvent,
   finalizeLiveSession,
@@ -20,14 +30,16 @@ import {
   subscribeHostChanges,
   updateHostSession,
 } from "@/lib/live/room-service";
-import type { ActivitySet, GameSession, LiveGameMode, LivePlayer, Team } from "@/lib/types";
+import type { ActivitySet, ClassroomSettings, DynamiteState, GameSession, LiveGameMode, LivePlayer, Team } from "@/lib/types";
 
 const subscribeToBrowserLocation = () => () => {};
+const sleep = (milliseconds: number) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
 const LIVE_MODE_LABELS: Record<LiveGameMode, string> = {
   "gap-fill": "Fill the Gaps",
   quiz: "Quiz",
   "space-blaster": "Space Blaster",
+  dynamite: "Dynamite",
 };
 
 export function HostRoomClient({ sessionId }: { sessionId: string }) {
@@ -36,18 +48,16 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   const [players, setPlayers] = useState<LivePlayer[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [answers, setAnswers] = useState<{ playerId: string; itemId: string }[]>([]);
-  const joinUrl = useSyncExternalStore(
-    subscribeToBrowserLocation,
-    () => `${window.location.origin}/join`,
-    () => "/join",
-  );
+  const joinUrl = useSyncExternalStore(subscribeToBrowserLocation, () => `${window.location.origin}/join`, () => "/join");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [presenceCount, setPresenceCount] = useState(0);
   const [hostRemaining, setHostRemaining] = useState<number | null>(null);
+  const [dynamiteExplosion, setDynamiteExplosion] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const loadedActivityIdRef = useRef<string | null>(null);
   const revealInFlightRef = useRef(false);
+  const dynamiteTransitionRef = useRef(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -69,9 +79,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   }, [sessionId]);
 
   useEffect(() => {
-    const initialRefresh = window.setTimeout(() => {
-      void refresh();
-    }, 0);
+    const initialRefresh = window.setTimeout(() => void refresh(), 0);
     const stopDb = subscribeHostChanges(sessionId, () => void refresh());
     const channel = openLiveChannel(sessionId, `host-${sessionId}`);
     channelRef.current = channel;
@@ -80,9 +88,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
         const state = channel.presenceState();
         setPresenceCount(Object.values(state).flat().length);
       })
-      .on("broadcast", { event: "answer-submitted" }, () => {
-        void refresh();
-      })
+      .on("broadcast", { event: "answer-submitted" }, () => void refresh())
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") await channel.track({ role: "host", onlineAt: new Date().toISOString() });
       });
@@ -96,15 +102,13 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   }, [sessionId, refresh]);
 
   const liveGameMode: LiveGameMode = session?.settings.liveGameMode ?? session?.currentQuestion?.gameMode ?? "quiz";
+  const isDynamite = liveGameMode === "dynamite";
+  const dynamiteState = session?.settings.dynamiteState ?? null;
   const liveQuestionTotal = useMemo(() => activity ? liveModeQuestionCount(activity, liveGameMode) : 0, [activity, liveGameMode]);
   const scoreboard = useMemo(() => [...players].sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname)), [players]);
   const currentAnswerCount = useMemo(() => {
     if (!session?.currentQuestion) return 0;
-    return new Set(
-      answers
-        .filter((answer) => answer.itemId === session.currentQuestion?.itemId)
-        .map((answer) => answer.playerId),
-    ).size;
+    return new Set(answers.filter((answer) => answer.itemId === session.currentQuestion?.itemId).map((answer) => answer.playerId)).size;
   }, [answers, session?.currentQuestion]);
   const currentCorrect = (session?.currentQuestion as (HostLiveQuestion | null))?.correctAnswer;
 
@@ -126,8 +130,64 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     finally { setBusy(false); }
   }
 
+  async function publishDynamiteTurn(state: DynamiteState, questionIndex: number, settingsOverride?: ClassroomSettings) {
+    if (!activity || !session) return;
+    const activePlayer = state.order.find((player) => player.id === state.currentPlayerId);
+    if (!activePlayer) throw new Error("Could not find the next Dynamite player.");
+
+    const hostQuestion = buildLiveQuestion(activity, questionIndex, "dynamite");
+    if (hostQuestion.imageUrl) hostQuestion.imageUrl = (await resolveActivityImageUrl(hostQuestion.imageUrl)) ?? hostQuestion.imageUrl;
+    hostQuestion.startedAt = new Date().toISOString();
+    hostQuestion.activePlayerId = activePlayer.id;
+    hostQuestion.activePlayerName = activePlayer.name;
+    hostQuestion.dynamiteTurnId = crypto.randomUUID();
+
+    const nextSettings: ClassroomSettings = settingsOverride ?? {
+      ...session.settings,
+      timerEnabled: true,
+      timerSeconds: session.settings.dynamiteTimerSeconds ?? 10,
+      dynamiteTimerSeconds: session.settings.dynamiteTimerSeconds ?? 10,
+      dynamiteState: state,
+    };
+    nextSettings.dynamiteState = state;
+
+    await updateHostSession(session.id, {
+      state: "playing",
+      current_item_index: questionIndex,
+      current_question: hostQuestion,
+      round_started_at: hostQuestion.startedAt,
+      settings: nextSettings,
+    });
+    await send("question", { question: publicLiveQuestion(hostQuestion), state: "playing", settings: nextSettings });
+    await refresh();
+  }
+
+  async function startDynamite() {
+    if (!activity || !session) return;
+    if (players.length < 2) return setError("Dynamite needs at least two students in the room.");
+    if (liveQuestionTotal < 2) return setError("This deck needs at least two compatible questions for Dynamite.");
+    setBusy(true); setError("");
+    try {
+      const state = createDynamiteState(players, liveQuestionTotal);
+      const nextSettings: ClassroomSettings = {
+        ...session.settings,
+        liveGameMode: "dynamite",
+        timerEnabled: true,
+        timerSeconds: session.settings.dynamiteTimerSeconds ?? 10,
+        dynamiteTimerSeconds: session.settings.dynamiteTimerSeconds ?? 10,
+        dynamiteState: state,
+        leaderboardEnabled: false,
+      };
+      await publishDynamiteTurn(state, state.questionOrder[0], nextSettings);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not start Dynamite.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   const reveal = useCallback(async () => {
-    if (!session?.currentQuestion || session.state !== "playing" || revealInFlightRef.current) return;
+    if (!session?.currentQuestion || session.state !== "playing" || revealInFlightRef.current || isDynamite) return;
     revealInFlightRef.current = true;
     setBusy(true);
     try {
@@ -140,30 +200,24 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       revealInFlightRef.current = false;
       setBusy(false);
     }
-  }, [currentCorrect, refresh, send, session]);
+  }, [currentCorrect, isDynamite, refresh, send, session]);
 
   useEffect(() => {
-    if (session?.state !== "playing" || !session.currentQuestion || players.length === 0) return;
+    if (isDynamite || session?.state !== "playing" || !session.currentQuestion || players.length === 0) return;
     if (currentAnswerCount < players.length) return;
-
-    const timeout = window.setTimeout(() => {
-      void reveal();
-    }, 250);
+    const timeout = window.setTimeout(() => void reveal(), 250);
     return () => window.clearTimeout(timeout);
-  }, [currentAnswerCount, players.length, reveal, session?.currentQuestion, session?.state]);
+  }, [currentAnswerCount, isDynamite, players.length, reveal, session?.currentQuestion, session?.state]);
 
   useEffect(() => {
-    if (session?.state !== "playing" || !session.currentQuestion || !session.settings.timerEnabled) return;
+    if (isDynamite || session?.state !== "playing" || !session.currentQuestion || !session.settings.timerEnabled) return;
     const startedAt = new Date(session.currentQuestion.startedAt).getTime();
     if (!Number.isFinite(startedAt)) return;
-
     const timerMs = Math.max(1, session.settings.timerSeconds) * 1000;
     const remainingMs = Math.max(0, startedAt + timerMs - Date.now());
-    const timeout = window.setTimeout(() => {
-      void reveal();
-    }, remainingMs + 100);
+    const timeout = window.setTimeout(() => void reveal(), remainingMs + 100);
     return () => window.clearTimeout(timeout);
-  }, [reveal, session?.currentQuestion, session?.settings.timerEnabled, session?.settings.timerSeconds, session?.state]);
+  }, [isDynamite, reveal, session?.currentQuestion, session?.settings.timerEnabled, session?.settings.timerSeconds, session?.state]);
 
   useEffect(() => {
     if (session?.state !== "playing" || !session.currentQuestion || !session.settings.timerEnabled) {
@@ -175,17 +229,101 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       setHostRemaining(null);
       return;
     }
-    const tick = () => {
-      const left = Math.max(0, session.settings.timerSeconds - Math.floor((Date.now() - startedAt) / 1000));
-      setHostRemaining(left);
-    };
+    const tick = () => setHostRemaining(Math.max(0, session.settings.timerSeconds - Math.floor((Date.now() - startedAt) / 1000)));
     const initial = window.setTimeout(tick, 0);
-    const interval = window.setInterval(tick, 250);
-    return () => {
-      window.clearTimeout(initial);
-      window.clearInterval(interval);
-    };
+    const interval = window.setInterval(tick, 200);
+    return () => { window.clearTimeout(initial); window.clearInterval(interval); };
   }, [session?.currentQuestion, session?.settings.timerEnabled, session?.settings.timerSeconds, session?.state]);
+
+  const advanceDynamitePass = useCallback(async () => {
+    if (!activity || !session || !dynamiteState || dynamiteTransitionRef.current) return;
+    const nextPlayerId = nextAlivePlayerId(dynamiteState);
+    if (!nextPlayerId) return;
+    dynamiteTransitionRef.current = true;
+    try {
+      const playerAdvanced = { ...dynamiteState, currentPlayerId: nextPlayerId, turnNumber: dynamiteState.turnNumber + 1 };
+      const advanced = advanceDynamiteQuestion(playerAdvanced, liveQuestionTotal);
+      await sleep(550);
+      await publishDynamiteTurn(advanced.state, advanced.questionIndex);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not pass the Dynamite.");
+    } finally {
+      dynamiteTransitionRef.current = false;
+    }
+  // publishDynamiteTurn intentionally reads the latest room snapshot kept in this component.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity, dynamiteState, liveQuestionTotal, session]);
+
+  useEffect(() => {
+    if (!isDynamite || session?.state !== "playing" || !session.currentQuestion || !dynamiteState) return;
+    if (session.currentQuestion.activePlayerId !== dynamiteState.currentPlayerId) return;
+    if (session.currentQuestion.passedBy !== dynamiteState.currentPlayerId) return;
+    void advanceDynamitePass();
+  }, [advanceDynamitePass, dynamiteState, isDynamite, session?.currentQuestion, session?.state]);
+
+  const explodeDynamite = useCallback(async () => {
+    if (!activity || !session || !dynamiteState || !session.currentQuestion || dynamiteTransitionRef.current) return;
+    if (session.currentQuestion.activePlayerId !== dynamiteState.currentPlayerId) return;
+    dynamiteTransitionRef.current = true;
+    try {
+      const explodedPlayer = dynamiteState.order.find((player) => player.id === dynamiteState.currentPlayerId);
+      const eliminated = eliminateDynamitePlayer(dynamiteState, dynamiteState.currentPlayerId);
+      setDynamiteExplosion(explodedPlayer?.name ?? "Player");
+      await send("dynamite-explosion", { playerId: dynamiteState.currentPlayerId, playerName: explodedPlayer?.name ?? "Player" });
+
+      if (eliminated.winnerId) {
+        const winner = eliminated.order.find((player) => player.id === eliminated.winnerId);
+        const finalSettings = { ...session.settings, dynamiteState: eliminated };
+        await updateHostSession(session.id, { settings: finalSettings });
+        await sleep(900);
+        await finalizeLiveSession(session.id);
+        await send("final", {
+          state: "final_results",
+          leaderboardKind: "individual",
+          leaderboard: [],
+          dynamiteWinner: winner ?? null,
+          dynamiteOrder: eliminated.order,
+          eliminatedIds: eliminated.eliminatedIds,
+        });
+        await refresh();
+        return;
+      }
+
+      const turnAdvanced = { ...eliminated, turnNumber: eliminated.turnNumber + 1 };
+      const advanced = advanceDynamiteQuestion(turnAdvanced, liveQuestionTotal);
+      const interimSettings = { ...session.settings, dynamiteState: advanced.state };
+      await updateHostSession(session.id, { settings: interimSettings });
+      await refresh();
+      await sleep(900);
+      setDynamiteExplosion(null);
+      await publishDynamiteTurn(advanced.state, advanced.questionIndex, interimSettings);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not continue Dynamite.");
+    } finally {
+      setDynamiteExplosion(null);
+      dynamiteTransitionRef.current = false;
+    }
+  // publishDynamiteTurn intentionally reads the latest room snapshot kept in this component.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activity, dynamiteState, liveQuestionTotal, refresh, send, session]);
+
+  useEffect(() => {
+    if (!isDynamite || session?.state !== "playing" || !session.currentQuestion || !dynamiteState) return;
+    if (hostRemaining !== 0 || session.currentQuestion.passedBy) return;
+    if (session.currentQuestion.activePlayerId !== dynamiteState.currentPlayerId) return;
+    void explodeDynamite();
+  }, [dynamiteState, explodeDynamite, hostRemaining, isDynamite, session?.currentQuestion, session?.state]);
+
+  useEffect(() => {
+    if (!isDynamite || session?.state !== "playing" || !session.currentQuestion || !dynamiteState || dynamiteTransitionRef.current) return;
+    if (dynamiteState.winnerId) return;
+    if (session.currentQuestion.activePlayerId === dynamiteState.currentPlayerId) return;
+    const questionIndex = dynamiteState.questionOrder[dynamiteState.questionCursor];
+    if (typeof questionIndex !== "number") return;
+    dynamiteTransitionRef.current = true;
+    void publishDynamiteTurn(dynamiteState, questionIndex).finally(() => { dynamiteTransitionRef.current = false; });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dynamiteState, isDynamite, session?.currentQuestion, session?.state]);
 
   async function nextQuestion() {
     if (!session || !activity) return;
@@ -198,12 +336,9 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     if (!session) return;
     setBusy(true);
     try {
-      const leaderboard = session.settings.leaderboardEnabled
+      const leaderboard = isDynamite ? [] : session.settings.leaderboardEnabled
         ? session.mode === "team"
-          ? [...teams]
-              .map((team) => ({ id: team.id, name: team.name, score: teamScore(players, team.id) }))
-              .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
-              .slice(0, 10)
+          ? [...teams].map((team) => ({ id: team.id, name: team.name, score: teamScore(players, team.id) })).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name)).slice(0, 10)
           : scoreboard.slice(0, 10).map((player) => ({ id: player.id, name: player.nickname, score: player.score }))
         : [];
       await finalizeLiveSession(session.id);
@@ -221,7 +356,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   }
 
   async function toggleSessionSetting(key: "leaderboardEnabled" | "timerEnabled") {
-    if (!session) return;
+    if (!session || isDynamite) return;
     const nextSettings = { ...session.settings, [key]: !session.settings[key] };
     await updateHostSession(session.id, { settings: nextSettings });
     await send("settings", { settings: nextSettings });
@@ -240,6 +375,10 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   if (!session || !activity) return <main className="loading-screen">Opening live classroom…</main>;
 
   if (session.state === "final_results" || session.state === "closed") {
+    if (isDynamite && dynamiteState?.winnerId) {
+      const winner = dynamiteState.order.find((player) => player.id === dynamiteState.winnerId);
+      return <DynamiteFinalHost roomCode={session.roomCode} winner={winner?.name ?? "Winner"} activityId={activity.id} />;
+    }
     return (
       <main className="host-room host-results">
         <header className="live-host-header"><Link href="/dashboard" className="play-brand"><b>C</b><span>ClassPlay</span></Link><div><span>Room {session.roomCode}</span><SettingsPanel compact /></div></header>
@@ -268,14 +407,28 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
           <div className="lobby-players-panel">
             <div className="lobby-heading"><div><span className="eyebrow">{LIVE_MODE_LABELS[liveGameMode]} · Live</span><h1>{activity.title}</h1></div><span className="player-count-badge">{players.length} joined</span></div>
             <div className="lobby-player-grid">
-              {players.map((player) => <div className="lobby-player" key={player.id} style={player.teamId ? { borderColor: teams.find((team) => team.id === player.teamId)?.color } : undefined}><span>{player.nickname.slice(0,1).toUpperCase()}</span><b>{player.nickname}</b>{session.mode === "team" && <button onClick={() => void cycleTeam(player)}>{teams.find((team) => team.id === player.teamId)?.name ?? "Team"} <AppIcon name="arrow-repeat" /></button>}<button className="kick-player" onClick={() => void removeLivePlayer(player.id)} aria-label={`Remove ${player.nickname}`}><AppIcon name="x-lg" /></button></div>)}
+              {players.map((player) => <div className="lobby-player" key={player.id} style={player.teamId ? { borderColor: teams.find((team) => team.id === player.teamId)?.color } : undefined}><span>{player.nickname.slice(0,1).toUpperCase()}</span><b>{player.nickname}</b>{session.mode === "team" && !isDynamite && <button onClick={() => void cycleTeam(player)}>{teams.find((team) => team.id === player.teamId)?.name ?? "Team"} <AppIcon name="arrow-repeat" /></button>}<button className="kick-player" onClick={() => void removeLivePlayer(player.id)} aria-label={`Remove ${player.nickname}`}><AppIcon name="x-lg" /></button></div>)}
               {!players.length && <div className="empty-lobby"><span><AppIcon name="people" /></span><strong>Waiting for students…</strong><p>Names will appear here as they join.</p></div>}
             </div>
-            {session.mode === "team" && <TeamScoreboard teams={teams} players={players} compact />}
-            <div className="lobby-controls"><div><button className={`toggle-chip ${session.settings.timerEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("timerEnabled")}><AppIcon name="clock" /> Timer {session.settings.timerEnabled ? "on" : "off"}</button><button className={`toggle-chip ${session.settings.leaderboardEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("leaderboardEnabled")}><AppIcon name="trophy" /> Ranking {session.settings.leaderboardEnabled ? "on" : "off"}</button></div><button className="button button-primary button-large" disabled={busy || liveQuestionTotal === 0} onClick={() => void publishQuestion(0)}>Start {LIVE_MODE_LABELS[liveGameMode]} <AppIcon name="arrow-right" /></button></div>
+            {session.mode === "team" && !isDynamite && <TeamScoreboard teams={teams} players={players} compact />}
+            {isDynamite && <div className="dynamite-lobby-rule"><AppIcon name="fire" /><div><b>{session.settings.dynamiteTimerSeconds ?? 10}s fuse · last survivor wins</b><span>The turn order will be shuffled when the game starts and will stay visible to everyone.</span></div></div>}
+            <div className="lobby-controls"><div>{!isDynamite && <><button className={`toggle-chip ${session.settings.timerEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("timerEnabled")}><AppIcon name="clock" /> Timer {session.settings.timerEnabled ? "on" : "off"}</button><button className={`toggle-chip ${session.settings.leaderboardEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("leaderboardEnabled")}><AppIcon name="trophy" /> Ranking {session.settings.leaderboardEnabled ? "on" : "off"}</button></>}</div><button className="button button-primary button-large" disabled={busy || liveQuestionTotal === 0 || (isDynamite && players.length < 2)} onClick={() => void (isDynamite ? startDynamite() : publishQuestion(0))}>Start {LIVE_MODE_LABELS[liveGameMode]} <AppIcon name="arrow-right" /></button></div>
+            {isDynamite && players.length < 2 && <small className="dynamite-minimum">At least 2 students must join before Dynamite can start.</small>}
           </div>
         </section>
       </main>
+    );
+  }
+
+  if (isDynamite && session.currentQuestion && dynamiteState) {
+    return (
+      <DynamiteHostStage
+        session={session}
+        state={dynamiteState}
+        remaining={hostRemaining ?? session.settings.dynamiteTimerSeconds ?? 10}
+        explosion={dynamiteExplosion}
+        onEnd={() => void endSession()}
+      />
     );
   }
 
@@ -303,6 +456,68 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
         </div>
         {session.settings.leaderboardEnabled && <aside className="live-score-panel"><span className="eyebrow">SCOREBOARD</span>{session.mode === "team" ? <TeamScoreboard teams={teams} players={players} /> : <PlayerScoreboard players={scoreboard} />}</aside>}
       </section>
+    </main>
+  );
+}
+
+function DynamiteHostStage({ session, state, remaining, explosion, onEnd }: { session: GameSession; state: DynamiteState; remaining: number; explosion: string | null; onEnd: () => void }) {
+  const current = state.order.find((player) => player.id === state.currentPlayerId);
+  const nextId = nextAlivePlayerId(state);
+  const next = state.order.find((player) => player.id === nextId);
+  const total = session.settings.dynamiteTimerSeconds ?? 10;
+  const fusePercent = Math.max(0, Math.min(100, (remaining / total) * 100));
+
+  return (
+    <main className={`host-room dynamite-host-screen ${remaining <= 3 ? "dynamite-critical" : ""} ${explosion ? "is-exploding" : ""}`}>
+      <header className="live-host-header dynamite-header"><Link href="/dashboard" className="play-brand"><b>C</b><span>ClassPlay</span></Link><div className="host-round-meta"><span>Room {session.roomCode}</span><span>{state.aliveIds.length} alive</span><span>Turn {state.turnNumber}</span></div><button className="text-danger" onClick={onEnd}>End session</button></header>
+      <section className="dynamite-host-layout">
+        <div className="dynamite-main-stage">
+          {explosion ? (
+            <div className="dynamite-boom"><strong>BOOM!</strong><span>{explosion} is out!</span></div>
+          ) : (
+            <>
+              <span className="eyebrow">DYNAMITE · LIVE</span>
+              <h1 className="dynamite-player-call">{current?.name ?? "Player"}&apos;s turn!</h1>
+              <div className="dynamite-device" aria-label={`Dynamite fuse: ${remaining} seconds`}>
+                <div className="dynamite-sticks"><i /><i /><i /></div>
+                <div className="dynamite-fuse"><span /></div>
+                <b>{remaining}</b><small>SECONDS</small>
+              </div>
+              <div className="dynamite-fuse-progress"><span style={{ width: `${fusePercent}%` }} /></div>
+              <div className="dynamite-host-question"><small>ANSWER ON YOUR PHONE</small><h2>{session.currentQuestion?.prompt}</h2>{session.currentQuestion?.hint && <p>{session.currentQuestion.hint}</p>}</div>
+              <div className="dynamite-next-call"><span>Next up</span><strong>{next?.name ?? "—"}</strong></div>
+            </>
+          )}
+        </div>
+        <DynamiteQueue state={state} />
+      </section>
+    </main>
+  );
+}
+
+function DynamiteQueue({ state }: { state: DynamiteState }) {
+  const alive = new Set(state.aliveIds);
+  const nextId = nextAlivePlayerId(state);
+  return (
+    <aside className="dynamite-queue-panel">
+      <div><span className="eyebrow">TURN ORDER</span><b>{state.aliveIds.length} still alive</b></div>
+      <div className="dynamite-queue-list">
+        {state.order.map((player, index) => {
+          const eliminated = !alive.has(player.id);
+          const current = player.id === state.currentPlayerId;
+          const next = player.id === nextId && !current;
+          return <div key={player.id} className={`${current ? "current" : ""} ${next ? "next" : ""} ${eliminated ? "eliminated" : ""}`}><span>{index + 1}</span><strong>{player.name}</strong><small>{eliminated ? "OUT" : current ? "DYNAMITE" : next ? "NEXT" : "READY"}</small></div>;
+        })}
+      </div>
+    </aside>
+  );
+}
+
+function DynamiteFinalHost({ roomCode, winner, activityId }: { roomCode: string; winner: string; activityId: string }) {
+  return (
+    <main className="host-room host-results dynamite-final-screen">
+      <header className="live-host-header"><Link href="/dashboard" className="play-brand"><b>C</b><span>ClassPlay</span></Link><span>Room {roomCode}</span></header>
+      <section className="final-live-card dynamite-winner-card"><div className="dynamite-winner-burst"><AppIcon name="trophy" /></div><span className="eyebrow">LAST ONE STANDING</span><h1>{winner} wins!</h1><p>The Dynamite made it around the room. One survivor remains.</p><div className="final-live-actions"><Link href={`/host/new?activity=${activityId}`} className="button button-primary button-large"><AppIcon name="arrow-repeat" /> Play again</Link><Link href="/dashboard" className="button button-soft button-large">Back to library</Link></div></section>
     </main>
   );
 }
