@@ -18,6 +18,7 @@ export interface CommunityActivity {
   coverImageUrl?: string;
   itemCount: number;
   gameModes: GameType[];
+  aiGenerated: boolean;
 }
 
 export interface CommunityTeacherState {
@@ -51,6 +52,7 @@ function mapCatalog(row: Record<string, unknown>): CommunityActivity {
     coverImageUrl: row.cover_image_url ? String(row.cover_image_url) : undefined,
     itemCount: Number(row.item_count ?? 0),
     gameModes: Array.isArray(row.game_modes) ? row.game_modes.map((mode) => String(mode) as GameType) : [],
+    aiGenerated: row.ai_generated === true,
   };
 }
 
@@ -58,7 +60,7 @@ export async function listCommunityActivities(): Promise<CommunityActivity[]> {
   const supabase = clientOrThrow();
   const { data, error } = await supabase
     .from("community_catalog")
-    .select("activity_set_id,author_name,published_at,title,description,subject,topic,cefr_level,grade,kind,cover_image_url,item_count,game_modes")
+    .select("activity_set_id,author_name,published_at,title,description,subject,topic,cefr_level,grade,kind,cover_image_url,item_count,game_modes,ai_generated")
     .order("published_at", { ascending: false });
   if (error) throw error;
   return (data ?? []).map((row) => mapCatalog(row as unknown as Record<string, unknown>));
@@ -66,11 +68,6 @@ export async function listCommunityActivities(): Promise<CommunityActivity[]> {
 
 export async function loadCommunityTeacherState(): Promise<CommunityTeacherState> {
   const supabase = clientOrThrow();
-
-  // Community is public. An absent auth session is the normal visitor state,
-  // not an authentication error. getUser() throws AuthSessionMissingError when
-  // there is no session, so inspect the local session first and only load
-  // teacher-only data when a signed-in user actually exists.
   const { data: { session }, error: sessionError } = await supabase.auth.getSession();
   if (sessionError) throw sessionError;
   if (!session?.user) return emptyCommunityTeacherState();
