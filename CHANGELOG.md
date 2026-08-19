@@ -1,5 +1,31 @@
 # Changelog
 
+## 0.3.0 — Smart Activity Builder
+
+### Added
+- Adaptive activity editor that only shows fields required by the selected game modes.
+- Deterministic activity compatibility engine for detecting reusable game variants.
+- Smart Variants section on the mode picker with one-click mode activation.
+- Automatic Gap Fill generation from a full sentence plus target expression.
+- Automatic Sentence Builder chunks derived from the same canonical sentence.
+- Automatic Quiz choices from other compatible answers in the activity.
+- Generated-variant previews and optional advanced overrides in the editor.
+- Compatibility-aware game item filtering so mixed/richer activity data stays safe across modes.
+- Smart Gap Fill derivation for Connected Classroom question preparation.
+- Live-room readiness guard for activities that do not yet contain question-ready content.
+- `smart-builder.css` as a responsibility-based visual module within the Classroom Studio system.
+- v0.3 Smart Activity Builder architecture and acceptance documentation.
+
+### Changed
+- New activities begin by choosing game modes before entering content instead of showing every possible field at once.
+- Generated variants remain derived from source content rather than being duplicated as a second source of truth.
+- Existing activities can expose additional compatible game modes without requiring the teacher to re-enter content.
+
+### Compatibility
+- Existing v0.2 activity records remain supported.
+- Existing manual gap sentences and sentence chunks remain valid overrides.
+- No new Supabase schema migration is required for the Smart Activity Builder.
+
 ## 0.2.0 — Connected Classroom
 
 ### Added
