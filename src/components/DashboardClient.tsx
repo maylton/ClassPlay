@@ -10,19 +10,11 @@ import {
   migrateLocalActivitiesToCloud,
   removeActivity,
 } from "@/lib/repositories/activity-repository";
+import { GAME_MODE_CATALOG } from "@/lib/game-catalog";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { ActivitySet, TeacherProfile } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
-
-const gameLabels: Record<string, string> = {
-  flashcards: "Flashcards",
-  memory: "Memory",
-  matching: "Matching",
-  "sentence-builder": "Builder",
-  "gap-fill": "Gap fill",
-  quiz: "Quiz",
-};
 
 const activityKindIcons = {
   vocabulary: "type",
@@ -138,9 +130,9 @@ export function DashboardClient() {
       {error && <div className="alert-error">{error}</div>}
 
       <section className="stats-grid studio-stats" aria-label="ClassPlay stats">
-        <div className="stat-card stat-lime"><span className="stat-icon"><AppIcon name="collection-play" /></span><strong>{loading ? "…" : activities.length}</strong><span>Activity sets</span></div>
-        <div className="stat-card stat-yellow"><span className="stat-icon"><AppIcon name="controller" /></span><strong>{loading ? "…" : totalGames}</strong><span>Modes enabled</span></div>
-        <div className="stat-card stat-coral"><span className="stat-icon"><AppIcon name="activity" /></span><strong>{resultsCount}</strong><span>Local rounds</span></div>
+        <div className="stat-card"><span className="stat-icon"><AppIcon name="collection-play" /></span><strong>{loading ? "…" : activities.length}</strong><span>Activity sets</span></div>
+        <div className="stat-card"><span className="stat-icon"><AppIcon name="controller" /></span><strong>{loading ? "…" : totalGames}</strong><span>Modes enabled</span></div>
+        <div className="stat-card"><span className="stat-icon"><AppIcon name="activity" /></span><strong>{resultsCount}</strong><span>Local rounds</span></div>
       </section>
 
       <section className="library-section studio-library">
@@ -149,11 +141,11 @@ export function DashboardClient() {
           <span className={`storage-pill ${cloud ? "cloud" : ""}`}><AppIcon name={cloud ? "cloud-check" : "hdd"} /> {cloud ? "Cloud sync on" : isSupabaseConfigured ? "Local session" : "Local-first mode"}</span>
         </div>
         <div className="activity-grid studio-activity-grid">
-          {activities.map((activity, index) => {
+          {activities.map((activity) => {
             const previewImage = activity.items.find((item) => item.imageUrl)?.imageUrl;
 
             return (
-              <article className={`activity-card activity-accent-${index % 4}`} key={activity.id}>
+              <article className="activity-card" key={activity.id}>
                 <div
                   className={`activity-visual ${previewImage ? "has-image" : ""}`}
                   style={previewImage ? { backgroundImage: `linear-gradient(180deg, rgba(18,15,45,.08), rgba(18,15,45,.76)), url("${previewImage}")` } : undefined}
@@ -169,11 +161,11 @@ export function DashboardClient() {
                   <span className="activity-meta">{activity.grade} · {activity.items.length} items</span>
                   <h3>{activity.title}</h3>
                   <p>{activity.description}</p>
-                  <div className="activity-mode-progress" aria-label={`${activity.enabledGames.length} game modes enabled`}>
-                    <div><span>Game modes</span><b>{activity.enabledGames.length} enabled</b></div>
+                  <div className="activity-mode-summary" aria-label={`${activity.enabledGames.length} game modes enabled`}>
+                    <span>Game modes</span><b>{activity.enabledGames.length} enabled</b>
                   </div>
                   <div className="game-tags">
-                    {activity.enabledGames.slice(0, 4).map((game) => <span key={game}>{gameLabels[game]}</span>)}
+                    {activity.enabledGames.slice(0, 4).map((game) => <span key={game}>{GAME_MODE_CATALOG[game].shortName}</span>)}
                     {activity.enabledGames.length > 4 && <span>+{activity.enabledGames.length - 4}</span>}
                   </div>
                   <div className="activity-actions">
