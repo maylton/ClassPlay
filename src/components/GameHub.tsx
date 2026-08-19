@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addGameResult } from "@/lib/storage";
-import { loadActivity } from "@/lib/repositories/activity-repository";
+import { loadActivity, saveActivity } from "@/lib/repositories/activity-repository";
+import { compatibleVariants, enableCompatibleMode, getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import { GAME_MODE_CATALOG } from "@/lib/game-catalog";
 import type { ActivitySet, GameType } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
@@ -20,6 +21,7 @@ export function GameHub({ activityId }: { activityId: string }) {
   const [mode, setMode] = useState<GameType | null>(null);
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState("");
+  const [addingMode, setAddingMode] = useState<GameType | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -31,12 +33,32 @@ export function GameHub({ activityId }: { activityId: string }) {
     return () => { active = false; };
   }, [activityId]);
 
+  const variants = useMemo(() => activity ? compatibleVariants(activity) : [], [activity]);
+  const liveReady = useMemo(() => activity ? (
+    getPlayableItemsForMode(activity.items, "quiz").length >= 2 ||
+    getPlayableItemsForMode(activity.items, "gap-fill").length >= 2
+  ) : false, [activity]);
+
   if (error) return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Could not open activity</h1><p>{error}</p><Link className="button button-primary" href="/dashboard">Back to library</Link></main>;
   if (missing) return <main className="not-found"><span><AppIcon name="search" /></span><h1>Activity not found</h1><p>This activity may have been deleted or belongs to another workspace.</p><Link className="button button-primary" href="/dashboard">Back to library</Link></main>;
   if (!activity) return <main className="loading-screen">Loading ClassPlay…</main>;
 
   function complete(game: GameType, score: number, correct: number, total: number) {
     addGameResult({ game, activityId: activity!.id, score, correct, total, completedAt: new Date().toISOString() });
+  }
+
+  async function addVariant(game: GameType) {
+    const next = enableCompatibleMode(activity!, game);
+    if (!next) return;
+    setAddingMode(game); setError("");
+    try {
+      const saved = await saveActivity(next);
+      setActivity(saved);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not add this game mode.");
+    } finally {
+      setAddingMode(null);
+    }
   }
 
   if (mode) {
@@ -68,7 +90,7 @@ export function GameHub({ activityId }: { activityId: string }) {
         <h1>{activity.title}</h1>
         <p>{activity.description}</p>
         <div className="mode-meta"><span>{activity.grade}</span><span>{activity.level}</span><span>{activity.items.length} items</span></div>
-        <div className="connected-cta"><div><b><AppIcon name="wifi" /> Connected Classroom</b><span>Students join by code or QR. Play individually or in teams.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room <AppIcon name="arrow-right" /></Link></div>
+        {liveReady ? <div className="connected-cta"><div><b><AppIcon name="wifi" /> Connected Classroom</b><span>Students join by code or QR. Play individually or in teams.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room <AppIcon name="arrow-right" /></Link></div> : <div className="connected-cta"><div><b><AppIcon name="wifi-off" /> Connected Classroom needs question-ready content</b><span>Add at least two prompt + answer pairs or two usable Gap Fill sentences before hosting live.</span></div><Link href={`/edit/${activity.id}`} className="button button-primary">Prepare live content <AppIcon name="arrow-right" /></Link></div>}
       </section>
       <section className="mode-picker">
         <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{activity.enabledGames.length} games available</span></div>
@@ -78,6 +100,17 @@ export function GameHub({ activityId }: { activityId: string }) {
             return <button key={game} className={`mode-card ${info.colorClass}`} onClick={() => setMode(game)}><span className="mode-icon"><AppIcon name={info.icon} /></span><span><strong>{info.name}</strong><small>{info.pickerDescription}</small></span><i><AppIcon name="arrow-right" /></i></button>;
           })}
         </div>
+
+        <section className="compatible-variants-panel">
+          <div className="compatible-variants-heading">
+            <div><small>SMART VARIANTS</small><h2>{variants.length ? "Your content can do more." : "Want to unlock more ways to play?"}</h2><p>{variants.length ? "ClassPlay found other game modes that can use the content you already created. Add them without retyping anything." : "Edit this activity and add richer source content. ClassPlay will detect new compatible modes automatically."}</p></div>
+            <span className="smart-engine-mark"><AppIcon name="stars" /></span>
+          </div>
+          {variants.length > 0 ? <div className="compatible-variant-grid">{variants.map((variant) => {
+            const info = GAME_MODE_CATALOG[variant.mode];
+            return <article className={`compatible-variant-card ${info.colorClass}`} key={variant.mode}><span className="variant-icon"><AppIcon name={info.icon} /></span><div><small>READY TO GENERATE</small><strong>{info.name}</strong><p>{variant.reason}</p>{variant.generated.length > 0 && <span className="generated-note"><AppIcon name="lightning-charge" /> Generates {variant.generated.join(" + ")}</span>}</div><button className="button button-dark button-small" disabled={addingMode === variant.mode} onClick={() => void addVariant(variant.mode)}>{addingMode === variant.mode ? "Adding…" : <>Add mode <AppIcon name="plus-lg" /></>}</button></article>;
+          })}</div> : <Link href={`/edit/${activity.id}`} className="button button-soft">Edit content to unlock variants <AppIcon name="arrow-right" /></Link>}
+        </section>
       </section>
     </main>
   );

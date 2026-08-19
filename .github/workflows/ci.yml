@@ -26,6 +26,9 @@ jobs:
       - name: Core game engine smoke tests
         run: npm run test:engine
 
+      - name: Smart Activity Builder regression tests
+        run: npm run test:smart
+
       - name: Live engine and security contract tests
         run: npm run test:live
 

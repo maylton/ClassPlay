@@ -3,6 +3,8 @@ import "bootstrap-icons/font/bootstrap-icons.css";
 import "./globals.css";
 import "./features.css";
 import "./studio.css";
+import "./smart-builder.css";
+import "./memory-game.css";
 
 export const metadata: Metadata = {
   title: "ClassPlay — Playful English practice",

@@ -1,6 +1,6 @@
 {
   "name": "classplay",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test:engine": "node scripts/test-engine.mjs",
+    "test:smart": "node scripts/test-smart-builder.mjs",
     "test:live": "node scripts/test-live-engine.mjs",
     "typecheck": "tsc --noEmit"
   },

@@ -4,9 +4,18 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AppIcon } from "@/components/AppIcon";
 import { ActivityImage } from "@/components/media/ActivityImage";
+import {
+  analyzeGameModes,
+  deriveGapSentence,
+  deriveSentenceParts,
+  materializeItemsForMode,
+  prepareActivityForSave,
+  selectedModeNeeds,
+  validateEnabledModes,
+} from "@/lib/activity-intelligence";
 import { GAME_MODE_CATALOG, GAME_MODE_ORDER } from "@/lib/game-catalog";
-import { loadActivity, saveActivity } from "@/lib/repositories/activity-repository";
 import { removeActivityImage, uploadActivityImage } from "@/lib/media";
+import { loadActivity, saveActivity } from "@/lib/repositories/activity-repository";
 import type { ActivityItem, ActivityKind, ActivitySet, GameType } from "@/lib/types";
 
 function createId(prefix: string) {
@@ -26,7 +35,7 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   const [level, setLevel] = useState("A1–A2");
   const [grade, setGrade] = useState("7th grade");
   const [kind, setKind] = useState<ActivityKind>("mixed");
-  const [enabledGames, setEnabledGames] = useState<GameType[]>([...GAME_MODE_ORDER]);
+  const [enabledGames, setEnabledGames] = useState<GameType[]>(activityId ? [] : []);
   const [items, setItems] = useState<ActivityItem[]>([emptyItem(1), emptyItem(2), emptyItem(3), emptyItem(4)]);
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
   const [error, setError] = useState("");
@@ -34,6 +43,7 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   const [loading, setLoading] = useState(Boolean(activityId));
   const [dirty, setDirty] = useState(false);
   const [uploadingItem, setUploadingItem] = useState<string | null>(null);
+  const [advancedItems, setAdvancedItems] = useState<Set<string>>(() => new Set());
   const loadedRef = useRef(false);
 
   useEffect(() => {
@@ -54,7 +64,11 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
     }).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load activity.")).finally(() => setLoading(false));
   }, [activityId]);
 
-  const activityDraft = useMemo<ActivitySet>(() => ({
+  const needs = useMemo(() => selectedModeNeeds(enabledGames), [enabledGames]);
+  const compatibility = useMemo(() => analyzeGameModes(items, enabledGames), [items, enabledGames]);
+  const readyVariants = compatibility.filter((entry) => entry.status === "ready");
+
+  const activityDraft = useMemo<ActivitySet>(() => prepareActivityForSave({
     id: draftId,
     title: title.trim(),
     description: description.trim() || "Interactive English classroom activity.",
@@ -64,25 +78,28 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
     grade,
     kind,
     visibility: "private",
-    items: items.filter((item) => item.prompt.trim() && item.answer.trim()),
+    items,
     enabledGames,
     createdAt,
     updatedAt: new Date().toISOString(),
   }), [draftId, title, description, topic, level, grade, kind, items, enabledGames, createdAt]);
 
+  const modeErrors = useMemo(() => validateEnabledModes(activityDraft.items, enabledGames), [activityDraft.items, enabledGames]);
+
   useEffect(() => {
     if (!activityId || !loadedRef.current || !dirty) return;
-    if (!activityDraft.title || activityDraft.items.length < 2 || activityDraft.enabledGames.length === 0) return;
+    if (!activityDraft.title || !activityDraft.enabledGames.length || modeErrors.length) return;
     const timer = window.setTimeout(() => {
       setSaveState("saving");
       void saveActivity(activityDraft).then((saved) => {
         setDraftId(saved.id);
+        setItems(saved.items);
         setSaveState("saved");
         setDirty(false);
       }).catch(() => setSaveState("error"));
     }, 1100);
     return () => window.clearTimeout(timer);
-  }, [activityId, activityDraft, dirty]);
+  }, [activityId, activityDraft, dirty, modeErrors.length]);
 
   function changed(callback: () => void) {
     callback();
@@ -94,7 +111,22 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   }
 
   function toggleGame(game: GameType) {
-    changed(() => setEnabledGames((current) => current.includes(game) ? current.filter((id) => id !== game) : [...current, game]));
+    if (enabledGames.includes(game)) {
+      changed(() => setEnabledGames((current) => current.filter((id) => id !== game)));
+      return;
+    }
+    changed(() => {
+      setItems((current) => materializeItemsForMode(current, game));
+      setEnabledGames((current) => [...current, game]);
+    });
+  }
+
+  function toggleAdvanced(itemId: string) {
+    setAdvancedItems((current) => {
+      const next = new Set(current);
+      if (next.has(itemId)) next.delete(itemId); else next.add(itemId);
+      return next;
+    });
   }
 
   async function uploadImage(index: number, file?: File) {
@@ -118,12 +150,12 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
 
   async function submit() {
     if (!title.trim()) return setError("Give your activity a title.");
-    if (activityDraft.items.length < 2) return setError("Add at least two complete prompt/answer items.");
-    if (!enabledGames.length) return setError("Choose at least one game mode.");
+    if (!enabledGames.length) return setError("Choose at least one game mode first.");
+    if (modeErrors.length) return setError(modeErrors[0]);
     setSaveState("saving"); setError("");
     try {
       const saved = await saveActivity(activityDraft);
-      setDraftId(saved.id); setSaveState("saved"); setDirty(false);
+      setDraftId(saved.id); setItems(saved.items); setSaveState("saved"); setDirty(false);
       router.push(`/play/${saved.id}`);
     } catch (cause) {
       setSaveState("error");
@@ -133,10 +165,13 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
 
   if (loading) return <main className="loading-screen">Loading activity editor…</main>;
 
+  const promptLabel = needs.gap ? needs.pair ? "Prompt / target expression" : "Target word / expression" : "Prompt / English";
+  const showExample = needs.sentence || enabledGames.includes("flashcards");
+
   return (
-    <main className="editor-main">
+    <main className="editor-main smart-editor">
       <section className="editor-heading">
-        <div><span className="eyebrow">{activityId ? "Activity editor" : "Activity builder"}</span><h1>{activityId ? "Refine it. Keep teaching." : "Create once. Play many ways."}</h1><p>Start with the language. ClassPlay turns it into different classroom interactions.</p>{activityId && <span className={`autosave-status ${saveState}`}>{saveState === "saving" ? "● Saving…" : saveState === "saved" ? "✓ Saved to your library" : saveState === "error" ? "! Autosave issue" : dirty ? "● Unsaved changes" : "✓ Up to date"}</span>}</div>
+        <div><span className="eyebrow">{activityId ? "Smart activity editor" : "Smart activity builder"}</span><h1>{activityId ? "Refine it. Reuse more." : "Create once. Let ClassPlay adapt it."}</h1><p>Choose the experiences you want. The editor only asks for the content those modes actually need.</p>{activityId && <span className={`autosave-status ${saveState}`}>{saveState === "saving" ? "● Saving…" : saveState === "saved" ? "✓ Saved to your library" : saveState === "error" ? "! Autosave issue" : dirty ? "● Unsaved changes" : "✓ Up to date"}</span>}</div>
         <button className="button button-primary button-large" onClick={() => void submit()} disabled={saveState === "saving"}>Save & play <AppIcon name="arrow-right" /></button>
       </section>
       {error && <div className="alert-error">{error}</div>}
@@ -154,42 +189,79 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
           </div>
         </section>
 
-        <section className="editor-panel editor-games-panel">
-          <div className="panel-heading"><span>2</span><div><h2>Choose game modes</h2><p>You can reuse the same content across all of them.</p></div></div>
+        <section className="editor-panel editor-games-panel smart-modes-panel">
+          <div className="panel-heading"><span>2</span><div><h2>Choose game modes</h2><p>Select only what you want now. ClassPlay will suggest compatible variants later.</p></div></div>
           <div className="game-picker-grid">
             {GAME_MODE_ORDER.map((gameId) => {
               const game = GAME_MODE_CATALOG[gameId];
               const selected = enabledGames.includes(gameId);
+              const analysis = compatibility.find((entry) => entry.mode === gameId);
+              const ready = !selected && analysis?.status === "ready";
               return (
-                <button key={gameId} className={`game-picker ${selected ? "selected" : ""}`} onClick={() => toggleGame(gameId)}>
-                  <b><AppIcon name={game.icon} /></b><span><strong>{game.name}</strong><small>{game.editorDescription}</small></span><i>{selected ? <AppIcon name="check-lg" /> : <AppIcon name="plus-lg" />}</i>
+                <button key={gameId} className={`game-picker ${selected ? "selected" : ""} ${ready ? "compatible" : ""}`} onClick={() => toggleGame(gameId)}>
+                  <b><AppIcon name={game.icon} /></b>
+                  <span><strong>{game.name}</strong><small>{game.editorDescription}</small>{selected && <em className="game-picker-state">Selected</em>}{ready && <em className="game-picker-state ready"><AppIcon name="stars" /> Ready from your content</em>}</span>
+                  <i>{selected ? <AppIcon name="check-lg" /> : <AppIcon name="plus-lg" />}</i>
                 </button>
               );
             })}
           </div>
+          {readyVariants.length > 0 && <div className="smart-ready-summary"><span><AppIcon name="lightning-charge" /></span><div><strong>{readyVariants.length === 1 ? "Another mode is already compatible." : `${readyVariants.length} more modes are already compatible.`}</strong><p>You can add them now without retyping the content.</p></div></div>}
         </section>
 
-        <section className="editor-panel editor-content-panel">
-          <div className="panel-heading"><span>3</span><div><h2>Add your language</h2><p>Prompt + answer power the core games. Images, examples and chunks make them richer.</p></div></div>
-          <div className="item-list">
-            {items.map((item, index) => (
-              <article className="item-editor" key={item.id}>
-                <div className="item-number">{index + 1}</div>
-                <div className="item-editor-grid">
-                  <label className="field"><span>Prompt / English</span><input value={item.prompt} onChange={(event) => updateItem(index, { prompt: event.target.value })} placeholder="wake up" /></label>
-                  <label className="field"><span>Answer / Meaning</span><input value={item.answer} onChange={(event) => updateItem(index, { answer: event.target.value })} placeholder="acordar" /></label>
-                  <label className="field"><span>Visual hint</span><input value={item.hint ?? ""} onChange={(event) => updateItem(index, { hint: event.target.value })} placeholder="🌅 or short clue" /></label>
-                  <div className="field item-image-field"><span>Image</span><div className="image-upload-row">{item.imageUrl ? <div className="image-preview"><ActivityImage refValue={item.imageUrl} alt={item.prompt || `Item ${index + 1}`} /><button onClick={() => void removeImage(index)} aria-label="Remove image"><AppIcon name="x-lg" /></button></div> : <span className="image-placeholder"><AppIcon name="image" /></span>}<label className="button button-soft button-small upload-button">{uploadingItem === item.id ? "Uploading…" : item.imageUrl ? "Replace" : "Upload image"}<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploadingItem === item.id} onChange={(event) => void uploadImage(index, event.target.files?.[0])} /></label></div><small>PNG, JPG, WebP or GIF · max 5 MB</small></div>
-                  <label className="field field-wide"><span>Example sentence</span><input value={item.example ?? ""} onChange={(event) => updateItem(index, { example: event.target.value })} placeholder="She wakes up at 6:30 every day." /></label>
-                  <label className="field field-wide"><span>Gap sentence</span><input value={item.gapSentence ?? ""} onChange={(event) => updateItem(index, { gapSentence: event.target.value })} placeholder="She _____ at 6:30 every day." /></label>
-                  <label className="field field-wide"><span>Sentence chunks <em>(separate with |)</em></span><input value={(item.sentenceParts ?? []).join(" | ")} onChange={(event) => updateItem(index, { sentenceParts: event.target.value.split("|").map((part) => part.trim()).filter(Boolean) })} placeholder="She | wakes up | at 6:30 | every day" /></label>
-                  <label className="field field-wide"><span>Gap distractors <em>(separate with |)</em></span><input value={(item.distractors ?? []).join(" | ")} onChange={(event) => updateItem(index, { distractors: event.target.value.split("|").map((part) => part.trim()).filter(Boolean) })} placeholder="wake up | waking up | woke up" /></label>
-                </div>
-                {items.length > 2 && <button className="remove-item" aria-label={`Remove item ${index + 1}`} onClick={() => changed(() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index)))}><AppIcon name="x-lg" /></button>}
-              </article>
-            ))}
-          </div>
-          <button className="button button-soft add-item-button" onClick={() => changed(() => setItems((current) => [...current, emptyItem(current.length + 1)]))}><AppIcon name="plus-lg" /> Add another item</button>
+        <section className="editor-panel editor-content-panel smart-content-panel">
+          <div className="panel-heading"><span>3</span><div><h2>Add your language</h2><p>{enabledGames.length ? "Only fields required by your selected modes are shown." : "Choose a game mode first and ClassPlay will build the right editor for it."}</p></div></div>
+
+          {!enabledGames.length ? (
+            <div className="smart-empty-editor"><span><AppIcon name="cursor" /></span><h3>Choose how you want to play.</h3><p>The content fields will appear here automatically — no giant form, no unnecessary options.</p></div>
+          ) : (
+            <>
+              <div className="smart-field-legend">
+                <span><b>Required</b> Content you provide</span>
+                <span><b>Generated</b> Variants ClassPlay derives</span>
+                <span><b>Advanced</b> Optional manual control</span>
+              </div>
+              <div className="item-list">
+                {items.map((item, index) => {
+                  const gapPreview = deriveGapSentence(item);
+                  const chunksPreview = deriveSentenceParts(item);
+                  const advanced = advancedItems.has(item.id);
+                  return (
+                    <article className="item-editor smart-item-editor" key={item.id}>
+                      <div className="item-number">{index + 1}</div>
+                      <div className="item-editor-grid">
+                        {(needs.pair || needs.gap) && <label className="field"><span>{promptLabel}</span><input value={item.prompt} onChange={(event) => updateItem(index, { prompt: event.target.value })} placeholder={needs.gap ? "wakes up" : "wake up"} />{needs.gap && <small className="field-help">For Gap Fill, use the word or expression that appears in the full sentence.</small>}</label>}
+                        {needs.pair && <label className="field"><span>Answer / Meaning</span><input value={item.answer} onChange={(event) => updateItem(index, { answer: event.target.value })} placeholder="acordar" /></label>}
+
+                        {showExample && <label className="field field-wide"><span>{needs.sentence ? "Full sentence" : "Example sentence (optional)"}</span><input value={item.example ?? ""} onChange={(event) => updateItem(index, { example: event.target.value })} placeholder="She wakes up at 6:30 every day." />{needs.sentence && <small className="field-help">This one sentence can power Gap Fill and Sentence Builder.</small>}</label>}
+
+                        {needs.hint && <label className="field"><span>Visual hint (optional)</span><input value={item.hint ?? ""} onChange={(event) => updateItem(index, { hint: event.target.value })} placeholder="Short clue" /></label>}
+
+                        {needs.image && <div className="field item-image-field"><span>Image (optional)</span><div className="image-upload-row">{item.imageUrl ? <div className="image-preview"><ActivityImage refValue={item.imageUrl} alt={item.prompt || `Item ${index + 1}`} /><button onClick={() => void removeImage(index)} aria-label="Remove image"><AppIcon name="x-lg" /></button></div> : <span className="image-placeholder"><AppIcon name="image" /></span>}<label className="button button-soft button-small upload-button">{uploadingItem === item.id ? "Uploading…" : item.imageUrl ? "Replace" : "Upload image"}<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploadingItem === item.id} onChange={(event) => void uploadImage(index, event.target.files?.[0])} /></label></div><small>Used by Flashcards · PNG, JPG, WebP or GIF</small></div>}
+                      </div>
+
+                      {(needs.gap || needs.builder) && <div className="generated-variants">
+                        <div className="generated-heading"><span><AppIcon name="stars" /></span><div><strong>Generated variants</strong><small>Built from the content above. You can override them only if needed.</small></div></div>
+                        <div className="generated-grid">
+                          {needs.gap && <div className={`generated-card ${gapPreview ? "ready" : "waiting"}`}><small>GAP FILL</small><strong>{gapPreview || "Choose a target that appears in the full sentence."}</strong></div>}
+                          {needs.builder && <div className={`generated-card ${chunksPreview.length > 1 ? "ready" : "waiting"}`}><small>SENTENCE BUILDER</small><div className="generated-chunks">{chunksPreview.length > 1 ? chunksPreview.map((part, partIndex) => <span key={`${part}-${partIndex}`}>{part}</span>) : <em>Add a full sentence to generate chunks.</em>}</div></div>}
+                        </div>
+                        <button type="button" className="smart-advanced-toggle" onClick={() => toggleAdvanced(item.id)}><AppIcon name={advanced ? "chevron-up" : "sliders"} /> {advanced ? "Hide advanced controls" : "Customize generated data"}</button>
+                        {advanced && <div className="smart-advanced-fields">
+                          {needs.gap && <><label className="field field-wide"><span>Custom gap sentence</span><input value={item.gapSentence ?? ""} onChange={(event) => updateItem(index, { gapSentence: event.target.value })} placeholder={gapPreview || "She _____ at 6:30 every day."} /><small className="field-help">Leave empty to keep automatic generation. Use _____ for the blank.</small></label><label className="field field-wide"><span>Extra gap distractors <em>(separate with |)</em></span><input value={(item.distractors ?? []).join(" | ")} onChange={(event) => updateItem(index, { distractors: event.target.value.split("|").map((part) => part.trim()).filter(Boolean) })} placeholder="wake up | waking up | woke up" /></label></>}
+                          {needs.builder && <label className="field field-wide"><span>Custom sentence chunks <em>(separate with |)</em></span><input value={(item.sentenceParts ?? []).join(" | ")} onChange={(event) => updateItem(index, { sentenceParts: event.target.value.split("|").map((part) => part.trim()).filter(Boolean) })} placeholder={chunksPreview.join(" | ")} /><small className="field-help">Leave empty to let ClassPlay split the sentence automatically.</small></label>}
+                        </div>}
+                      </div>}
+
+                      {items.length > 2 && <button className="remove-item" aria-label={`Remove item ${index + 1}`} onClick={() => changed(() => setItems((current) => current.filter((_, itemIndex) => itemIndex !== index)))}><AppIcon name="x-lg" /></button>}
+                    </article>
+                  );
+                })}
+              </div>
+              {modeErrors.length > 0 && <div className="smart-mode-requirements"><strong><AppIcon name="info-circle" /> Still needed before saving</strong>{modeErrors.map((message) => <span key={message}>{message}</span>)}</div>}
+              <button className="button button-soft add-item-button" onClick={() => changed(() => setItems((current) => [...current, emptyItem(current.length + 1)]))}><AppIcon name="plus-lg" /> Add another item</button>
+            </>
+          )}
         </section>
       </div>
     </main>
