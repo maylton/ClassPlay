@@ -17,7 +17,11 @@ export function QuizGame({ activity, onComplete }: GameProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
   const item = questions[index];
-  const options = useMemo(() => item ? shuffle([item.answer, ...shuffle(playableItems.filter((candidate) => candidate.id !== item.id).map((candidate) => candidate.answer)).slice(0, 3)]) : [], [item, playableItems]);
+  const options = useMemo(() => {
+    if (!item) return [];
+    const otherAnswers = shuffle(playableItems.filter((candidate) => candidate.id !== item.id).map((candidate) => candidate.answer));
+    return shuffle(Array.from(new Set([item.answer, ...otherAnswers]))).slice(0, 4);
+  }, [item, playableItems]);
 
   if (!item) return <div className="empty-game"><span><AppIcon name="trophy" /></span><h2>This set needs usable answer pairs.</h2><p>Add at least two prompt + answer pairs with different answers.</p></div>;
 
