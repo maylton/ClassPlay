@@ -1,6 +1,7 @@
 "use client";
 
 import { SAMPLE_ACTIVITY } from "@/lib/sample-data";
+import { compatibleEnabledGames } from "@/lib/activity-intelligence";
 import {
   deleteActivity as deleteLocalActivity,
   duplicateActivity as duplicateLocalActivity,
@@ -28,6 +29,18 @@ async function cloudContext() {
 function mapCloudActivity(row: Record<string, unknown>): ActivitySet {
   const itemRows = ((row.activity_items ?? []) as Record<string, unknown>[]).slice().sort((a, b) => Number(a.sort_order ?? 0) - Number(b.sort_order ?? 0));
   const games = ((row.activity_games ?? []) as Record<string, unknown>[]).map((game) => String(game.game_type) as GameType);
+  const items = itemRows.map((item): ActivityItem => ({
+    id: String(item.id),
+    prompt: String(item.prompt ?? ""),
+    answer: String(item.answer ?? ""),
+    hint: item.hint ? String(item.hint) : undefined,
+    imageUrl: item.image_url ? String(item.image_url) : undefined,
+    example: item.example ? String(item.example) : undefined,
+    gapSentence: item.gap_sentence ? String(item.gap_sentence) : undefined,
+    distractors: Array.isArray(item.distractors) ? item.distractors.map(String) : [],
+    sentenceParts: Array.isArray(item.sentence_parts) ? item.sentence_parts.map(String) : [],
+  }));
+
   return {
     id: String(row.id),
     ownerId: row.owner_id ? String(row.owner_id) : undefined,
@@ -40,18 +53,11 @@ function mapCloudActivity(row: Record<string, unknown>): ActivitySet {
     grade: String(row.grade ?? "Class"),
     kind: (row.kind ?? "mixed") as ActivitySet["kind"],
     visibility: (row.visibility ?? "private") as ActivitySet["visibility"],
-    items: itemRows.map((item): ActivityItem => ({
-      id: String(item.id),
-      prompt: String(item.prompt ?? ""),
-      answer: String(item.answer ?? ""),
-      hint: item.hint ? String(item.hint) : undefined,
-      imageUrl: item.image_url ? String(item.image_url) : undefined,
-      example: item.example ? String(item.example) : undefined,
-      gapSentence: item.gap_sentence ? String(item.gap_sentence) : undefined,
-      distractors: Array.isArray(item.distractors) ? item.distractors.map(String) : [],
-      sentenceParts: Array.isArray(item.sentence_parts) ? item.sentence_parts.map(String) : [],
-    })),
-    enabledGames: games,
+    items,
+    // Older decks may have been created before pedagogical compatibility was
+    // introduced. Filter them at read time so students never see a mode that
+    // the current content engine considers unclear or unsuitable.
+    enabledGames: compatibleEnabledGames(items, games),
     createdAt: String(row.created_at),
     updatedAt: String(row.updated_at),
   };
@@ -115,9 +121,6 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
   const resolvedSourceLocalId = sourceLocalId ?? activity.sourceLocalId ?? (!isUuid(activity.id) ? activity.id : undefined);
   let id = isUuid(activity.id) ? activity.id : "";
 
-  // Local/demo activities should converge on one cloud record instead of creating
-  // a fresh UUID on every retry. This is especially important if a child write
-  // fails after the parent activity row has already been created.
   if (!id && resolvedSourceLocalId) {
     const { data: existing, error: existingError } = await supabase
       .from("activity_sets")
@@ -162,8 +165,6 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
     sentence_parts: item.sentenceParts ?? [],
   }));
 
-  // Write the desired children first. Only remove stale rows after the upsert
-  // succeeds, so a validation/network error cannot wipe the last good version.
   if (itemPayload.length) {
     const { error } = await supabase.from("activity_items").upsert(itemPayload, { onConflict: "id" });
     if (error) throw error;
@@ -181,7 +182,8 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
     if (error) throw error;
   }
 
-  const gamePayload = activity.enabledGames.map((game) => ({ activity_set_id: id, game_type: game, settings: {} }));
+  const smartGames = compatibleEnabledGames(activity.items, activity.enabledGames);
+  const gamePayload = smartGames.map((game) => ({ activity_set_id: id, game_type: game, settings: {} }));
   if (gamePayload.length) {
     const { error } = await supabase.from("activity_games").upsert(gamePayload, { onConflict: "activity_set_id,game_type" });
     if (error) throw error;
@@ -192,7 +194,7 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
     .select("game_type")
     .eq("activity_set_id", id);
   if (existingGamesError) throw existingGamesError;
-  const desiredGames = new Set(activity.enabledGames);
+  const desiredGames = new Set(smartGames);
   const staleGames = (existingGames ?? []).map((game) => String(game.game_type) as GameType).filter((game) => !desiredGames.has(game));
   if (staleGames.length) {
     const { error } = await supabase.from("activity_games").delete().eq("activity_set_id", id).in("game_type", staleGames);
@@ -207,8 +209,9 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
 export async function saveActivity(activity: ActivitySet): Promise<ActivitySet> {
   const context = await cloudContext();
   if (!context) {
-    saveLocalActivity(activity);
-    return activity;
+    const local = { ...activity, enabledGames: compatibleEnabledGames(activity.items, activity.enabledGames) };
+    saveLocalActivity(local);
+    return local;
   }
   return persistCloudActivity(activity);
 }
