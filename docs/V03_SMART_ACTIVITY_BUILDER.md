@@ -44,10 +44,23 @@ After an activity is saved, the mode picker shows **Smart Variants** for compati
 Automatic variants are derived from canonical source content at runtime:
 
 - Gap Fill replaces the target phrase with `_____`.
-- Sentence Builder splits the canonical sentence into deterministic chunks and attempts to keep a selected target expression intact.
+- Sentence Builder splits the canonical sentence into deterministic chunks and attempts to keep a selected target expression intact, including common English inflections such as `watch TV -> watches TV`.
 - Quiz answer choices come from other compatible answers in the same activity.
+- Gap Fill choices can use the other target expressions in the same activity; manual distractors remain optional.
 
 Generated data should remain derived rather than duplicated. Explicit teacher overrides in the existing `gapSentence` / `sentenceParts` fields remain supported.
+
+### Adaptive Memory boards
+
+Memory no longer takes the first eight pairs from an activity. `src/lib/memory-board.ts` selects a controlled board size from the available compatible pairs and randomizes which pairs are included.
+
+- minimum playable content: 2 pairs;
+- preferred board sizes: 4, 6, 8, 10, 12, 16 and 20 pairs;
+- maximum board size: 20 pairs;
+- the largest preferred size that fits is selected (for example 9 available pairs -> an 8-pair board; 11 -> 10; 18 -> 16);
+- when more pairs are available than fit the board, the subset is randomized;
+- replay avoids repeating the exact same subset when at least one unused pair exists;
+- the grid density adapts to larger boards and becomes responsive on smaller screens.
 
 ### Mixed-content safety
 
@@ -66,6 +79,9 @@ Each game now filters the activity items through the compatibility engine before
 2. Add one suggested mode and verify it persists without re-entering content.
 3. Create Gap Fill with full sentences + target expressions; verify gap previews are generated.
 4. Verify the same sentence content unlocks Sentence Builder and generated chunks work in play mode.
-5. Select only one mode and confirm unrelated editor fields remain hidden.
-6. Edit an old v0.2 activity and confirm its existing manual gap/chunk data still works.
-7. Run engine, live/security, typecheck, lint and production build.
+5. Verify common target inflections stay intact in Sentence Builder (`watch TV` -> `watches TV`, `study English` -> `studies English`).
+6. Create a Memory activity with nine compatible pairs and verify each board contains eight pairs selected from the full nine-pair pool.
+7. Replay the nine-pair Memory activity and verify at least one previously unused pair rotates into the new board.
+8. Select only one mode and confirm unrelated editor fields remain hidden.
+9. Edit an old v0.2 activity and confirm its existing manual gap/chunk data still works.
+10. Run engine, Smart Activity Builder, live/security, typecheck, lint and production build.
