@@ -17,29 +17,55 @@ export function isCorrectAnswer(input: string, expected: string) {
   return normalizeAnswer(input) === normalizeAnswer(expected);
 }
 
-export function quizOptions(item: ActivityItem) {
-  const options = [item.prompt, ...(item.distractors ?? [])].filter(Boolean);
-  return shuffle(Array.from(new Set(options))).slice(0, 4);
+/**
+ * Shared multiple-choice safety layer. The correct answer is inserted only
+ * after distractors have been selected, so shuffling/truncation can never
+ * remove it. Curated item distractors take priority; pool values are only a
+ * fallback for user-created activities that do not provide enough choices.
+ */
+export function buildChoiceOptions(
+  correctAnswer: string,
+  curatedDistractors: readonly string[] = [],
+  fallbackDistractors: readonly string[] = [],
+  optionCount = 4,
+  random: () => number = Math.random,
+) {
+  const correct = correctAnswer.trim();
+  if (!correct) return [];
+  const correctKey = normalizeAnswer(correct);
+  const seen = new Set([correctKey]);
+
+  function uniqueCandidates(values: readonly string[]) {
+    const result: string[] = [];
+    for (const raw of values) {
+      const value = raw.trim();
+      const key = normalizeAnswer(value);
+      if (!value || !key || seen.has(key)) continue;
+      seen.add(key);
+      result.push(value);
+    }
+    return result;
+  }
+
+  const curated = uniqueCandidates(curatedDistractors);
+  const fallback = uniqueCandidates(fallbackDistractors);
+  const distractors = [
+    ...shuffle(curated, random),
+    ...shuffle(fallback, random),
+  ].slice(0, Math.max(0, optionCount - 1));
+
+  return shuffle([correct, ...distractors], random);
 }
 
-/**
- * Gap Fill options must always contain the correct answer. Older versions mixed
- * answers from other items into the candidate pool and shuffled before slicing,
- * which could remove the correct answer entirely. Keep each question local:
- * one correct answer plus up to three curated distractors from that item.
- */
-export function gapOptions(item: ActivityItem) {
+export function quizOptions(item: ActivityItem, pool: readonly ActivityItem[] = [], random: () => number = Math.random) {
+  const fallback = pool.filter((candidate) => candidate.id !== item.id).map((candidate) => candidate.answer);
+  return buildChoiceOptions(item.answer, item.distractors ?? [], fallback, 4, random);
+}
+
+export function gapOptions(item: ActivityItem, pool: readonly ActivityItem[] = [], random: () => number = Math.random) {
   const correct = sentenceGapAnswer(item);
-  const correctKey = normalizeAnswer(correct);
-  const distractors = Array.from(
-    new Map(
-      (item.distractors ?? [])
-        .filter(Boolean)
-        .filter((value) => normalizeAnswer(value) !== correctKey)
-        .map((value) => [normalizeAnswer(value), value] as const),
-    ).values(),
-  );
-  return shuffle([correct, ...shuffle(distractors).slice(0, 3)]);
+  const fallback = pool.filter((candidate) => candidate.id !== item.id).map(sentenceGapAnswer);
+  return buildChoiceOptions(correct, item.distractors ?? [], fallback, 4, random);
 }
 
 function singleGapParts(value?: string) {
