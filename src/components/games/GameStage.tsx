@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import type { ActivitySet, GameType } from "@/lib/types";
 import { FlashcardsGame } from "./FlashcardsGame";
@@ -36,21 +36,21 @@ export function GameStage({
   const [elapsedMs, setElapsedMs] = useState(0);
   const [running, setRunning] = useState(true);
 
-  function restartClock() {
+  const restartClock = useCallback(() => {
     startedAtRef.current = Date.now();
     setElapsedMs(0);
     setRunning(true);
-  }
+  }, []);
 
   useEffect(() => {
     restartClock();
-  }, [mode, runKey, activity.id]);
+  }, [mode, runKey, activity.id, restartClock]);
 
   useEffect(() => {
     const replay = () => restartClock();
     window.addEventListener(REPLAY_EVENT, replay);
     return () => window.removeEventListener(REPLAY_EVENT, replay);
-  }, []);
+  }, [restartClock]);
 
   useEffect(() => {
     if (!running) return;
