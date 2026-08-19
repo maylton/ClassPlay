@@ -100,7 +100,7 @@ export interface LiveQuestion {
   itemId: string;
   index: number;
   total: number;
-  gameMode: LiveGameMode;
+  gameMode?: LiveGameMode;
   prompt: string;
   hint?: string;
   imageUrl?: string;
