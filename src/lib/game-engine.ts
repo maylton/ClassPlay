@@ -47,6 +47,15 @@ export function sentenceAnswer(item: ActivityItem) {
   return (item.sentenceParts ?? []).join(" ").replace(/\s+([,.!?])/g, "$1");
 }
 
+/**
+ * Sentence Builder intentionally exposes one draggable token per written word.
+ * Punctuation stays attached to the word it follows (for example `school.`),
+ * while contractions such as `don't` remain a single natural English word.
+ */
+export function sentenceWords(item: ActivityItem) {
+  return sentenceAnswer(item).trim().split(/\s+/).filter(Boolean);
+}
+
 export function scoreFor(correct: boolean, streak: number) {
   if (!correct) return 0;
   return 100 + Math.min(streak, 5) * 20;
