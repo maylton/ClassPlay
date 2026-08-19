@@ -10,15 +10,6 @@ export type GameModePresentation = {
   landingDescription: string;
 };
 
-export const GAME_MODE_ORDER = [
-  "flashcards",
-  "memory",
-  "matching",
-  "sentence-builder",
-  "gap-fill",
-  "quiz",
-] as const satisfies readonly GameType[];
-
 export const GAME_MODE_CATALOG = {
   flashcards: {
     icon: "card-text",
@@ -75,3 +66,5 @@ export const GAME_MODE_CATALOG = {
     landingDescription: "Turn the same content into a quick whole-class check.",
   },
 } satisfies Record<GameType, GameModePresentation>;
+
+export const GAME_MODE_ORDER = Object.keys(GAME_MODE_CATALOG) as GameType[];
