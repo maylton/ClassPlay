@@ -2,12 +2,7 @@ import type { Metadata } from "next";
 import "bootstrap-icons/font/bootstrap-icons.css";
 import "./globals.css";
 import "./v02.css";
-import "./identity.css";
-import "./identity-v2.css";
-import "./identity-v3.css";
-import "./identity-v4.css";
-import "./identity-v5.css";
-import "./identity-v6.css";
+import "./studio.css";
 
 export const metadata: Metadata = {
   title: "ClassPlay — Playful English practice",
