@@ -88,6 +88,25 @@ export async function loadActivity(id: string): Promise<ActivitySet | undefined>
   return data ? mapCloudActivity(data as unknown as Record<string, unknown>) : undefined;
 }
 
+/**
+ * Read-only loader for the student practice route. It intentionally does not
+ * require a teacher session: RLS only exposes activities whose visibility is
+ * unlisted, including their items and enabled game modes.
+ */
+export async function loadPracticeActivity(id: string): Promise<ActivitySet | undefined> {
+  const supabase = getBrowserSupabaseClient();
+  if (!supabase || !isUuid(id)) return undefined;
+
+  const { data, error } = await supabase
+    .from("activity_sets")
+    .select(SELECT_GRAPH)
+    .eq("id", id)
+    .eq("visibility", "unlisted")
+    .maybeSingle();
+  if (error) throw error;
+  return data ? mapCloudActivity(data as unknown as Record<string, unknown>) : undefined;
+}
+
 async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: string): Promise<ActivitySet> {
   const context = await cloudContext();
   if (!context) throw new Error("Teacher session required for cloud save.");
@@ -285,4 +304,16 @@ export async function ensureCloudActivity(activity: ActivitySet): Promise<Activi
     sourceLocalId: sourceId,
     items: activity.items.map((item) => ({ ...item, id: crypto.randomUUID() })),
   }, sourceId);
+}
+
+export async function publishActivityForPractice(activity: ActivitySet): Promise<ActivitySet> {
+  const cloud = await ensureCloudActivity(activity);
+  if (cloud.visibility === "unlisted") return cloud;
+  return persistCloudActivity({ ...cloud, visibility: "unlisted" });
+}
+
+export async function unpublishActivityFromPractice(activity: ActivitySet): Promise<ActivitySet> {
+  const cloud = await ensureCloudActivity(activity);
+  if (cloud.visibility !== "unlisted") return cloud;
+  return persistCloudActivity({ ...cloud, visibility: "private" });
 }

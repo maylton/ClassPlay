@@ -10,6 +10,7 @@
     "test:engine": "node scripts/test-engine.mjs",
     "test:smart": "node scripts/test-smart-builder.mjs",
     "test:arcade": "node scripts/test-arcade.mjs",
+    "test:leaderboard": "node scripts/test-leaderboard.mjs",
     "test:live": "node scripts/test-live-engine.mjs",
     "typecheck": "tsc --noEmit"
   },

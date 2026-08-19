@@ -3,11 +3,18 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { addGameResult } from "@/lib/storage";
-import { loadActivity, saveActivity } from "@/lib/repositories/activity-repository";
+import {
+  loadActivity,
+  loadPracticeActivity,
+  publishActivityForPractice,
+  saveActivity,
+  unpublishActivityFromPractice,
+} from "@/lib/repositories/activity-repository";
 import { compatibleVariants, enableCompatibleMode, getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import { GAME_MODE_CATALOG } from "@/lib/game-catalog";
 import type { ActivitySet, GameType } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
+import { PracticeLeaderboard } from "./leaderboard/PracticeLeaderboard";
 import { SettingsPanel } from "./settings/SettingsPanel";
 import { FlashcardsGame } from "./games/FlashcardsGame";
 import { MemoryGame } from "./games/MemoryGame";
@@ -19,36 +26,61 @@ import { SpaceBlasterGame } from "./games/SpaceBlasterGame";
 import { WordMazeGame } from "./games/WordMazeGame";
 
 const ARCADE_MODES: readonly GameType[] = ["space-blaster", "word-maze"];
+type PracticeCompletion = { game: GameType; score: number; correct: number; total: number };
 
-export function GameHub({ activityId }: { activityId: string }) {
+export function GameHub({ activityId, practice = false }: { activityId: string; practice?: boolean }) {
   const [activity, setActivity] = useState<ActivitySet | null>(null);
   const [mode, setMode] = useState<GameType | null>(null);
   const [missing, setMissing] = useState(false);
   const [error, setError] = useState("");
   const [addingMode, setAddingMode] = useState<GameType | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [shareMessage, setShareMessage] = useState("");
+  const [practiceCompletion, setPracticeCompletion] = useState<PracticeCompletion | null>(null);
+  const [runKey, setRunKey] = useState(0);
 
   useEffect(() => {
     let active = true;
-    void loadActivity(activityId).then((loaded) => {
+    const loader = practice ? loadPracticeActivity : loadActivity;
+    void loader(activityId).then((loaded) => {
       if (!active) return;
       if (!loaded) setMissing(true);
       else setActivity(loaded);
     }).catch((cause) => active && setError(cause instanceof Error ? cause.message : "Could not load activity."));
     return () => { active = false; };
-  }, [activityId]);
+  }, [activityId, practice]);
 
-  const variants = useMemo(() => activity ? compatibleVariants(activity) : [], [activity]);
-  const liveReady = useMemo(() => activity ? (
+  const variants = useMemo(() => !practice && activity ? compatibleVariants(activity) : [], [activity, practice]);
+  const liveReady = useMemo(() => !practice && activity ? (
     getPlayableItemsForMode(activity.items, "quiz").length >= 2 ||
     getPlayableItemsForMode(activity.items, "gap-fill").length >= 2
-  ) : false, [activity]);
+  ) : false, [activity, practice]);
 
-  if (error) return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Could not open activity</h1><p>{error}</p><Link className="button button-primary" href="/dashboard">Back to library</Link></main>;
-  if (missing) return <main className="not-found"><span><AppIcon name="search" /></span><h1>Activity not found</h1><p>This activity may have been deleted or belongs to another workspace.</p><Link className="button button-primary" href="/dashboard">Back to library</Link></main>;
+  if (error && !activity) {
+    return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Could not open activity</h1><p>{error}</p><Link className="button button-primary" href={practice ? "/" : "/dashboard"}>{practice ? "ClassPlay home" : "Back to library"}</Link></main>;
+  }
+  if (missing) {
+    return <main className="not-found"><span><AppIcon name="search" /></span><h1>{practice ? "Practice link unavailable" : "Activity not found"}</h1><p>{practice ? "This practice link may have been turned off by your teacher." : "This activity may have been deleted or belongs to another workspace."}</p><Link className="button button-primary" href={practice ? "/" : "/dashboard"}>{practice ? "ClassPlay home" : "Back to library"}</Link></main>;
+  }
   if (!activity) return <main className="loading-screen">Loading ClassPlay…</main>;
 
   function complete(game: GameType, score: number, correct: number, total: number) {
+    if (practice) {
+      setPracticeCompletion({ game, score, correct, total });
+      return;
+    }
     addGameResult({ game, activityId: activity!.id, score, correct, total, completedAt: new Date().toISOString() });
+  }
+
+  function replayPractice() {
+    setPracticeCompletion(null);
+    setRunKey((current) => current + 1);
+  }
+
+  function leavePracticeGame() {
+    setPracticeCompletion(null);
+    setMode(null);
+    setRunKey((current) => current + 1);
   }
 
   async function addVariant(game: GameType) {
@@ -65,25 +97,69 @@ export function GameHub({ activityId }: { activityId: string }) {
     }
   }
 
+  async function sharePracticeLink() {
+    setSharing(true); setError(""); setShareMessage("");
+    try {
+      const saved = await publishActivityForPractice(activity!);
+      setActivity(saved);
+      const url = `${window.location.origin}/practice/${saved.id}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        setShareMessage("Practice link copied to clipboard.");
+      } catch {
+        setShareMessage(url);
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not create the practice link.");
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  async function stopSharingPractice() {
+    setSharing(true); setError(""); setShareMessage("");
+    try {
+      const saved = await unpublishActivityFromPractice(activity!);
+      setActivity(saved);
+      setShareMessage("Practice link turned off.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not turn off the practice link.");
+    } finally {
+      setSharing(false);
+    }
+  }
+
   if (mode) {
     const common = { activity, onComplete: (score: number, correct: number, total: number) => complete(mode, score, correct, total) };
+    const gameKey = `${mode}-${runKey}`;
     return (
-      <main className={`play-screen ${ARCADE_MODES.includes(mode) ? "arcade-play-screen" : ""}`}>
+      <main className={`play-screen ${ARCADE_MODES.includes(mode) ? "arcade-play-screen" : ""} ${practice ? "student-practice-play" : ""}`}>
         <header className="play-header">
-          <button className="play-brand" onClick={() => setMode(null)}><b>C</b><span>ClassPlay</span></button>
-          <div className="play-title"><small>{activity.topic}</small><strong>{activity.title}</strong></div>
-          <div className="play-header-actions"><SettingsPanel compact /><button className="button button-soft button-small" onClick={() => setMode(null)}><AppIcon name="arrow-left" /> Game modes</button></div>
+          {practice ? <Link className="play-brand" href="/"><b>C</b><span>ClassPlay</span></Link> : <button className="play-brand" onClick={() => setMode(null)}><b>C</b><span>ClassPlay</span></button>}
+          <div className="play-title"><small>{practice ? "Student practice" : activity.topic}</small><strong>{activity.title}</strong></div>
+          <div className="play-header-actions"><SettingsPanel compact /><button className="button button-soft button-small" onClick={() => { setPracticeCompletion(null); setMode(null); }}><AppIcon name="arrow-left" /> Game modes</button></div>
         </header>
         <section className="play-canvas">
-          {mode === "flashcards" && <FlashcardsGame {...common} />}
-          {mode === "memory" && <MemoryGame {...common} />}
-          {mode === "matching" && <MatchingGame {...common} />}
-          {mode === "sentence-builder" && <SentenceBuilderGame {...common} />}
-          {mode === "gap-fill" && <GapFillGame {...common} />}
-          {mode === "quiz" && <QuizGame {...common} />}
-          {mode === "space-blaster" && <SpaceBlasterGame {...common} />}
-          {mode === "word-maze" && <WordMazeGame {...common} />}
+          {mode === "flashcards" && <FlashcardsGame key={gameKey} {...common} />}
+          {mode === "memory" && <MemoryGame key={gameKey} {...common} />}
+          {mode === "matching" && <MatchingGame key={gameKey} {...common} />}
+          {mode === "sentence-builder" && <SentenceBuilderGame key={gameKey} {...common} />}
+          {mode === "gap-fill" && <GapFillGame key={gameKey} {...common} />}
+          {mode === "quiz" && <QuizGame key={gameKey} {...common} />}
+          {mode === "space-blaster" && <SpaceBlasterGame key={gameKey} {...common} />}
+          {mode === "word-maze" && <WordMazeGame key={gameKey} {...common} />}
         </section>
+        {practice && practiceCompletion && (
+          <PracticeLeaderboard
+            activityId={activity.id}
+            game={practiceCompletion.game}
+            score={practiceCompletion.score}
+            correct={practiceCompletion.correct}
+            total={practiceCompletion.total}
+            onReplay={replayPractice}
+            onOtherGames={leavePracticeGame}
+          />
+        )}
       </main>
     );
   }
@@ -93,7 +169,27 @@ export function GameHub({ activityId }: { activityId: string }) {
 
   function modeCard(game: GameType) {
     const info = GAME_MODE_CATALOG[game];
-    return <button key={game} className={`mode-card ${info.colorClass}`} onClick={() => setMode(game)}><span className="mode-icon"><AppIcon name={info.icon} /></span><span><strong>{info.name}</strong><small>{info.pickerDescription}</small></span><i><AppIcon name="arrow-right" /></i></button>;
+    return <button key={game} className={`mode-card ${info.colorClass}`} onClick={() => { setPracticeCompletion(null); setMode(game); }}><span className="mode-icon"><AppIcon name={info.icon} /></span><span><strong>{info.name}</strong><small>{info.pickerDescription}</small></span><i><AppIcon name="arrow-right" /></i></button>;
+  }
+
+  if (practice) {
+    return (
+      <main className="mode-screen practice-mode-screen">
+        <header className="mode-header"><Link className="play-brand" href="/"><b>C</b><span>ClassPlay</span></Link><div className="mode-header-actions"><span className="practice-link-badge"><AppIcon name="link-45deg" /> Practice link</span><SettingsPanel compact /></div></header>
+        <section className="mode-hero practice-hero">
+          <span className="eyebrow">Choose your challenge</span>
+          <h1>{activity.title}</h1>
+          <p>{activity.description}</p>
+          <div className="mode-meta"><span>{activity.grade}</span><span>{activity.level}</span><span>{activity.items.length} items</span></div>
+          <div className="practice-hero-note"><AppIcon name="trophy" /><div><b>Play for the Top 10</b><span>Finish a game, enter your name, and see how your score compares with other players.</span></div></div>
+        </section>
+        <section className="mode-picker">
+          <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>What do you want to practise?</h2></div><span>{activity.enabledGames.length} games available</span></div>
+          {enabledCoreGames.length > 0 && <div className="mode-grid">{enabledCoreGames.map(modeCard)}</div>}
+          {enabledArcadeGames.length > 0 && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY ARCADE</small><h3>Move more. Play louder.</h3></div><span><AppIcon name="controller" /></span></div><div className="mode-grid arcade-mode-grid">{enabledArcadeGames.map(modeCard)}</div></section>}
+        </section>
+      </main>
+    );
   }
 
   return (
@@ -104,7 +200,17 @@ export function GameHub({ activityId }: { activityId: string }) {
         <h1>{activity.title}</h1>
         <p>{activity.description}</p>
         <div className="mode-meta"><span>{activity.grade}</span><span>{activity.level}</span><span>{activity.items.length} items</span></div>
-        {liveReady ? <div className="connected-cta"><div><b><AppIcon name="wifi" /> Connected Classroom</b><span>Students join by code or QR. Play individually or in teams.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room <AppIcon name="arrow-right" /></Link></div> : <div className="connected-cta"><div><b><AppIcon name="wifi-off" /> Connected Classroom needs question-ready content</b><span>Add at least two prompt + answer pairs or two usable Gap Fill sentences before hosting live.</span></div><Link href={`/edit/${activity.id}`} className="button button-primary">Prepare live content <AppIcon name="arrow-right" /></Link></div>}
+        {error && <div className="alert-error practice-share-error">{error}</div>}
+        <div className="teacher-play-actions">
+          {liveReady ? <div className="connected-cta"><div><b><AppIcon name="wifi" /> Connected Classroom</b><span>Students join by code or QR. Play individually or in teams.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room <AppIcon name="arrow-right" /></Link></div> : <div className="connected-cta"><div><b><AppIcon name="wifi-off" /> Connected Classroom needs question-ready content</b><span>Add at least two prompt + answer pairs or two usable Gap Fill sentences before hosting live.</span></div><Link href={`/edit/${activity.id}`} className="button button-primary">Prepare live content <AppIcon name="arrow-right" /></Link></div>}
+          <div className={`practice-share-cta ${activity.visibility === "unlisted" ? "shared" : ""}`}>
+            <div><b><AppIcon name="send" /> Student practice link</b><span>{activity.visibility === "unlisted" ? "Anyone with the link can practise and join each game's Top 10." : "Create an unlisted link students can use for independent practice."}</span>{shareMessage && <small className="practice-share-message">{shareMessage}</small>}</div>
+            <div className="practice-share-actions">
+              <button className="button button-primary" disabled={sharing} onClick={() => void sharePracticeLink()}>{sharing ? "Working…" : <>{activity.visibility === "unlisted" ? "Copy link" : "Create link"} <AppIcon name="link-45deg" /></>}</button>
+              {activity.visibility === "unlisted" && <button className="button button-soft" disabled={sharing} onClick={() => void stopSharingPractice()}>Turn off</button>}
+            </div>
+          </div>
+        </div>
       </section>
       <section className="mode-picker">
         <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{activity.enabledGames.length} games available</span></div>
