@@ -8,6 +8,7 @@ export type GameType =
   | "space-blaster"
   | "word-maze";
 
+export type LiveGameMode = Extract<GameType, "gap-fill" | "quiz" | "space-blaster">;
 export type ActivityKind = "vocabulary" | "grammar" | "mixed";
 export type ActivityVisibility = "private" | "unlisted";
 
@@ -68,6 +69,7 @@ export interface ClassroomSettings {
   soundEnabled: boolean;
   leaderboardEnabled: boolean;
   readAloud: boolean;
+  liveGameMode?: LiveGameMode;
 }
 
 export type SessionMode = "individual" | "team";
@@ -98,6 +100,7 @@ export interface LiveQuestion {
   itemId: string;
   index: number;
   total: number;
+  gameMode: LiveGameMode;
   prompt: string;
   hint?: string;
   imageUrl?: string;
