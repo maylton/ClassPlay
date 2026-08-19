@@ -7,6 +7,7 @@ import "./smart-builder.css";
 import "./memory-game.css";
 import "./arcade.css";
 import "./word-maze.css";
+import "./leaderboard.css";
 
 export const metadata: Metadata = {
   title: "ClassPlay — Playful English practice",

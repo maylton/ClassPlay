@@ -13,6 +13,7 @@ import type { ClassroomSettings, JoinRoomResult, LiveAnswerResult, LiveQuestion,
 
 const CREDENTIAL_KEY = "classplay.live.player.v2";
 type Credentials = { sessionId: string; playerId: string; playerToken: string; roomCode: string; activityTitle: string; nickname: string; teamName?: string | null; teamColor?: string | null };
+type FinalLeaderboardEntry = { id: string; name: string; score: number };
 
 const CREDENTIAL_EVENT = "classplay:player-credentials";
 
@@ -75,7 +76,7 @@ export function StudentJoinClient({ initialCode = "" }: { initialCode?: string }
   }
 
   if (!isSupabaseConfigured) {
-    return <main className="student-join-screen"><section className="student-join-card"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="student-emoji"><AppIcon name="cloud-slash" /></span><h1>Live rooms need cloud setup.</h1><p>This ClassPlay installation is running in local mode. Your teacher can still use all six projected games.</p><Link href="/" className="button button-primary">ClassPlay home</Link></section></main>;
+    return <main className="student-join-screen"><section className="student-join-card"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="student-emoji"><AppIcon name="cloud-slash" /></span><h1>Live rooms need cloud setup.</h1><p>This ClassPlay installation is running in local mode. Your teacher can still use the projected games.</p><Link href="/" className="button button-primary">ClassPlay home</Link></section></main>;
   }
 
   if (credentials) return <StudentLiveRoom credentials={credentials} initialJoin={joinResult} onLeave={leave} />;
@@ -109,6 +110,8 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   const [connection, setConnection] = useState("Connecting…");
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState<number | null>(null);
+  const [finalLeaderboard, setFinalLeaderboard] = useState<FinalLeaderboardEntry[]>([]);
+  const [finalLeaderboardKind, setFinalLeaderboardKind] = useState<"individual" | "team">("individual");
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   async function hydrate() {
@@ -128,12 +131,21 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
     channel
       .on("broadcast", { event: "question" }, ({ payload }) => {
         const next = payload.question as LiveQuestion;
-        setQuestion(next); setState("playing"); setSelected(null); setAnswerResult(null); setCorrectAnswer(null);
+        setQuestion(next); setState("playing"); setSelected(null); setAnswerResult(null); setCorrectAnswer(null); setFinalLeaderboard([]);
         if ((payload.settings as ClassroomSettings | undefined)?.readAloud && (payload.settings as ClassroomSettings).soundEnabled) speakEnglish(next.prompt);
         if (payload.settings) setSettings(payload.settings as ClassroomSettings);
       })
       .on("broadcast", { event: "reveal" }, ({ payload }) => { setCorrectAnswer(String(payload.correctAnswer ?? "")); setState("round_results"); })
-      .on("broadcast", { event: "final" }, () => setState("final_results"))
+      .on("broadcast", { event: "final" }, ({ payload }) => {
+        const raw: unknown[] = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
+        const leaderboard = raw.slice(0, 10).map((entry, index) => {
+          const row = entry as Record<string, unknown>;
+          return { id: String(row.id ?? index), name: String(row.name ?? "Player"), score: Number(row.score ?? 0) };
+        });
+        setFinalLeaderboard(leaderboard);
+        setFinalLeaderboardKind(payload.leaderboardKind === "team" ? "team" : "individual");
+        setState("final_results");
+      })
       .on("broadcast", { event: "settings" }, ({ payload }) => payload.settings && setSettings(payload.settings as ClassroomSettings))
       .on("broadcast", { event: "state" }, ({ payload }) => payload.state && setState(payload.state as SessionState))
       .subscribe(async (status) => {
@@ -186,7 +198,27 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   };
 
   if (state === "final_results" || state === "closed") {
-    return <main className="student-live-screen"><section className="student-result-card"><span><AppIcon name="trophy" /></span><small>GAME COMPLETE</small><h1>Great job, {credentials.nickname}!</h1><strong>{score}</strong><p>points</p>{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>Team {teamName}</div>}<button className="button button-primary button-large" onClick={onLeave}>Done</button></section></main>;
+    return (
+      <main className="student-live-screen">
+        <section className="student-result-card">
+          <span><AppIcon name="trophy" /></span><small>GAME COMPLETE</small><h1>Great job, {credentials.nickname}!</h1><strong>{score}</strong><p>points</p>
+          {teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>Team {teamName}</div>}
+          {settings?.leaderboardEnabled && finalLeaderboard.length > 0 && (
+            <section className="student-temporary-leaderboard">
+              <div><div><small>FINAL RANKING</small><h2>{finalLeaderboardKind === "team" ? "Team leaderboard" : "Class leaderboard"}</h2></div><AppIcon name="bar-chart-fill" /></div>
+              <div className="temporary-final-ranking">
+                {finalLeaderboard.map((entry, index) => {
+                  const current = finalLeaderboardKind === "team" ? entry.name === teamName : entry.id === credentials.playerId;
+                  return <div className={`temporary-ranking-row ${current ? "current" : ""}`} key={`${entry.id}-${index}`}><span className={`temporary-rank rank-${index + 1}`}>{index + 1}</span><strong>{entry.name}</strong><b>{entry.score}</b></div>;
+                })}
+              </div>
+              <small>This ranking belongs only to this live room and disappears after the session.</small>
+            </section>
+          )}
+          <button className="button button-primary button-large" onClick={onLeave}>Done</button>
+        </section>
+      </main>
+    );
   }
 
   if (state === "lobby" || !question) {

@@ -167,8 +167,16 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     if (!session) return;
     setBusy(true);
     try {
+      const leaderboard = session.settings.leaderboardEnabled
+        ? session.mode === "team"
+          ? [...teams]
+              .map((team) => ({ id: team.id, name: team.name, score: teamScore(players, team.id) }))
+              .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+              .slice(0, 10)
+          : scoreboard.slice(0, 10).map((player) => ({ id: player.id, name: player.nickname, score: player.score }))
+        : [];
       await finalizeLiveSession(session.id);
-      await send("final", { state: "final_results" });
+      await send("final", { state: "final_results", leaderboardKind: session.mode, leaderboard });
       await refresh();
     } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not finish session."); }
     finally { setBusy(false); }
