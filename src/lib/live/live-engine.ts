@@ -1,6 +1,10 @@
-import { materializeItemsForMode } from "@/lib/activity-intelligence";
-import { buildChoiceOptions, quizOptions, sentenceGapAnswer } from "@/lib/game-engine";
-import type { ActivitySet, LiveQuestion } from "@/lib/types";
+import { getPlayableItemsForMode } from "@/lib/activity-intelligence";
+import { gapOptions, quizOptions, sentenceGapAnswer } from "@/lib/game-engine";
+import type { ActivitySet, GameType, LiveQuestion } from "@/lib/types";
+
+export type LiveGameMode = Extract<GameType, "gap-fill" | "quiz" | "space-blaster">;
+
+export const LIVE_GAME_MODES: readonly LiveGameMode[] = ["gap-fill", "quiz", "space-blaster"];
 
 export function shuffle<T>(items: T[]): T[] {
   const copy = [...items];
@@ -13,26 +17,28 @@ export function shuffle<T>(items: T[]): T[] {
 
 export type HostLiveQuestion = LiveQuestion & { correctAnswer: string };
 
-export function buildLiveQuestion(activity: ActivitySet, index: number): HostLiveQuestion {
-  const items = activity.enabledGames.includes("gap-fill")
-    ? materializeItemsForMode(activity.items, "gap-fill", true)
-    : activity.items;
-  const item = items[index];
-  if (!item) throw new Error("Live question index is outside the activity.");
+export function liveModeItems(activity: ActivitySet, gameMode: LiveGameMode) {
+  return getPlayableItemsForMode(activity.items, gameMode);
+}
 
-  const usesGap = Boolean(item.gapSentence && item.example);
+export function liveModeQuestionCount(activity: ActivitySet, gameMode: LiveGameMode) {
+  return liveModeItems(activity, gameMode).length;
+}
+
+export function buildLiveQuestion(activity: ActivitySet, index: number, gameMode: LiveGameMode = "quiz"): HostLiveQuestion {
+  const items = liveModeItems(activity, gameMode);
+  const item = items[index];
+  if (!item) throw new Error("Live question index is outside the selected game mode.");
+
+  const usesGap = gameMode === "gap-fill" || gameMode === "space-blaster";
   const correctAnswer = usesGap ? sentenceGapAnswer(item) : item.answer;
-  const fallbackDistractors = items
-    .filter((other) => other.id !== item.id && (!usesGap || (other.gapSentence && other.example)))
-    .map((other) => usesGap ? sentenceGapAnswer(other) : other.answer);
-  const options = usesGap
-    ? buildChoiceOptions(correctAnswer, item.distractors ?? [], fallbackDistractors, 4)
-    : quizOptions(item, items);
+  const options = usesGap ? gapOptions(item, items) : quizOptions(item, items);
 
   return {
     itemId: item.id,
     index,
     total: items.length,
+    gameMode,
     prompt: usesGap ? item.gapSentence! : item.prompt,
     hint: item.hint,
     imageUrl: item.imageUrl,
