@@ -7,10 +7,10 @@ ClassPlay uses the **Classroom Studio** visual language. The goal is a clean tea
 Visual code has three explicit layers, loaded in this order from `src/app/layout.tsx`:
 
 1. `globals.css` — stable layout primitives and base component structure.
-2. `v02.css` — structural styles introduced by v0.2 features such as auth, media, settings and Connected Classroom.
+2. `features.css` — structural styles for product features such as auth, media, settings and Connected Classroom.
 3. `studio.css` — the official ClassPlay brand/theme and the only place for visual overrides.
 
-Do **not** create versioned override sheets such as `identity-v2.css`, `identity-v3.css` or `studio-v2.css`. Refine the appropriate semantic section of `studio.css` instead. If a visual area becomes too large to maintain comfortably, split it by responsibility (for example dashboard, games or live), not by chronological version.
+Do **not** create versioned override sheets such as `identity-v2.css`, `identity-v3.css`, `v03.css` or `studio-v2.css`. Refine the appropriate semantic section of `studio.css` instead. If a visual area becomes too large to maintain comfortably, split it by responsibility (for example dashboard, games or live), not by chronological version.
 
 ## Product tokens
 
