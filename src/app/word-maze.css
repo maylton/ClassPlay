@@ -1,5 +1,9 @@
 /* ClassPlay Word Maze — progressive levels, lives and original chase monsters. */
 
+.advanced-maze {
+  --maze-board-width: min(900px, 100%);
+}
+
 .advanced-maze .maze-shell {
   width: min(1080px, 100%);
   overflow: hidden;
@@ -7,7 +11,7 @@
 
 .advanced-maze .maze-board,
 .advanced-maze .maze-map-label {
-  width: min(900px, 100%);
+  width: var(--maze-board-width);
 }
 
 .advanced-maze .maze-board {
@@ -252,14 +256,48 @@
   to { transform: translateY(4%) rotate(2deg) scale(1.04); }
 }
 
+/* Desktop/laptop play keeps the controls beside the board instead of adding
+   another tall block below it. This leaves the sentence and the full maze in
+   the same viewport on common classroom laptops. */
+@media (min-width: 700px) {
+  .advanced-maze {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 182px;
+    grid-template-areas:
+      "hud hud"
+      "question question"
+      "maze controls"
+      "maze help";
+    column-gap: 1rem;
+    align-items: center;
+  }
+
+  .advanced-maze .maze-level-hud { grid-area: hud; }
+  .advanced-maze .maze-question { grid-area: question; }
+  .advanced-maze .maze-shell { grid-area: maze; }
+
+  .advanced-maze .maze-dpad {
+    grid-area: controls;
+    align-self: center;
+    margin: 0 auto;
+  }
+
+  .advanced-maze > .arcade-key-help {
+    grid-area: help;
+    align-self: start;
+    max-width: 170px;
+    margin: .55rem auto 0;
+    line-height: 1.45;
+  }
+}
+
 @media (max-width: 840px) {
   .advanced-maze .maze-shell {
     width: min(930px, 100%);
   }
 
-  .advanced-maze .maze-board,
-  .advanced-maze .maze-map-label {
-    width: min(760px, 100%);
+  .advanced-maze {
+    --maze-board-width: min(760px, 100%);
   }
 
   .advanced-maze .maze-portal {
@@ -271,6 +309,147 @@
     min-height: 52px;
     padding: .44rem .56rem;
     font-size: clamp(.78rem, 2vw, 1rem);
+  }
+}
+
+/* Height-aware layout is the important laptop fallback. Zooming the browser
+   also reduces the CSS viewport height, so this responds naturally to zoom. */
+@media (max-height: 900px) {
+  .advanced-maze {
+    --maze-board-width: min(900px, 78vh, 100%);
+    --maze-board-width: min(900px, 78dvh, 100%);
+  }
+
+  .advanced-maze .maze-level-hud {
+    gap: .4rem;
+    margin-bottom: .45rem;
+  }
+
+  .advanced-maze .maze-level-hud > div {
+    min-height: 44px;
+    padding: .42rem .65rem;
+    border-radius: 12px;
+  }
+
+  .advanced-maze .maze-level-hud small {
+    font-size: .5rem;
+  }
+
+  .advanced-maze .maze-level-hud strong {
+    font-size: 1rem;
+  }
+
+  .advanced-maze .maze-question {
+    gap: .2rem;
+    margin-bottom: .55rem;
+    padding: .62rem .85rem;
+    border-radius: 14px;
+    box-shadow: 0 4px 0 var(--studio-lime);
+  }
+
+  .advanced-maze .maze-question small {
+    font-size: .5rem;
+    letter-spacing: .1em;
+  }
+
+  .advanced-maze .maze-question strong {
+    font-size: clamp(1rem, 2.8vh, 1.45rem);
+    font-size: clamp(1rem, 2.8dvh, 1.45rem);
+    line-height: 1.08;
+  }
+
+  .advanced-maze .maze-shell {
+    padding: .5rem;
+    border-width: 2px;
+    border-radius: 20px;
+    box-shadow: 0 5px 0 #060a20;
+  }
+
+  .advanced-maze .maze-map-label {
+    margin-bottom: .3rem;
+    font-size: .5rem;
+  }
+
+  .advanced-maze .maze-board {
+    border-width: 5px;
+    border-radius: 14px;
+  }
+
+  .advanced-maze .maze-portal {
+    width: clamp(88px, 8vw, 122px);
+    min-height: 48px;
+  }
+
+  .advanced-maze .maze-portal b {
+    min-height: 48px;
+    padding: .38rem .48rem;
+    border-radius: 11px;
+    font-size: clamp(.76rem, 1.4vw, .96rem);
+  }
+
+  .advanced-maze .maze-dpad {
+    width: 150px;
+    grid-template-columns: repeat(3, 44px);
+    grid-template-rows: repeat(3, 40px);
+    gap: 4px;
+  }
+
+  .advanced-maze .maze-dpad button {
+    border-radius: 11px;
+  }
+
+  .advanced-maze > .arcade-key-help {
+    font-size: .58rem;
+  }
+
+  .advanced-maze .maze-feedback {
+    bottom: 8px;
+    font-size: .7rem;
+  }
+}
+
+@media (max-height: 760px) and (min-width: 700px) {
+  .advanced-maze {
+    --maze-board-width: min(900px, 72vh, 100%);
+    --maze-board-width: min(900px, 72dvh, 100%);
+    column-gap: .7rem;
+  }
+
+  .advanced-maze .maze-question {
+    padding-block: .52rem;
+  }
+
+  .advanced-maze .maze-map-label {
+    font-size: .47rem;
+  }
+}
+
+@media (max-height: 560px) and (min-width: 700px) {
+  .advanced-maze {
+    --maze-board-width: min(900px, 62vh, 100%);
+    --maze-board-width: min(900px, 62dvh, 100%);
+  }
+
+  .advanced-maze .maze-level-hud > div {
+    min-height: 36px;
+    padding-block: .3rem;
+  }
+
+  .advanced-maze .maze-question {
+    padding: .42rem .65rem;
+  }
+
+  .advanced-maze .maze-question small,
+  .advanced-maze .maze-map-label,
+  .advanced-maze > .arcade-key-help {
+    display: none;
+  }
+
+  .advanced-maze .maze-dpad {
+    width: 132px;
+    grid-template-columns: repeat(3, 39px);
+    grid-template-rows: repeat(3, 35px);
+    gap: 3px;
   }
 }
 
@@ -288,6 +467,19 @@
     font-size: .82rem;
   }
 
+  .advanced-maze .maze-question {
+    margin-bottom: .55rem;
+    padding: .65rem .75rem;
+  }
+
+  .advanced-maze .maze-question strong {
+    font-size: clamp(1rem, 5vw, 1.3rem);
+  }
+
+  .advanced-maze .maze-shell {
+    padding: .4rem;
+  }
+
   .maze-monster {
     border-width: 2px;
   }
@@ -302,6 +494,40 @@
     padding: .32rem .4rem;
     border-radius: 11px;
     font-size: .7rem;
+  }
+
+  .advanced-maze .maze-dpad {
+    width: 146px;
+    margin-top: .55rem;
+    grid-template-columns: repeat(3, 42px);
+    grid-template-rows: repeat(3, 38px);
+    gap: 4px;
+  }
+}
+
+@media (max-width: 620px) and (max-height: 720px) {
+  .advanced-maze {
+    --maze-board-width: min(100%, 55vh);
+    --maze-board-width: min(100%, 55dvh);
+  }
+
+  .advanced-maze .maze-map-label span:last-child {
+    display: none;
+  }
+
+  .advanced-maze .maze-level-hud > div {
+    min-height: 46px;
+  }
+
+  .advanced-maze .maze-question small {
+    font-size: .44rem;
+  }
+
+  .advanced-maze .maze-dpad {
+    width: 132px;
+    grid-template-columns: repeat(3, 38px);
+    grid-template-rows: repeat(3, 34px);
+    gap: 3px;
   }
 }
 
