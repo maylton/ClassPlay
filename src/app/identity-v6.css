@@ -70,40 +70,55 @@ body {
   transition: transform .16s ease, box-shadow .16s ease, filter .16s ease !important;
 }
 
+/* Direct backgrounds intentionally repeat the generic rule here.
+   Older identity layers target .mode-card.<variant> with !important,
+   so the final palette needs equal-or-higher specificity to win cleanly. */
 .mode-card.mint {
   --mode-bg: #45d7aa;
   --mode-fg: #18251f;
   --mode-shadow: #159a72;
+  background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,0) 52%), #45d7aa !important;
+  color: #18251f !important;
 }
 
 .mode-card.violet {
   --mode-bg: #7056e8;
   --mode-fg: #ffffff;
   --mode-shadow: #4933b1;
+  background: linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,0) 52%), #7056e8 !important;
+  color: #ffffff !important;
 }
 
 .mode-card.blue {
   --mode-bg: #247cf0;
   --mode-fg: #ffffff;
   --mode-shadow: #0c55b7;
+  background: linear-gradient(135deg, rgba(255,255,255,.14), rgba(255,255,255,0) 52%), #247cf0 !important;
+  color: #ffffff !important;
 }
 
 .mode-card.orange {
   --mode-bg: #ff9f43;
   --mode-fg: #2d2116;
   --mode-shadow: #d86c16;
+  background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,0) 52%), #ff9f43 !important;
+  color: #2d2116 !important;
 }
 
 .mode-card.pink {
   --mode-bg: #ff6b9a;
   --mode-fg: #2c1820;
   --mode-shadow: #d63c70;
+  background: linear-gradient(135deg, rgba(255,255,255,.18), rgba(255,255,255,0) 52%), #ff6b9a !important;
+  color: #2c1820 !important;
 }
 
 .mode-card.yellow {
   --mode-bg: #ffd84d;
   --mode-fg: #29230f;
   --mode-shadow: #c7a10c;
+  background: linear-gradient(135deg, rgba(255,255,255,.2), rgba(255,255,255,0) 52%), #ffd84d !important;
+  color: #29230f !important;
 }
 
 .mode-card .mode-icon {
@@ -114,10 +129,20 @@ body {
   place-items: center;
   border: 0 !important;
   border-radius: 15px !important;
-  background: rgba(255, 255, 255, .86) !important;
+  background: rgba(255, 255, 255, .9) !important;
   color: #25252a !important;
   box-shadow: 0 4px 0 rgba(35, 35, 35, .12) !important;
   font-size: 1.25rem !important;
+}
+
+/* Older violet rules colored every <i> inside the card light purple.
+   Pin the icon glyph and arrow to dark ink on their light tiles. */
+.mode-card .mode-icon i,
+.mode-card.violet .mode-icon i,
+.mode-card.blue .mode-icon i,
+.mode-card.violet > i,
+.mode-card.blue > i {
+  color: #25252a !important;
 }
 
 .mode-card strong {
@@ -128,9 +153,15 @@ body {
 
 .mode-card small {
   color: currentColor !important;
-  opacity: .76;
+  opacity: .82;
   margin-top: .3rem !important;
   line-height: 1.35;
+}
+
+.mode-card.violet small,
+.mode-card.blue small {
+  color: #ffffff !important;
+  opacity: .82;
 }
 
 .mode-card > i {
@@ -139,7 +170,7 @@ body {
   display: grid !important;
   place-items: center;
   border-radius: 999px;
-  background: rgba(255, 255, 255, .78) !important;
+  background: rgba(255, 255, 255, .86) !important;
   color: #25252a !important;
   opacity: 1 !important;
   transition: transform .16s ease !important;
