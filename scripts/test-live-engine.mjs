@@ -33,8 +33,8 @@ const liveHost = fs.readFileSync(new URL("../src/components/live/HostRoomClient.
 const liveStudent = fs.readFileSync(new URL("../src/components/live/StudentJoinClient.tsx", import.meta.url), "utf8");
 
 for (const mode of ["gap-fill", "quiz", "space-blaster"]) {
-  assert.match(liveEngine, new RegExp(`\\"${mode}\\"`), `${mode} must be a supported live game mode`);
-  assert.match(liveSetup, new RegExp(`mode: \\"${mode}\\"`), `${mode} must appear in the teacher live-mode picker`);
+  assert.ok(liveEngine.includes(`"${mode}"`), `${mode} must be a supported live game mode`);
+  assert.ok(liveSetup.includes(`mode: "${mode}"`), `${mode} must appear in the teacher live-mode picker`);
 }
 assert.match(liveSetup, /settings:\s*\{\s*\.\.\.settings,\s*liveGameMode\s*\}/, "The selected live game mode must be persisted in room settings.");
 assert.match(liveHost, /buildLiveQuestion\(activity,\s*index,\s*liveGameMode\)/, "The host must build each round using the selected live mode.");
