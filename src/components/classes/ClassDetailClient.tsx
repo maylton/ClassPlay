@@ -76,7 +76,8 @@ export function ClassDetailClient({ classroomId }: { classroomId: string }) {
   async function addAssignment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!detail) return;
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     const activity = detail.activities.find((item) => item.id === String(form.get("activity")));
     if (!activity) return setError("Choose an activity.");
     const gameValue = String(form.get("gameType") ?? "");
@@ -93,8 +94,8 @@ export function ClassDetailClient({ classroomId }: { classroomId: string }) {
         dueAt: dueValue ? new Date(dueValue).toISOString() : null,
         attemptsLimit: attemptsValue ? Number(attemptsValue) : null,
       });
+      formElement.reset();
       setShowAssignment(false);
-      event.currentTarget.reset();
       setSelectedActivityId("");
       await refresh();
     } catch (cause) {

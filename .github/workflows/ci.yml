@@ -38,6 +38,9 @@ jobs:
       - name: Classes and assignments contract tests
         run: npm run test:classes
 
+      - name: Community and permanent student account tests
+        run: npm run test:community-auth
+
       - name: Live engine and security contract tests
         run: npm run test:live
 

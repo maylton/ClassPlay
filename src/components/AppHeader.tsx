@@ -11,6 +11,7 @@ export function AppHeader() {
       <nav className="header-nav" aria-label="Main navigation">
         <Link href="/dashboard">Library</Link>
         <Link href="/classes">Classes</Link>
+        <Link href="/community">Community</Link>
         <Link href="/join">Live join</Link>
         <SettingsPanel />
         <AuthStatus />

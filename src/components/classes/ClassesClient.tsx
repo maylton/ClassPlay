@@ -34,11 +34,12 @@ export function ClassesClient() {
 
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const form = new FormData(event.currentTarget);
+    const formElement = event.currentTarget;
+    const form = new FormData(formElement);
     setCreating(true); setError("");
     try {
       await createClassroom(String(form.get("name") ?? ""), String(form.get("schoolYear") ?? ""));
-      event.currentTarget.reset();
+      formElement.reset();
       setShowForm(false);
       await refresh();
     } catch (cause) {
@@ -54,7 +55,7 @@ export function ClassesClient() {
         <div>
           <span className="eyebrow">Classes & assignments</span>
           <h1>Your classes, one place.</h1>
-          <p>Create a persistent class, share one join key, and send ClassPlay activities as homework without asking students for email accounts.</p>
+          <p>Create a persistent class, share one join key, and send ClassPlay activities as homework to student accounts that keep their classes and progress safe.</p>
         </div>
         <button className="button button-primary button-large" onClick={() => setShowForm((value) => !value)}><AppIcon name="plus-lg" /> Create class</button>
       </section>
