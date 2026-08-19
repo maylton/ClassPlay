@@ -1,0 +1,660 @@
+.live-mode-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.dynamite-timer-picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+}
+
+.dynamite-timer-picker button {
+  border: 1px solid rgba(79, 55, 129, .18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, .75);
+  padding: 1rem;
+  display: grid;
+  gap: .2rem;
+  text-align: left;
+  cursor: pointer;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.dynamite-timer-picker button:hover,
+.dynamite-timer-picker button.active {
+  transform: translateY(-2px);
+  border-color: #6f4be8;
+  box-shadow: 0 12px 28px rgba(76, 50, 150, .12);
+}
+
+.dynamite-timer-picker b {
+  font-size: 1.35rem;
+}
+
+.dynamite-timer-picker small,
+.dynamite-setup-note span,
+.dynamite-lobby-rule span,
+.dynamite-phone-rule span {
+  color: #716a82;
+}
+
+.dynamite-setup-note,
+.dynamite-lobby-rule,
+.dynamite-phone-rule {
+  margin-top: 1rem;
+  border-radius: 18px;
+  background: rgba(255, 244, 220, .72);
+  border: 1px solid rgba(222, 139, 45, .22);
+  padding: .9rem 1rem;
+  display: flex;
+  gap: .8rem;
+  align-items: center;
+}
+
+.dynamite-setup-note > i,
+.dynamite-lobby-rule > i {
+  font-size: 1.4rem;
+  color: #c86424;
+}
+
+.dynamite-setup-note div,
+.dynamite-lobby-rule div,
+.dynamite-phone-rule {
+  gap: .15rem;
+}
+
+.dynamite-setup-note div,
+.dynamite-lobby-rule div {
+  display: grid;
+}
+
+.dynamite-minimum {
+  display: block;
+  margin-top: .6rem;
+  color: #a24e34;
+}
+
+.dynamite-host-screen {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 50% 28%, rgba(255, 215, 117, .24), transparent 34%),
+    linear-gradient(145deg, #211637 0%, #2d1d49 46%, #16111f 100%);
+  color: white;
+}
+
+.dynamite-header {
+  background: rgba(20, 13, 31, .76);
+  border-bottom: 1px solid rgba(255, 255, 255, .1);
+  backdrop-filter: blur(16px);
+}
+
+.dynamite-header .play-brand,
+.dynamite-header .host-round-meta,
+.dynamite-header .text-danger {
+  color: white;
+}
+
+.dynamite-host-layout {
+  width: min(1480px, calc(100% - 3rem));
+  margin: 0 auto;
+  min-height: calc(100vh - 76px);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 330px;
+  gap: 1.4rem;
+  padding: 1.4rem 0 2rem;
+}
+
+.dynamite-main-stage {
+  position: relative;
+  min-height: 720px;
+  border-radius: 32px;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .1);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, .28);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.2rem;
+  overflow: hidden;
+}
+
+.dynamite-main-stage::before {
+  content: "";
+  position: absolute;
+  inset: -30%;
+  background: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.04) 0 1px, transparent 1px 46px);
+  pointer-events: none;
+}
+
+.dynamite-player-call {
+  position: relative;
+  margin: .4rem 0 1rem;
+  font-size: clamp(2.5rem, 5vw, 5.6rem);
+  text-align: center;
+  letter-spacing: -.055em;
+  animation: dynamite-name-pulse 1s ease-in-out infinite alternate;
+}
+
+.dynamite-device {
+  position: relative;
+  width: 270px;
+  height: 280px;
+  display: grid;
+  place-items: center;
+  margin: .4rem 0 .7rem;
+}
+
+.dynamite-sticks {
+  position: absolute;
+  inset: 45px 25px 18px;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: center;
+  filter: drop-shadow(0 20px 24px rgba(0,0,0,.3));
+}
+
+.dynamite-sticks i {
+  display: block;
+  width: 62px;
+  height: 178px;
+  border-radius: 18px;
+  background: linear-gradient(90deg, #a82f34, #e54845 45%, #b52731);
+  border: 2px solid rgba(255,255,255,.12);
+  box-shadow: inset 0 0 0 7px rgba(84, 9, 20, .08);
+}
+
+.dynamite-sticks::after {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 74px;
+  height: 48px;
+  border-radius: 9px;
+  background: linear-gradient(#2b2632, #17131d);
+  box-shadow: 0 8px 15px rgba(0,0,0,.32);
+}
+
+.dynamite-fuse {
+  position: absolute;
+  width: 92px;
+  height: 70px;
+  right: 10px;
+  top: 8px;
+  border-top: 8px solid #483c36;
+  border-right: 8px solid #483c36;
+  border-radius: 0 42px 0 0;
+  transform: rotate(-12deg);
+}
+
+.dynamite-fuse span {
+  position: absolute;
+  right: -13px;
+  top: -13px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #ffd45a;
+  box-shadow: 0 0 0 8px rgba(255, 149, 47, .2), 0 0 28px #ff8a32;
+  animation: dynamite-spark .28s ease-in-out infinite alternate;
+}
+
+.dynamite-device > b,
+.dynamite-device > small {
+  position: relative;
+  z-index: 2;
+  text-shadow: 0 4px 12px rgba(0,0,0,.45);
+}
+
+.dynamite-device > b {
+  margin-top: 62px;
+  font-size: 5.8rem;
+  line-height: .9;
+  font-variant-numeric: tabular-nums;
+}
+
+.dynamite-device > small {
+  margin-top: -38px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  font-size: .68rem;
+}
+
+.dynamite-fuse-progress {
+  position: relative;
+  width: min(520px, 78%);
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.12);
+  overflow: hidden;
+}
+
+.dynamite-fuse-progress span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #e14b43, #ffb342, #ffe679);
+  transition: width .2s linear;
+}
+
+.dynamite-host-question {
+  position: relative;
+  width: min(860px, 94%);
+  margin-top: 1.5rem;
+  text-align: center;
+  padding: 1.2rem 1.5rem;
+  border-radius: 22px;
+  background: rgba(12, 9, 18, .32);
+  border: 1px solid rgba(255,255,255,.08);
+}
+
+.dynamite-host-question small {
+  color: #f7c76f;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.dynamite-host-question h2 {
+  margin: .45rem 0 0;
+  font-size: clamp(1.55rem, 2.8vw, 2.8rem);
+}
+
+.dynamite-host-question p {
+  color: rgba(255,255,255,.72);
+}
+
+.dynamite-next-call {
+  position: relative;
+  margin-top: 1rem;
+  display: flex;
+  gap: .55rem;
+  align-items: baseline;
+  color: rgba(255,255,255,.65);
+}
+
+.dynamite-next-call strong {
+  color: #d9ff76;
+}
+
+.dynamite-queue-panel {
+  border-radius: 28px;
+  background: rgba(255,255,255,.94);
+  color: #2c2438;
+  padding: 1.15rem;
+  overflow: hidden;
+  align-self: stretch;
+}
+
+.dynamite-queue-panel > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: center;
+  padding: .4rem .2rem .9rem;
+}
+
+.dynamite-queue-list {
+  display: grid;
+  gap: .55rem;
+  max-height: calc(100vh - 170px);
+  overflow: auto;
+  padding-right: .2rem;
+}
+
+.dynamite-queue-list > div {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: .65rem;
+  min-height: 56px;
+  border-radius: 15px;
+  padding: .55rem .7rem;
+  background: #f5f2fa;
+  border: 1px solid transparent;
+  transition: transform .2s ease;
+}
+
+.dynamite-queue-list > div > span {
+  width: 31px;
+  height: 31px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: white;
+  font-weight: 900;
+}
+
+.dynamite-queue-list small {
+  font-size: .66rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  color: #857a94;
+}
+
+.dynamite-queue-list > div.current {
+  background: #fff0e4;
+  border-color: #ff9b59;
+  transform: scale(1.015);
+}
+
+.dynamite-queue-list > div.current small {
+  color: #bd4b26;
+}
+
+.dynamite-queue-list > div.next {
+  background: #f1fbd9;
+  border-color: #b5d868;
+}
+
+.dynamite-queue-list > div.eliminated {
+  opacity: .42;
+  filter: grayscale(.8);
+}
+
+.dynamite-queue-list > div.eliminated strong {
+  text-decoration: line-through;
+}
+
+.dynamite-critical .dynamite-device,
+.dynamite-critical .dynamite-player-call {
+  animation: dynamite-critical-shake .22s linear infinite;
+}
+
+.dynamite-critical .dynamite-fuse span {
+  box-shadow: 0 0 0 12px rgba(255, 88, 47, .22), 0 0 42px #ff553a;
+}
+
+.dynamite-boom,
+.dynamite-phone-boom {
+  display: grid;
+  place-items: center;
+  text-align: center;
+  animation: dynamite-boom-in .32s cubic-bezier(.2,1.5,.4,1);
+}
+
+.dynamite-boom strong {
+  font-size: clamp(7rem, 18vw, 17rem);
+  line-height: .8;
+  color: #ffdb55;
+  text-shadow: 0 8px 0 #d94b35, 0 0 55px rgba(255, 123, 50, .62);
+  letter-spacing: -.08em;
+}
+
+.dynamite-boom span {
+  margin-top: 1.7rem;
+  font-size: 2.2rem;
+  font-weight: 900;
+}
+
+.dynamite-final-screen {
+  background: radial-gradient(circle at 50% 20%, #5b458b, #1c142c 70%);
+}
+
+.dynamite-winner-card {
+  max-width: 760px;
+}
+
+.dynamite-winner-burst {
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: 30px;
+  background: #d9ff76;
+  color: #35234d;
+  font-size: 2.7rem;
+  margin: 0 auto 1.2rem;
+  transform: rotate(-7deg);
+}
+
+.dynamite-student-screen {
+  background: linear-gradient(160deg, #241735, #160f22);
+}
+
+.dynamite-student-screen .student-live-header {
+  background: rgba(20, 13, 31, .88);
+  color: white;
+}
+
+.dynamite-student-layout {
+  width: min(760px, calc(100% - 1.3rem));
+  margin: 0 auto;
+  padding: 1rem 0 2rem;
+  display: grid;
+  gap: 1rem;
+}
+
+.dynamite-answer-card,
+.dynamite-waiting-card,
+.dynamite-phone-boom {
+  border-radius: 26px;
+  background: white;
+  color: #2d2537;
+  padding: 1.25rem;
+  text-align: center;
+  box-shadow: 0 18px 50px rgba(0,0,0,.2);
+}
+
+.dynamite-answer-card h1,
+.dynamite-waiting-card h1 {
+  margin: .6rem 0 .4rem;
+  font-size: clamp(1.55rem, 6vw, 2.45rem);
+}
+
+.dynamite-phone-timer {
+  width: 112px;
+  height: 112px;
+  margin: 0 auto 1rem;
+  border-radius: 35px;
+  background: linear-gradient(145deg, #3a243f, #1c1527);
+  color: white;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  box-shadow: 0 14px 32px rgba(45, 20, 49, .24);
+}
+
+.dynamite-phone-timer span {
+  color: #ffb04f;
+}
+
+.dynamite-phone-timer strong {
+  font-size: 3rem;
+  line-height: .95;
+  font-variant-numeric: tabular-nums;
+}
+
+.dynamite-phone-timer small {
+  font-size: .58rem;
+  letter-spacing: .13em;
+  font-weight: 900;
+}
+
+.dynamite-answer-grid button.dynamite-used {
+  opacity: .42;
+  text-decoration: line-through;
+}
+
+.dynamite-pass-feedback {
+  font-size: 1.05rem;
+  font-weight: 900;
+}
+
+.dynamite-mini-device {
+  width: 82px;
+  height: 82px;
+  margin: 0 auto 1rem;
+  border-radius: 28px;
+  display: grid;
+  place-items: center;
+  background: #fff0df;
+  color: #ce5b2d;
+  font-size: 2rem;
+}
+
+.dynamite-waiting-card.eliminated {
+  background: #e9e7ec;
+  color: #675f70;
+}
+
+.dynamite-waiting-card .student-timer {
+  width: max-content;
+  margin: 1rem auto 0;
+}
+
+.dynamite-phone-queue {
+  border-radius: 22px;
+  background: rgba(255,255,255,.96);
+  color: #30273a;
+  padding: .9rem;
+}
+
+.dynamite-phone-queue > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  padding: .1rem .2rem .7rem;
+}
+
+.dynamite-phone-queue > div:last-child {
+  display: flex;
+  gap: .55rem;
+  overflow-x: auto;
+  padding-bottom: .2rem;
+}
+
+.dynamite-phone-queue > div:last-child > span {
+  flex: 0 0 auto;
+  min-width: 125px;
+  border-radius: 14px;
+  background: #f5f2f8;
+  padding: .55rem .6rem;
+  display: grid;
+  grid-template-columns: 25px 1fr;
+  gap: .15rem .4rem;
+  align-items: center;
+}
+
+.dynamite-phone-queue i {
+  grid-row: span 2;
+  width: 25px;
+  height: 25px;
+  border-radius: 8px;
+  background: white;
+  display: grid;
+  place-items: center;
+  font-style: normal;
+  font-weight: 900;
+}
+
+.dynamite-phone-queue small {
+  font-size: .6rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+  color: #8a7f94;
+}
+
+.dynamite-phone-queue span.current {
+  background: #fff0df;
+  outline: 1px solid #f2a260;
+}
+
+.dynamite-phone-queue span.next {
+  background: #f0f9d9;
+  outline: 1px solid #b8d867;
+}
+
+.dynamite-phone-queue span.me {
+  box-shadow: inset 0 0 0 2px #7454df;
+}
+
+.dynamite-phone-queue span.eliminated {
+  opacity: .42;
+  text-decoration: line-through;
+}
+
+.dynamite-phone-boom {
+  min-height: 300px;
+  align-content: center;
+  background: #ffdf69;
+  color: #5b2630;
+}
+
+.dynamite-phone-boom strong {
+  font-size: 5rem;
+  line-height: 1;
+}
+
+.dynamite-phone-boom span {
+  margin-top: .75rem;
+  font-weight: 900;
+  font-size: 1.25rem;
+}
+
+.dynamite-shake .dynamite-answer-card {
+  animation: dynamite-wrong-shake .32s linear;
+}
+
+.dynamite-student-final {
+  background: radial-gradient(circle at 50% 18%, #5b458b, #1c142c 72%);
+}
+
+@keyframes dynamite-name-pulse {
+  from { transform: scale(.985); opacity: .9; }
+  to { transform: scale(1.025); opacity: 1; }
+}
+
+@keyframes dynamite-spark {
+  from { transform: scale(.7) rotate(-15deg); opacity: .7; }
+  to { transform: scale(1.2) rotate(15deg); opacity: 1; }
+}
+
+@keyframes dynamite-critical-shake {
+  0%, 100% { transform: translate(0, 0) rotate(0); }
+  25% { transform: translate(-3px, 1px) rotate(-.5deg); }
+  75% { transform: translate(3px, -1px) rotate(.5deg); }
+}
+
+@keyframes dynamite-wrong-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px); }
+  40% { transform: translateX(9px); }
+  60% { transform: translateX(-6px); }
+  80% { transform: translateX(4px); }
+}
+
+@keyframes dynamite-boom-in {
+  from { transform: scale(.25) rotate(-9deg); opacity: 0; }
+  to { transform: scale(1) rotate(0); opacity: 1; }
+}
+
+@media (max-width: 1050px) {
+  .live-mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .dynamite-host-layout { grid-template-columns: 1fr; }
+  .dynamite-main-stage { min-height: 640px; }
+  .dynamite-queue-panel { align-self: auto; }
+  .dynamite-queue-list { display: flex; max-height: none; overflow-x: auto; }
+  .dynamite-queue-list > div { min-width: 210px; }
+}
+
+@media (max-width: 650px) {
+  .live-mode-grid,
+  .dynamite-timer-picker { grid-template-columns: 1fr; }
+  .dynamite-host-layout { width: calc(100% - 1rem); }
+  .dynamite-main-stage { min-height: 580px; padding: 1.25rem; border-radius: 22px; }
+  .dynamite-device { transform: scale(.86); margin: -10px 0 -8px; }
+  .dynamite-boom strong { font-size: 6rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dynamite-player-call,
+  .dynamite-fuse span,
+  .dynamite-critical .dynamite-device,
+  .dynamite-critical .dynamite-player-call,
+  .dynamite-shake .dynamite-answer-card,
+  .dynamite-boom,
+  .dynamite-phone-boom {
+    animation: none !important;
+  }
+}
