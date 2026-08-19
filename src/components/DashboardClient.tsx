@@ -150,33 +150,45 @@ export function DashboardClient() {
           <span className={`storage-pill ${cloud ? "cloud" : ""}`}><AppIcon name={cloud ? "cloud-check" : "hdd"} /> {cloud ? "Cloud sync on" : isSupabaseConfigured ? "Local session" : "Local-first mode"}</span>
         </div>
         <div className="activity-grid studio-activity-grid">
-          {activities.map((activity, index) => (
-            <article className={`activity-card activity-accent-${index % 4}`} key={activity.id}>
-              <div className="activity-visual">
-                <div className="activity-icon"><AppIcon name={activityKindIcons[activity.kind]} /></div>
-                <span className="activity-level">{activity.level}</span>
-                <div className="activity-visual-copy">
-                  <small>{activity.kind === "mixed" ? "Mixed practice" : `${activity.kind} practice`}</small>
-                  <strong>{activity.topic}</strong>
+          {activities.map((activity, index) => {
+            const previewImage = activity.items.find((item) => item.imageUrl)?.imageUrl;
+            const modePercent = Math.min(100, (activity.enabledGames.length / 6) * 100);
+
+            return (
+              <article className={`activity-card activity-accent-${index % 4}`} key={activity.id}>
+                <div
+                  className={`activity-visual ${previewImage ? "has-image" : ""}`}
+                  style={previewImage ? { backgroundImage: `linear-gradient(180deg, rgba(18,15,45,.08), rgba(18,15,45,.76)), url("${previewImage}")` } : undefined}
+                >
+                  <div className="activity-icon"><AppIcon name={activityKindIcons[activity.kind]} /></div>
+                  <span className="activity-level">{activity.level}</span>
+                  <div className="activity-visual-copy">
+                    <small>{activity.kind === "mixed" ? "Mixed practice" : `${activity.kind} practice`}</small>
+                    <strong>{activity.topic}</strong>
+                  </div>
                 </div>
-              </div>
-              <div className="activity-card-body">
-                <span className="activity-meta">{activity.grade} · {activity.items.length} items</span>
-                <h3>{activity.title}</h3>
-                <p>{activity.description}</p>
-                <div className="game-tags">
-                  {activity.enabledGames.slice(0, 4).map((game) => <span key={game}>{gameLabels[game]}</span>)}
-                  {activity.enabledGames.length > 4 && <span>+{activity.enabledGames.length - 4}</span>}
+                <div className="activity-card-body">
+                  <span className="activity-meta">{activity.grade} · {activity.items.length} items</span>
+                  <h3>{activity.title}</h3>
+                  <p>{activity.description}</p>
+                  <div className="activity-mode-progress" aria-label={`${activity.enabledGames.length} of 6 game modes enabled`}>
+                    <div><span>Game modes</span><b>{activity.enabledGames.length}/6</b></div>
+                    <i><span style={{ width: `${modePercent}%` }} /></i>
+                  </div>
+                  <div className="game-tags">
+                    {activity.enabledGames.slice(0, 4).map((game) => <span key={game}>{gameLabels[game]}</span>)}
+                    {activity.enabledGames.length > 4 && <span>+{activity.enabledGames.length - 4}</span>}
+                  </div>
+                  <div className="activity-actions">
+                    <Link className="button button-dark" href={`/play/${activity.id}`}><AppIcon name="play-fill" /> Play</Link>
+                    <Link className="button button-soft" href={`/edit/${activity.id}`}>Edit</Link>
+                    <button className="button button-soft" onClick={() => void handleDuplicate(activity.id)}>Duplicate</button>
+                    {activity.id !== "daily-routine-present-simple" && <button className="text-danger" onClick={() => void handleDelete(activity.id)}>Delete</button>}
+                  </div>
                 </div>
-                <div className="activity-actions">
-                  <Link className="button button-dark" href={`/play/${activity.id}`}><AppIcon name="play-fill" /> Play</Link>
-                  <Link className="button button-soft" href={`/edit/${activity.id}`}>Edit</Link>
-                  <button className="button button-soft" onClick={() => void handleDuplicate(activity.id)}>Duplicate</button>
-                  {activity.id !== "daily-routine-present-simple" && <button className="text-danger" onClick={() => void handleDelete(activity.id)}>Delete</button>}
-                </div>
-              </div>
-            </article>
-          ))}
+              </article>
+            );
+          })}
           <Link className="new-activity-card studio-create-card" href="/create">
             <span><AppIcon name="plus-lg" /></span>
             <small>CLASSPLAY STUDIO</small>
