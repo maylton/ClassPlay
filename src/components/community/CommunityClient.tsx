@@ -166,7 +166,7 @@ function CommunityCard({ activity, teacher, ownActivity, copying, onCopy }: { ac
         <div><small>{activity.topic}</small><strong>{activity.grade}</strong></div>
       </div>
       <div className="community-card-body">
-        <div className="community-card-meta"><span>{activity.level}</span><span>{activity.itemCount} items</span></div>
+        <div className="community-card-meta"><span>{activity.level}</span><span>{activity.itemCount} items</span>{activity.aiGenerated && <span title="AI-generated content"><AppIcon name="stars" /> AI</span>}</div>
         <h3>{activity.title}</h3>
         <p>{activity.description}</p>
         <div className="community-author"><span>{activity.authorName.slice(0, 1).toUpperCase()}</span><div><small>Shared by</small><strong>{activity.authorName}</strong></div></div>
