@@ -20,6 +20,7 @@ const mazeChaseUrl = await compileModule("../src/lib/maze-chase.ts", [
 ]);
 const arcade = await import(arcadeUrl);
 const mazeChase = await import(mazeChaseUrl);
+const wordMazeCss = await readFile(new URL("../src/app/word-maze.css", import.meta.url), "utf8");
 
 const items = [
   { id: "a", prompt: "watch TV", answer: "", example: "Marcel watches TV every evening.", gapSentence: "Marcel _____ every evening." },
@@ -41,6 +42,15 @@ for (const candidate of rounds) assert.ok(candidate.options.includes(candidate.c
 
 assert.equal(arcade.WORD_MAZE_TEMPLATES.length, 6);
 assert.equal(new Set(arcade.WORD_MAZE_TEMPLATES.map((template) => template.id)).size, 6);
+
+// Word Maze must adapt to viewport height, not only viewport width. Laptop
+// layouts keep controls beside the board so the prompt and full maze remain
+// visible together, while short/mobile viewports receive tighter fallbacks.
+assert.match(wordMazeCss, /grid-template-areas:/, "desktop Word Maze should place controls beside the maze");
+assert.match(wordMazeCss, /@media \(max-height: 900px\)/, "Word Maze should have a laptop-height breakpoint");
+assert.match(wordMazeCss, /78dvh/, "Word Maze board sizing should respond to dynamic viewport height");
+assert.match(wordMazeCss, /@media \(max-width: 620px\) and \(max-height: 720px\)/, "Word Maze should compact short mobile screens");
+assert.match(wordMazeCss, /55dvh/, "short mobile Word Maze should reserve vertical space for prompt and controls");
 
 function key(position) { return `${position.x},${position.y}`; }
 
