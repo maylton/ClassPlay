@@ -24,6 +24,7 @@ const {
   sentenceWords,
   shouldUseCuratedQuizDistractors,
   shuffle,
+  speedBonus,
 } = await importTypeScriptModule("../src/lib/game-engine.ts");
 
 assert.equal(normalizeAnswer("  Goes to School!  "), "goes to school");
@@ -125,5 +126,11 @@ assert.deepEqual(
   ["I", "don't", "have", "any", "coffee", "at", "home."],
   "Contractions should stay intact while multi-word chunks are split",
 );
+
+assert.equal(speedBonus(0), 100, "Immediate correct answers should receive the full speed bonus");
+assert.equal(speedBonus(2000), 100, "The full bonus should remain available for the first two seconds");
+assert.ok(speedBonus(7000) < 100 && speedBonus(7000) > 0, "Speed bonus should decrease as response time grows");
+assert.equal(speedBonus(15000), 0, "Answers at fifteen seconds or slower should receive no speed bonus");
+assert.ok(speedBonus(3000) > speedBonus(9000), "Faster answers must always score a larger speed bonus");
 
 console.log("ClassPlay game engine smoke tests passed.");
