@@ -222,23 +222,109 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   }
 
   if (state === "lobby" || !question) {
-    return <main className="student-live-screen"><header className="student-live-header"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="connection-pill">● {connection}</span></header><section className="student-wait-card"><div className="waiting-orbit"><AppIcon name="hourglass-split" /></div><span className="eyebrow">YOU’RE IN</span><h1>Hi, {credentials.nickname}!</h1><p>Waiting for your teacher to start <strong>{credentials.activityTitle}</strong>.</p>{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>You’re on {teamName}</div>}<div className="room-mini-code">Room {credentials.roomCode}</div>{error && <div className="student-error">{error}</div>}<button className="student-leave" onClick={onLeave}>{error ? "Rejoin with another name/code" : "Leave room"}</button></section></main>;
+    const waitingMode = settings?.liveGameMode === "space-blaster" ? "Space Blaster" : settings?.liveGameMode === "gap-fill" ? "Fill the Gaps" : settings?.liveGameMode === "quiz" ? "Quiz" : "the live game";
+    return <main className="student-live-screen"><header className="student-live-header"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="connection-pill">● {connection}</span></header><section className="student-wait-card"><div className="waiting-orbit"><AppIcon name="hourglass-split" /></div><span className="eyebrow">YOU’RE IN</span><h1>Hi, {credentials.nickname}!</h1><p>Waiting for your teacher to start <strong>{waitingMode}</strong> with {credentials.activityTitle}.</p>{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>You’re on {teamName}</div>}<div className="room-mini-code">Room {credentials.roomCode}</div>{error && <div className="student-error">{error}</div>}<button className="student-leave" onClick={onLeave}>{error ? "Rejoin with another name/code" : "Leave room"}</button></section></main>;
   }
+
+  const isSpaceBlaster = question.gameMode === "space-blaster";
+  const liveModeLabel = isSpaceBlaster ? "SPACE BLASTER" : question.gameMode === "gap-fill" ? "FILL THE GAPS" : "QUIZ";
+  const answerDisabled = Boolean(selected) || state !== "playing" || (remaining !== null && remaining <= 0);
 
   return (
     <main className="student-live-screen answering">
       <header className="student-live-header"><div><span>{credentials.nickname}</span>{teamName && <b style={{ color: teamColor ?? undefined }}>{teamName}</b>}</div><strong>{score} pts</strong><span className="connection-pill">● {connection}</span></header>
       <section className="student-question-card">
-        <div className="student-question-meta"><span>Question {question.index + 1}/{question.total}</span>{settings?.timerEnabled && <span className={`student-timer ${(remaining ?? 99) <= 5 ? "urgent" : ""}`}>{remaining ?? settings.timerSeconds}s</span>}</div>
+        <div className="student-question-meta"><span>{liveModeLabel} · Question {question.index + 1}/{question.total}</span>{settings?.timerEnabled && <span className={`student-timer ${(remaining ?? 99) <= 5 ? "urgent" : ""}`}>{remaining ?? settings.timerSeconds}s</span>}</div>
         <div className="student-progress"><span style={{ width: `${((question.index + 1) / question.total) * 100}%` }} /></div>
         {question.imageUrl && <ActivityImage refValue={question.imageUrl} alt={question.prompt} className="student-question-image" />}
-        <h1>{question.prompt}</h1>{question.hint && <p>{question.hint}</p>}
-        <div className="student-answer-grid">{question.options.map((option, index) => <button disabled={Boolean(selected) || state !== "playing" || (remaining !== null && remaining <= 0)} className={answerClass(option)} onClick={() => void answer(option)} key={option}><span>{String.fromCharCode(65 + index)}</span><b>{option}</b></button>)}</div>
+        {isSpaceBlaster ? (
+          <StudentLiveSpaceBlaster
+            question={question}
+            selected={selected}
+            answerResult={answerResult}
+            correctAnswer={correctAnswer}
+            disabled={answerDisabled}
+            reducedMotion={settings?.reducedMotion ?? false}
+            onAnswer={answer}
+          />
+        ) : (
+          <>
+            <h1>{question.prompt}</h1>{question.hint && <p>{question.hint}</p>}
+            <div className="student-answer-grid">{question.options.map((option, index) => <button disabled={answerDisabled} className={answerClass(option)} onClick={() => void answer(option)} key={option}><span>{String.fromCharCode(65 + index)}</span><b>{option}</b></button>)}</div>
+          </>
+        )}
         {answerResult && state === "playing" && <div className={`student-feedback ${answerResult.correct ? "correct" : "wrong"}`}>{answerResult.correct ? <><AppIcon name="check-lg" /> Nice! +{answerResult.points}</> : "Not this one — wait for the reveal."}</div>}
         {state === "round_results" && <div className="student-feedback correct">Correct answer: <strong>{correctAnswer}</strong><small>Waiting for the next question…</small></div>}
         {remaining === 0 && !selected && <div className="student-feedback wrong">Time’s up. Wait for the answer.</div>}
         {error && <div className="student-error">{error}</div>}
       </section>
     </main>
+  );
+}
+
+function StudentLiveSpaceBlaster({
+  question,
+  selected,
+  answerResult,
+  correctAnswer,
+  disabled,
+  reducedMotion,
+  onAnswer,
+}: {
+  question: LiveQuestion;
+  selected: string | null;
+  answerResult: LiveAnswerResult | null;
+  correctAnswer: string | null;
+  disabled: boolean;
+  reducedMotion: boolean;
+  onAnswer: (option: string) => Promise<void>;
+}) {
+  const [lane, setLane] = useState(0);
+
+  useEffect(() => {
+    setLane(0);
+  }, [question.itemId]);
+
+  const currentOption = question.options[lane];
+  const shipLeft = `${((lane + 0.5) / Math.max(1, question.options.length)) * 100}%`;
+
+  function targetState(option: string) {
+    if (correctAnswer) return option === correctAnswer ? "hit" : selected === option ? "miss" : "";
+    if (selected === option && answerResult) return answerResult.correct ? "hit" : "miss";
+    return "";
+  }
+
+  return (
+    <div className={`arcade-stage space-blaster ${reducedMotion ? "reduced-motion" : ""}`}>
+      <div className="space-question"><small>BLAST THE MISSING LANGUAGE</small><strong>{question.prompt}</strong>{question.hint && <span>{question.hint}</span>}</div>
+      <div className="space-arena">
+        <div className="space-stars" aria-hidden="true" />
+        <div className="space-target-grid" style={{ gridTemplateColumns: `repeat(${question.options.length}, minmax(0, 1fr))` }}>
+          {question.options.map((option, index) => (
+            <button
+              key={`${question.itemId}-${option}`}
+              className={`space-target ${lane === index ? "aimed" : ""} ${targetState(option)}`}
+              onClick={() => !disabled && setLane(index)}
+              disabled={disabled}
+              aria-label={`${lane === index ? "Aimed at " : "Aim at "}${option}`}
+            >
+              <span className="target-ring" aria-hidden="true"><i /></span>
+              <b>{option}</b>
+            </button>
+          ))}
+        </div>
+        <div className="space-ship" style={{ left: shipLeft }} aria-label={currentOption ? `Ship aimed at ${currentOption}` : "Space ship"}>
+          <span className="ship-cockpit" />
+          <span className="ship-wing left" />
+          <span className="ship-wing right" />
+          <span className="ship-flame" />
+        </div>
+      </div>
+      <div className="arcade-controls space-controls">
+        <button onClick={() => setLane((current) => Math.max(0, current - 1))} disabled={disabled || lane === 0} aria-label="Move ship left"><AppIcon name="arrow-left" /></button>
+        <button className="arcade-fire" onClick={() => currentOption && void onAnswer(currentOption)} disabled={disabled || !currentOption}><AppIcon name="crosshair" /> FIRE</button>
+        <button onClick={() => setLane((current) => Math.min(question.options.length - 1, current + 1))} disabled={disabled || lane === question.options.length - 1} aria-label="Move ship right"><AppIcon name="arrow-right" /></button>
+      </div>
+    </div>
   );
 }
