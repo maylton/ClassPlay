@@ -120,9 +120,8 @@ export function DashboardClient() {
         </div>
         <aside className="welcome-studio-card" aria-label="Create your next classroom activity">
           <span className="studio-card-kicker">Ready when you are</span>
-          <div className="studio-card-icon"><AppIcon name="stars" /></div>
           <h2>Make the next class more interactive.</h2>
-          <p>Create once, then switch between six ways to practise.</p>
+          <p>Create once, then switch between game modes whenever you need.</p>
           <div className="studio-card-actions">
             <Link className="button studio-primary-action" href="/create"><AppIcon name="plus-lg" /> New activity</Link>
             <Link className="studio-link" href="/join">Join a room <AppIcon name="arrow-right" /></Link>
@@ -140,7 +139,7 @@ export function DashboardClient() {
 
       <section className="stats-grid studio-stats" aria-label="ClassPlay stats">
         <div className="stat-card stat-lime"><span className="stat-icon"><AppIcon name="collection-play" /></span><strong>{loading ? "…" : activities.length}</strong><span>Activity sets</span></div>
-        <div className="stat-card stat-yellow"><span className="stat-icon"><AppIcon name="controller" /></span><strong>{loading ? "…" : totalGames}</strong><span>Playable modes</span></div>
+        <div className="stat-card stat-yellow"><span className="stat-icon"><AppIcon name="controller" /></span><strong>{loading ? "…" : totalGames}</strong><span>Modes enabled</span></div>
         <div className="stat-card stat-coral"><span className="stat-icon"><AppIcon name="activity" /></span><strong>{resultsCount}</strong><span>Local rounds</span></div>
       </section>
 
@@ -152,7 +151,6 @@ export function DashboardClient() {
         <div className="activity-grid studio-activity-grid">
           {activities.map((activity, index) => {
             const previewImage = activity.items.find((item) => item.imageUrl)?.imageUrl;
-            const modePercent = Math.min(100, (activity.enabledGames.length / 6) * 100);
 
             return (
               <article className={`activity-card activity-accent-${index % 4}`} key={activity.id}>
@@ -171,9 +169,8 @@ export function DashboardClient() {
                   <span className="activity-meta">{activity.grade} · {activity.items.length} items</span>
                   <h3>{activity.title}</h3>
                   <p>{activity.description}</p>
-                  <div className="activity-mode-progress" aria-label={`${activity.enabledGames.length} of 6 game modes enabled`}>
-                    <div><span>Game modes</span><b>{activity.enabledGames.length}/6</b></div>
-                    <i><span style={{ width: `${modePercent}%` }} /></i>
+                  <div className="activity-mode-progress" aria-label={`${activity.enabledGames.length} game modes enabled`}>
+                    <div><span>Game modes</span><b>{activity.enabledGames.length} enabled</b></div>
                   </div>
                   <div className="game-tags">
                     {activity.enabledGames.slice(0, 4).map((game) => <span key={game}>{gameLabels[game]}</span>)}
