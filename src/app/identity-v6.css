@@ -1,0 +1,47 @@
+/* ClassPlay Classroom Studio — final spacing and scalability polish. */
+
+/* Keep the top margin of the floating header inside the app shell.
+   This removes the thin light strip that appeared above the colored page field. */
+.app-shell {
+  display: flow-root;
+}
+
+html,
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Give the green creation card a cleaner hierarchy now that the decorative icon is gone. */
+.welcome-studio-card .studio-card-kicker {
+  top: 1.05rem !important;
+}
+
+.welcome-studio-card h2 {
+  font-size: clamp(1.95rem, 2.8vw, 3rem) !important;
+  line-height: .94 !important;
+}
+
+/* Game-mode counts are open-ended: show enabled modes, never a fixed maximum. */
+.activity-mode-progress {
+  margin: .85rem 0 .65rem !important;
+}
+
+.activity-mode-progress > div {
+  margin-bottom: 0 !important;
+}
+
+.activity-mode-progress b {
+  color: var(--studio-violet) !important;
+  font-size: .7rem;
+}
+
+@media (max-width: 760px) {
+  .welcome-studio-card .studio-card-kicker {
+    top: 1rem !important;
+  }
+
+  .welcome-studio-card h2 {
+    font-size: clamp(2rem, 10vw, 2.7rem) !important;
+  }
+}
