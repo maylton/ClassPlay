@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { addGameResult } from "@/lib/storage";
 import { loadActivity, saveActivity } from "@/lib/repositories/activity-repository";
-import { compatibleVariants, enableCompatibleMode } from "@/lib/activity-intelligence";
+import { compatibleVariants, enableCompatibleMode, getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import { GAME_MODE_CATALOG } from "@/lib/game-catalog";
 import type { ActivitySet, GameType } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
@@ -34,6 +34,10 @@ export function GameHub({ activityId }: { activityId: string }) {
   }, [activityId]);
 
   const variants = useMemo(() => activity ? compatibleVariants(activity) : [], [activity]);
+  const liveReady = useMemo(() => activity ? (
+    getPlayableItemsForMode(activity.items, "quiz").length >= 2 ||
+    getPlayableItemsForMode(activity.items, "gap-fill").length >= 2
+  ) : false, [activity]);
 
   if (error) return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Could not open activity</h1><p>{error}</p><Link className="button button-primary" href="/dashboard">Back to library</Link></main>;
   if (missing) return <main className="not-found"><span><AppIcon name="search" /></span><h1>Activity not found</h1><p>This activity may have been deleted or belongs to another workspace.</p><Link className="button button-primary" href="/dashboard">Back to library</Link></main>;
@@ -86,7 +90,7 @@ export function GameHub({ activityId }: { activityId: string }) {
         <h1>{activity.title}</h1>
         <p>{activity.description}</p>
         <div className="mode-meta"><span>{activity.grade}</span><span>{activity.level}</span><span>{activity.items.length} items</span></div>
-        <div className="connected-cta"><div><b><AppIcon name="wifi" /> Connected Classroom</b><span>Students join by code or QR. Play individually or in teams.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room <AppIcon name="arrow-right" /></Link></div>
+        {liveReady ? <div className="connected-cta"><div><b><AppIcon name="wifi" /> Connected Classroom</b><span>Students join by code or QR. Play individually or in teams.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room <AppIcon name="arrow-right" /></Link></div> : <div className="connected-cta"><div><b><AppIcon name="wifi-off" /> Connected Classroom needs question-ready content</b><span>Add at least two prompt + answer pairs or two usable Gap Fill sentences before hosting live.</span></div><Link href={`/edit/${activity.id}`} className="button button-primary">Prepare live content <AppIcon name="arrow-right" /></Link></div>}
       </section>
       <section className="mode-picker">
         <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{activity.enabledGames.length} games available</span></div>
