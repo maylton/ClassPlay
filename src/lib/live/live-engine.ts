@@ -52,7 +52,7 @@ export function buildLiveQuestion(activity: ActivitySet, index: number, gameMode
     index,
     total: items.length,
     gameMode,
-    sourceMode: gameMode === "dynamite" ? sourceMode : undefined,
+    sourceMode: gameMode === "dynamite" ? (sourceMode as "quiz" | "gap-fill") : undefined,
     prompt: usesGap ? item.gapSentence! : item.prompt,
     hint: item.hint,
     imageUrl: item.imageUrl,
