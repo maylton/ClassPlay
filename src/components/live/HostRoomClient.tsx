@@ -9,7 +9,7 @@ import { ActivityImage } from "@/components/media/ActivityImage";
 import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { loadActivity } from "@/lib/repositories/activity-repository";
 import { resolveActivityImageUrl } from "@/lib/media";
-import { buildLiveQuestion, publicLiveQuestion, teamScore, type HostLiveQuestion } from "@/lib/live/live-engine";
+import { buildLiveQuestion, liveModeQuestionCount, publicLiveQuestion, teamScore, type HostLiveQuestion } from "@/lib/live/live-engine";
 import {
   broadcastRoomEvent,
   finalizeLiveSession,
@@ -20,9 +20,15 @@ import {
   subscribeHostChanges,
   updateHostSession,
 } from "@/lib/live/room-service";
-import type { ActivitySet, GameSession, LivePlayer, Team } from "@/lib/types";
+import type { ActivitySet, GameSession, LiveGameMode, LivePlayer, Team } from "@/lib/types";
 
 const subscribeToBrowserLocation = () => () => {};
+
+const LIVE_MODE_LABELS: Record<LiveGameMode, string> = {
+  "gap-fill": "Fill the Gaps",
+  quiz: "Quiz",
+  "space-blaster": "Space Blaster",
+};
 
 export function HostRoomClient({ sessionId }: { sessionId: string }) {
   const [session, setSession] = useState<GameSession | null>(null);
@@ -88,6 +94,8 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     };
   }, [sessionId, refresh]);
 
+  const liveGameMode: LiveGameMode = session?.settings.liveGameMode ?? session?.currentQuestion?.gameMode ?? "quiz";
+  const liveQuestionTotal = useMemo(() => activity ? liveModeQuestionCount(activity, liveGameMode) : 0, [activity, liveGameMode]);
   const scoreboard = useMemo(() => [...players].sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname)), [players]);
   const currentAnswerCount = useMemo(() => {
     if (!session?.currentQuestion) return 0;
@@ -107,7 +115,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     if (!activity || !session) return;
     setBusy(true); setError("");
     try {
-      const hostQuestion = buildLiveQuestion(activity, index);
+      const hostQuestion = buildLiveQuestion(activity, index, liveGameMode);
       if (hostQuestion.imageUrl) hostQuestion.imageUrl = (await resolveActivityImageUrl(hostQuestion.imageUrl)) ?? hostQuestion.imageUrl;
       hostQuestion.startedAt = new Date().toISOString();
       await updateHostSession(session.id, { state: "playing", current_item_index: index, current_question: hostQuestion, round_started_at: hostQuestion.startedAt });
@@ -159,7 +167,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   async function nextQuestion() {
     if (!session || !activity) return;
     const next = session.currentItemIndex + 1;
-    if (next >= activity.items.length) return endSession();
+    if (next >= liveQuestionTotal) return endSession();
     await publishQuestion(next);
   }
 
@@ -212,7 +220,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     return (
       <main className="host-room host-results">
         <header className="live-host-header"><Link href="/dashboard" className="play-brand"><b>C</b><span>ClassPlay</span></Link><div><span>Room {session.roomCode}</span><SettingsPanel compact /></div></header>
-        <section className="final-live-card"><span className="completion-burst"><AppIcon name="trophy" /></span><span className="eyebrow">Live session complete</span><h1>Nice work, class!</h1><p>{players.length} students · {activity.items.length} questions</p>
+        <section className="final-live-card"><span className="completion-burst"><AppIcon name="trophy" /></span><span className="eyebrow">Live session complete</span><h1>Nice work, class!</h1><p>{players.length} students · {liveQuestionTotal || session.currentQuestion?.total || activity.items.length} questions · {LIVE_MODE_LABELS[liveGameMode]}</p>
           {session.settings.leaderboardEnabled && (session.mode === "team" ? <TeamScoreboard teams={teams} players={players} /> : <PlayerScoreboard players={scoreboard} />)}
           <div className="final-live-actions"><Link href={`/host/new?activity=${activity.id}`} className="button button-primary button-large"><AppIcon name="arrow-repeat" /> Play again</Link><Link href="/dashboard" className="button button-soft button-large">Back to library</Link></div>
         </section>
@@ -235,18 +243,21 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
             <button className={`button ${session.locked ? "button-primary" : "button-soft"}`} onClick={() => void toggleLock()}><AppIcon name={session.locked ? "lock" : "unlock"} /> {session.locked ? "Room locked" : "Lock room"}</button>
           </div>
           <div className="lobby-players-panel">
-            <div className="lobby-heading"><div><span className="eyebrow">Lobby</span><h1>{activity.title}</h1></div><span className="player-count-badge">{players.length} joined</span></div>
+            <div className="lobby-heading"><div><span className="eyebrow">{LIVE_MODE_LABELS[liveGameMode]} · Live</span><h1>{activity.title}</h1></div><span className="player-count-badge">{players.length} joined</span></div>
             <div className="lobby-player-grid">
               {players.map((player) => <div className="lobby-player" key={player.id} style={player.teamId ? { borderColor: teams.find((team) => team.id === player.teamId)?.color } : undefined}><span>{player.nickname.slice(0,1).toUpperCase()}</span><b>{player.nickname}</b>{session.mode === "team" && <button onClick={() => void cycleTeam(player)}>{teams.find((team) => team.id === player.teamId)?.name ?? "Team"} <AppIcon name="arrow-repeat" /></button>}<button className="kick-player" onClick={() => void removeLivePlayer(player.id)} aria-label={`Remove ${player.nickname}`}><AppIcon name="x-lg" /></button></div>)}
               {!players.length && <div className="empty-lobby"><span><AppIcon name="people" /></span><strong>Waiting for students…</strong><p>Names will appear here as they join.</p></div>}
             </div>
             {session.mode === "team" && <TeamScoreboard teams={teams} players={players} compact />}
-            <div className="lobby-controls"><div><button className={`toggle-chip ${session.settings.timerEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("timerEnabled")}><AppIcon name="clock" /> Timer {session.settings.timerEnabled ? "on" : "off"}</button><button className={`toggle-chip ${session.settings.leaderboardEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("leaderboardEnabled")}><AppIcon name="trophy" /> Ranking {session.settings.leaderboardEnabled ? "on" : "off"}</button></div><button className="button button-primary button-large" disabled={busy} onClick={() => void publishQuestion(0)}>Start game <AppIcon name="arrow-right" /></button></div>
+            <div className="lobby-controls"><div><button className={`toggle-chip ${session.settings.timerEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("timerEnabled")}><AppIcon name="clock" /> Timer {session.settings.timerEnabled ? "on" : "off"}</button><button className={`toggle-chip ${session.settings.leaderboardEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("leaderboardEnabled")}><AppIcon name="trophy" /> Ranking {session.settings.leaderboardEnabled ? "on" : "off"}</button></div><button className="button button-primary button-large" disabled={busy || liveQuestionTotal === 0} onClick={() => void publishQuestion(0)}>Start {LIVE_MODE_LABELS[liveGameMode]} <AppIcon name="arrow-right" /></button></div>
           </div>
         </section>
       </main>
     );
   }
+
+  const questionTotal = session.currentQuestion?.total ?? liveQuestionTotal || activity.items.length;
+  const liveEyebrow = session.currentQuestion?.gameMode === "space-blaster" ? "SPACE BLASTER · LIVE" : session.currentQuestion?.gameMode === "gap-fill" ? "FILL THE GAPS · LIVE" : "QUIZ · LIVE";
 
   return (
     <main className="host-room live-playing-screen">
@@ -254,16 +265,16 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       {error && <div className="alert-error live-alert">{error}</div>}
       <section className="host-play-layout">
         <div className="host-question-panel">
-          <div className="game-progress-label"><span>Question {session.currentItemIndex + 1} of {activity.items.length}</span><span>{currentAnswerCount} answers</span></div>
-          <div className="game-progress"><span style={{ width: `${((session.currentItemIndex + 1) / activity.items.length) * 100}%` }} /></div>
+          <div className="game-progress-label"><span>Question {session.currentItemIndex + 1} of {questionTotal}</span><span>{currentAnswerCount} answers</span></div>
+          <div className="game-progress"><span style={{ width: `${((session.currentItemIndex + 1) / questionTotal) * 100}%` }} /></div>
           {session.currentQuestion && <>
             {session.currentQuestion.imageUrl && <ActivityImage refValue={session.currentQuestion.imageUrl} alt={session.currentQuestion.prompt} className="live-question-image" />}
-            <span className="eyebrow">LIVE QUESTION</span><h1>{session.currentQuestion.prompt}</h1>{session.currentQuestion.hint && <p className="live-hint">{session.currentQuestion.hint}</p>}
+            <span className="eyebrow">{liveEyebrow}</span><h1>{session.currentQuestion.prompt}</h1>{session.currentQuestion.hint && <p className="live-hint">{session.currentQuestion.hint}</p>}
             <div className="host-options-grid">{session.currentQuestion.options.map((option, index) => <div key={option} className={session.state === "round_results" && option === currentCorrect ? "revealed-correct" : ""}><span>{String.fromCharCode(65 + index)}</span><b>{option}</b></div>)}</div>
           </>}
           {session.state === "round_results" && <div className="round-answer-reveal"><AppIcon name="check-lg" /> Correct answer: <strong>{currentCorrect}</strong></div>}
           <div className="host-question-controls">
-            {session.state === "playing" ? <button className="button button-soft button-large" disabled={busy} onClick={() => void reveal()}>Reveal answer now</button> : <button className="button button-primary button-large" disabled={busy} onClick={() => void nextQuestion()}>{session.currentItemIndex + 1 >= activity.items.length ? <>Finish game <AppIcon name="arrow-right" /></> : <>Next question <AppIcon name="arrow-right" /></>}</button>}
+            {session.state === "playing" ? <button className="button button-soft button-large" disabled={busy} onClick={() => void reveal()}>Reveal answer now</button> : <button className="button button-primary button-large" disabled={busy} onClick={() => void nextQuestion()}>{session.currentItemIndex + 1 >= questionTotal ? <>Finish game <AppIcon name="arrow-right" /></> : <>Next question <AppIcon name="arrow-right" /></>}</button>}
             <button className="text-danger" disabled={busy} onClick={() => void endSession()}>End session</button>
           </div>
         </div>
