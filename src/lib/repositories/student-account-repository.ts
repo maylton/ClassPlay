@@ -34,10 +34,16 @@ function mapJoinedClass(row: Record<string, unknown>): StudentClassSummary {
 
 export async function getStudentAuthState(): Promise<StudentAuthState> {
   const supabase = clientOrThrow();
-  const { data: { user }, error: userError } = await supabase.auth.getUser();
-  if (userError) throw userError;
-  if (!user) return { signedIn: false, profile: null };
 
+  // A shared class link is commonly opened by a student who has never signed in.
+  // That is a normal visitor state, not an auth failure. getUser() may return an
+  // AuthSessionMissingError when no session exists, so resolve the local browser
+  // session first and only query student data when there is an authenticated user.
+  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError) throw sessionError;
+  if (!session?.user) return { signedIn: false, profile: null };
+
+  const user = session.user;
   const { data, error } = await supabase
     .from("student_profiles")
     .select("user_id,username")
