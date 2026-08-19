@@ -10,7 +10,8 @@ export function AppHeader() {
       <Brand />
       <nav className="header-nav" aria-label="Main navigation">
         <Link href="/dashboard">Library</Link>
-        <Link href="/join">Join</Link>
+        <Link href="/classes">Classes</Link>
+        <Link href="/join">Live join</Link>
         <SettingsPanel />
         <AuthStatus />
         <Link className="button button-primary button-small" href="/create"><AppIcon name="plus-lg" /> Create activity</Link>

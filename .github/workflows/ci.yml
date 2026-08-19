@@ -35,6 +35,9 @@ jobs:
       - name: Leaderboard and persistence contract tests
         run: npm run test:leaderboard
 
+      - name: Classes and assignments contract tests
+        run: npm run test:classes
+
       - name: Live engine and security contract tests
         run: npm run test:live
 

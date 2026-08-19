@@ -8,6 +8,7 @@ import "./memory-game.css";
 import "./arcade.css";
 import "./word-maze.css";
 import "./leaderboard.css";
+import "./classes.css";
 
 export const metadata: Metadata = {
   title: "ClassPlay — Playful English practice",
