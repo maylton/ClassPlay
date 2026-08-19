@@ -17,11 +17,22 @@ export function isCorrectAnswer(input: string, expected: string) {
   return normalizeAnswer(input) === normalizeAnswer(expected);
 }
 
+function wordCount(value: string) {
+  return value.trim().split(/\s+/).filter(Boolean).length;
+}
+
+function normalizedContains(text: string | undefined, phrase: string) {
+  const haystack = normalizeAnswer(text ?? "");
+  const needle = normalizeAnswer(phrase);
+  return Boolean(needle && haystack.includes(needle));
+}
+
 /**
  * Shared multiple-choice safety layer. The correct answer is inserted only
  * after distractors have been selected, so shuffling/truncation can never
- * remove it. Curated item distractors take priority; pool values are only a
- * fallback for user-created activities that do not provide enough choices.
+ * remove it. Curated item distractors take priority when they match the answer
+ * shape; pool values are a fallback for activities where the same distractors
+ * were authored for a different game such as Gap Fill.
  */
 export function buildChoiceOptions(
   correctAnswer: string,
@@ -57,9 +68,37 @@ export function buildChoiceOptions(
   return shuffle([correct, ...distractors], random);
 }
 
+/**
+ * One ActivityItem may feed several games, so its distractors are not always
+ * intended for Quiz. Use curated distractors when they resemble the quiz's
+ * answer; otherwise use other answers from the deck as same-shaped choices.
+ */
+export function shouldUseCuratedQuizDistractors(item: ActivityItem) {
+  const curated = (item.distractors ?? []).filter(Boolean);
+  if (!curated.length) return false;
+
+  const answer = item.answer.trim();
+  const prompt = item.prompt.trim();
+  const example = item.example?.trim() ?? "";
+  const answerWords = Math.max(1, wordCount(answer));
+  const averageDistractorWords = curated.reduce((sum, value) => sum + wordCount(value), 0) / curated.length;
+
+  // A full-sentence answer paired with tiny verb fragments usually means those
+  // fragments were authored for Gap Fill, not for the prompt -> answer Quiz.
+  if (answerWords >= 6 && averageDistractorWords < answerWords * 0.45) return false;
+
+  // Translation-style items often keep the English target in the example while
+  // the answer belongs to another lexical set/language. In that case, use other
+  // deck answers so all options are comparable.
+  if (example && normalizedContains(example, prompt) && !normalizedContains(example, answer)) return false;
+
+  return true;
+}
+
 export function quizOptions(item: ActivityItem, pool: readonly ActivityItem[] = [], random: () => number = Math.random) {
   const fallback = pool.filter((candidate) => candidate.id !== item.id).map((candidate) => candidate.answer);
-  return buildChoiceOptions(item.answer, item.distractors ?? [], fallback, 4, random);
+  const curated = shouldUseCuratedQuizDistractors(item) ? (item.distractors ?? []) : [];
+  return buildChoiceOptions(item.answer, curated, fallback, 4, random);
 }
 
 export function gapOptions(item: ActivityItem, pool: readonly ActivityItem[] = [], random: () => number = Math.random) {
