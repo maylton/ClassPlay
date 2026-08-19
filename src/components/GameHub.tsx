@@ -166,6 +166,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
 
   const enabledCoreGames = activity.enabledGames.filter((game) => !ARCADE_MODES.includes(game));
   const enabledArcadeGames = activity.enabledGames.filter((game) => ARCADE_MODES.includes(game));
+  const teacherModeCount = activity.enabledGames.length + (liveReady ? 1 : 0);
 
   function modeCard(game: GameType) {
     const info = GAME_MODE_CATALOG[game];
@@ -213,9 +214,10 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
         </div>
       </section>
       <section className="mode-picker">
-        <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{activity.enabledGames.length} games available</span></div>
+        <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{teacherModeCount} modes available</span></div>
         {enabledCoreGames.length > 0 && <div className="mode-grid">{enabledCoreGames.map(modeCard)}</div>}
         {enabledArcadeGames.length > 0 && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY ARCADE</small><h3>Move more. Play louder.</h3></div><span><AppIcon name="controller" /></span></div><div className="mode-grid arcade-mode-grid">{enabledArcadeGames.map(modeCard)}</div></section>}
+        {liveReady && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY LIVE</small><h3>Party modes for the whole room.</h3></div><span><AppIcon name="wifi" /></span></div><div className="mode-grid arcade-mode-grid"><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}&mode=dynamite`} className="mode-card pink"><span className="mode-icon"><AppIcon name="fire" /></span><span><strong>Dynamite</strong><small>LIVE ONLY · Pass it before it blows!</small></span><i><AppIcon name="arrow-right" /></i></Link></div></section>}
 
         <section className="compatible-variants-panel">
           <div className="compatible-variants-heading">
