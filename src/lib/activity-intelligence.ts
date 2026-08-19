@@ -98,6 +98,12 @@ export function deriveSentenceParts(item: ActivityItem) {
   return chunks.length > 1 ? chunks : chunkWords(sentence);
 }
 
+/**
+ * Runtime adapter for a game mode. Generated values are deliberately not
+ * persisted unless the teacher entered an explicit override. This keeps the
+ * source content canonical: edit the sentence once and every automatic variant
+ * follows it.
+ */
 export function materializeItemsForMode(items: ActivityItem[], mode: GameType) {
   if (mode === "gap-fill") {
     return items.map((item) => item.gapSentence?.includes("_____") ? item : { ...item, gapSentence: deriveGapSentence(item) || item.gapSentence });
@@ -112,11 +118,13 @@ export function normalizeItemsForModes(items: ActivityItem[], modes: readonly Ga
   const pairSelected = modes.some((mode) => PAIR_MODES.includes(mode));
   const sentenceSelected = modes.some((mode) => SENTENCE_MODES.includes(mode));
 
-  let normalizedItems = items.map((item) => {
+  return items.map((item) => {
     const sentence = canonicalSentence(item);
     let prompt = clean(item.prompt);
     let answer = clean(item.answer);
 
+    // The stable schema still requires prompt/answer. Sentence-only content uses
+    // internal fallbacks, but equal values intentionally do NOT unlock pair modes.
     if (sentenceSelected && !pairSelected) {
       if (!prompt && modes.includes("sentence-builder") && sentence) prompt = sentence;
       if (!answer && prompt) answer = prompt;
@@ -133,9 +141,6 @@ export function normalizeItemsForModes(items: ActivityItem[], modes: readonly Ga
       sentenceParts: (item.sentenceParts ?? []).map(clean).filter(Boolean),
     };
   });
-
-  for (const mode of modes) normalizedItems = materializeItemsForMode(normalizedItems, mode);
-  return normalizedItems;
 }
 
 export function getPlayableItemsForMode(items: ActivityItem[], mode: GameType) {
