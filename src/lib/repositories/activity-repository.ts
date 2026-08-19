@@ -92,13 +92,30 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
   const context = await cloudContext();
   if (!context) throw new Error("Teacher session required for cloud save.");
   const { supabase, user } = context;
-  const id = isUuid(activity.id) ? activity.id : crypto.randomUUID();
-  const now = new Date().toISOString();
 
+  const resolvedSourceLocalId = sourceLocalId ?? activity.sourceLocalId ?? (!isUuid(activity.id) ? activity.id : undefined);
+  let id = isUuid(activity.id) ? activity.id : "";
+
+  // Local/demo activities should converge on one cloud record instead of creating
+  // a fresh UUID on every retry. This is especially important if a child write
+  // fails after the parent activity row has already been created.
+  if (!id && resolvedSourceLocalId) {
+    const { data: existing, error: existingError } = await supabase
+      .from("activity_sets")
+      .select("id")
+      .eq("owner_id", user.id)
+      .eq("source_local_id", resolvedSourceLocalId)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (existing?.id) id = String(existing.id);
+  }
+  if (!id) id = crypto.randomUUID();
+
+  const now = new Date().toISOString();
   const { error: setError } = await supabase.from("activity_sets").upsert({
     id,
     owner_id: user.id,
-    source_local_id: sourceLocalId ?? activity.sourceLocalId ?? null,
+    source_local_id: resolvedSourceLocalId ?? null,
     title: activity.title,
     description: activity.description,
     subject: activity.subject,
@@ -111,11 +128,6 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
     updated_at: now,
   });
   if (setError) throw setError;
-
-  const { error: deleteItemsError } = await supabase.from("activity_items").delete().eq("activity_set_id", id);
-  if (deleteItemsError) throw deleteItemsError;
-  const { error: deleteGamesError } = await supabase.from("activity_games").delete().eq("activity_set_id", id);
-  if (deleteGamesError) throw deleteGamesError;
 
   const itemPayload = activity.items.map((item, index) => ({
     id: isUuid(item.id) ? item.id : crypto.randomUUID(),
@@ -130,14 +142,41 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
     distractors: item.distractors ?? [],
     sentence_parts: item.sentenceParts ?? [],
   }));
+
+  // Write the desired children first. Only remove stale rows after the upsert
+  // succeeds, so a validation/network error cannot wipe the last good version.
   if (itemPayload.length) {
-    const { error } = await supabase.from("activity_items").insert(itemPayload);
+    const { error } = await supabase.from("activity_items").upsert(itemPayload, { onConflict: "id" });
+    if (error) throw error;
+  }
+
+  const { data: existingItems, error: existingItemsError } = await supabase
+    .from("activity_items")
+    .select("id")
+    .eq("activity_set_id", id);
+  if (existingItemsError) throw existingItemsError;
+  const desiredItemIds = new Set(itemPayload.map((item) => item.id));
+  const staleItemIds = (existingItems ?? []).map((item) => String(item.id)).filter((itemId) => !desiredItemIds.has(itemId));
+  if (staleItemIds.length) {
+    const { error } = await supabase.from("activity_items").delete().eq("activity_set_id", id).in("id", staleItemIds);
     if (error) throw error;
   }
 
   const gamePayload = activity.enabledGames.map((game) => ({ activity_set_id: id, game_type: game, settings: {} }));
   if (gamePayload.length) {
-    const { error } = await supabase.from("activity_games").insert(gamePayload);
+    const { error } = await supabase.from("activity_games").upsert(gamePayload, { onConflict: "activity_set_id,game_type" });
+    if (error) throw error;
+  }
+
+  const { data: existingGames, error: existingGamesError } = await supabase
+    .from("activity_games")
+    .select("game_type")
+    .eq("activity_set_id", id);
+  if (existingGamesError) throw existingGamesError;
+  const desiredGames = new Set(activity.enabledGames);
+  const staleGames = (existingGames ?? []).map((game) => String(game.game_type) as GameType).filter((game) => !desiredGames.has(game));
+  if (staleGames.length) {
+    const { error } = await supabase.from("activity_games").delete().eq("activity_set_id", id).in("game_type", staleGames);
     if (error) throw error;
   }
 

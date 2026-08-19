@@ -65,6 +65,24 @@ export const GAME_MODE_CATALOG = {
     editorDescription: "Quick multiple choice",
     landingDescription: "Turn the same content into a quick whole-class check.",
   },
+  "space-blaster": {
+    icon: "rocket-takeoff",
+    name: "Space Blaster",
+    shortName: "Blaster",
+    colorClass: "space",
+    pickerDescription: "Move, aim and blast the right answer",
+    editorDescription: "Blast the language that completes the sentence",
+    landingDescription: "Pilot a ClassPlay ship and fire at the language that completes each sentence.",
+  },
+  "word-maze": {
+    icon: "map",
+    name: "Word Maze",
+    shortName: "Maze",
+    colorClass: "maze",
+    pickerDescription: "Navigate to the correct answer portal",
+    editorDescription: "Find the correct language inside a maze",
+    landingDescription: "Navigate a playful maze and reach the portal with the correct missing language.",
+  },
 } satisfies Record<GameType, GameModePresentation>;
 
 export const GAME_MODE_ORDER = Object.keys(GAME_MODE_CATALOG) as GameType[];

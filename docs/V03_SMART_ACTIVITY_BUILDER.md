@@ -4,7 +4,7 @@
 
 **Create the source content once. Let ClassPlay adapt it to every compatible game.**
 
-v0.3 replaces the old all-fields-at-once activity editor with an adaptive builder and a deterministic compatibility engine. The feature does not depend on AI and does not require a new database schema.
+v0.3 replaces the old all-fields-at-once activity editor with an adaptive builder and a deterministic compatibility engine. The feature does not depend on AI.
 
 ## Core behavior
 
@@ -15,6 +15,7 @@ The editor shows fields according to the selected game modes:
 - Flashcards / Memory / Matching / Quiz: prompt + answer pairs.
 - Gap Fill: full sentence + target word/expression.
 - Sentence Builder: full sentence.
+- Space Blaster / Word Maze: full sentence + target word/expression, reusing the same source content as Gap Fill.
 - Flashcards additionally exposes optional image/example support.
 - Hints appear only when a selected mode can use them.
 - Generated Gap Fill sentences and Sentence Builder chunks are previewed instead of requiring duplicate typing.
@@ -31,9 +32,10 @@ It detects whether an activity can power each game mode:
 - prompt + answer pairs -> Flashcards, Memory, Matching;
 - multiple distinct prompt + answer pairs -> Quiz;
 - full sentence -> Sentence Builder;
-- full sentence + target contained in that sentence -> Gap Fill.
+- full sentence + target contained in that sentence -> Gap Fill;
+- three full sentences + usable targets -> Space Blaster / Word Maze.
 
-Compatibility requires at least two playable items for a mode.
+Standard modes require at least two playable items. Arcade modes require at least three so their answer selection remains meaningful.
 
 ### Smart variants
 
@@ -44,11 +46,23 @@ After an activity is saved, the mode picker shows **Smart Variants** for compati
 Automatic variants are derived from canonical source content at runtime:
 
 - Gap Fill replaces the target phrase with `_____`.
-- Sentence Builder splits the canonical sentence into deterministic chunks and attempts to keep a selected target expression intact, including common English inflections such as `watch TV -> watches TV`.
+- Sentence Builder splits the canonical sentence into deterministic chunks and attempts to keep a selected target expression intact.
 - Quiz answer choices come from other compatible answers in the same activity.
 - Gap Fill choices can use the other target expressions in the same activity; manual distractors remain optional.
+- Arcade rounds reuse the generated gap prompt and target answer while drawing distractors from other compatible sentence targets.
 
 Generated data should remain derived rather than duplicated. Explicit teacher overrides in the existing `gapSentence` / `sentenceParts` fields remain supported.
+
+### English phrase matching
+
+Generated sentence variants use `src/lib/english-phrase-matcher.ts` so a base target can match common English inflections in the actual sentence. Examples include:
+
+- `watch TV` -> `watches TV` / `watched TV`
+- `study English` -> `studies English`
+- `go to school` -> `goes to school`
+- `have breakfast` -> `has breakfast`
+
+The form that actually appears in the source sentence is preserved in the generated variant.
 
 ### Adaptive Memory boards
 
@@ -64,14 +78,20 @@ Memory no longer takes the first eight pairs from an activity. `src/lib/memory-b
 
 ### Mixed-content safety
 
-Each game now filters the activity items through the compatibility engine before play. This lets one activity contain richer content without sending sentence-only items into Memory/Quiz or pair-only items into sentence games.
+Each game filters the activity items through the compatibility engine before play. This lets one activity contain richer content without sending sentence-only items into Memory/Quiz or pair-only items into sentence games.
+
+## Cloud persistence safety
+
+Arcade adds two persisted `GameType` values, so Supabase migration `0005_extend_activity_game_types_for_arcade.sql` extends the `activity_games.game_type` check constraint with `space-blaster` and `word-maze`.
+
+Cloud saves are also non-destructive at the child-row level: ClassPlay upserts the desired items and game modes before deleting stale rows. A validation or network failure therefore cannot erase the last good `activity_items` / `activity_games` set. Local/demo activities resolve through `source_local_id` so retries converge on one cloud copy instead of creating repeated orphan records.
 
 ## Compatibility
 
 - Existing v0.2 activity records continue to load.
-- Existing Supabase columns are reused; no migration is required for this feature.
+- Existing Supabase columns are reused; Arcade requires only the game-type constraint extension in migration `0005`, not new columns/tables.
 - Existing manual `gapSentence` and `sentenceParts` values remain valid.
-- Connected Classroom, authentication, storage ownership and realtime logic are not changed by this feature.
+- Connected Classroom, authentication, storage ownership and realtime logic are not changed by these persistence changes.
 
 ## Test focus
 
@@ -82,6 +102,7 @@ Each game now filters the activity items through the compatibility engine before
 5. Verify common target inflections stay intact in Sentence Builder (`watch TV` -> `watches TV`, `study English` -> `studies English`).
 6. Create a Memory activity with nine compatible pairs and verify each board contains eight pairs selected from the full nine-pair pool.
 7. Replay the nine-pair Memory activity and verify at least one previously unused pair rotates into the new board.
-8. Select only one mode and confirm unrelated editor fields remain hidden.
-9. Edit an old v0.2 activity and confirm its existing manual gap/chunk data still works.
-10. Run engine, Smart Activity Builder, live/security, typecheck, lint and production build.
+8. With at least three sentence targets, verify Space Blaster and Word Maze are offered as Smart Variants and persist successfully to cloud activities.
+9. Select only one mode and confirm unrelated editor fields remain hidden.
+10. Edit an old v0.2 activity and confirm its existing manual gap/chunk data still works.
+11. Run engine, Smart Activity Builder, Arcade, live/security, typecheck, lint and production build.

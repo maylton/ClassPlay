@@ -1,0 +1,568 @@
+/* ClassPlay Arcade
+   Projector-first game surfaces for action modes. The visual language is
+   original to ClassPlay and intentionally separate from third-party game IP. */
+
+.mode-card.space {
+  --mode-bg: #10256f;
+  --mode-fg: #fff;
+  --mode-shadow: #081542;
+}
+
+.mode-card.maze {
+  --mode-bg: #b9ed53;
+  --mode-fg: #182117;
+  --mode-shadow: #668f20;
+}
+
+.compatible-variant-card.space { --variant-accent: #3458df; }
+.compatible-variant-card.maze { --variant-accent: #76aa25; }
+.compatible-variant-card.arcade-variant::after {
+  content: "ARCADE";
+  position: absolute;
+  right: 10px;
+  top: 8px;
+  color: color-mix(in srgb, var(--variant-accent) 70%, #232323);
+  font-size: .48rem;
+  font-weight: 950;
+  letter-spacing: .14em;
+}
+
+.arcade-mode-section {
+  margin-top: 1.4rem;
+  padding: 1.15rem;
+  overflow: hidden;
+  background: #171a35;
+  border-radius: 26px;
+  box-shadow: 0 8px 0 rgba(32, 24, 91, .18);
+}
+
+.arcade-mode-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+.arcade-mode-heading small {
+  color: var(--studio-lime);
+  font-size: .6rem;
+  font-weight: 950;
+  letter-spacing: .16em;
+}
+
+.arcade-mode-heading h3 {
+  margin: .22rem 0 0;
+  color: #fff;
+  font-size: 1.55rem;
+}
+
+.arcade-mode-heading > span {
+  width: 2.8rem;
+  height: 2.8rem;
+  display: grid;
+  place-items: center;
+  background: var(--studio-lime);
+  color: #171a35;
+  border-radius: 12px;
+  font-size: 1.25rem;
+}
+
+.arcade-mode-grid { margin: 0; }
+
+.arcade-play-screen {
+  min-height: 100vh;
+  background: #11152f !important;
+}
+
+.arcade-play-screen .play-header {
+  background: #11152f !important;
+  border-bottom: 1px solid rgba(255,255,255,.1) !important;
+}
+
+.arcade-play-screen .play-canvas {
+  width: min(1240px, 100%);
+  max-width: none;
+  margin: 0 auto;
+  padding: 1.4rem clamp(.8rem, 2vw, 1.5rem) 2.5rem;
+}
+
+.arcade-stage {
+  width: 100%;
+  color: #fff;
+}
+
+.arcade-hud {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .65rem;
+  margin-bottom: .8rem;
+}
+
+.arcade-hud > div {
+  min-height: 62px;
+  padding: .75rem .9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  background: #20254a;
+  border: 2px solid #343b73;
+  border-radius: 15px;
+}
+
+.arcade-hud small {
+  color: #aeb5df;
+  font-size: .58rem;
+  font-weight: 950;
+  letter-spacing: .12em;
+}
+
+.arcade-hud strong {
+  color: var(--studio-lime);
+  font-size: 1.2rem;
+}
+
+.space-question,
+.maze-question {
+  margin-bottom: .8rem;
+  padding: 1rem 1.15rem;
+  display: grid;
+  gap: .32rem;
+  background: #fff;
+  color: var(--studio-ink);
+  border-radius: 18px;
+  box-shadow: 0 6px 0 var(--studio-lime);
+}
+
+.space-question small,
+.maze-question small {
+  color: var(--studio-violet);
+  font-size: .6rem;
+  font-weight: 950;
+  letter-spacing: .14em;
+}
+
+.space-question strong,
+.maze-question strong {
+  font-size: clamp(1.25rem, 2.6vw, 2.2rem);
+  line-height: 1.15;
+}
+
+/* Space Blaster ----------------------------------------------------------- */
+.space-arena {
+  position: relative;
+  min-height: 500px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(74,108,255,.28), transparent 25%),
+    radial-gradient(circle at 78% 32%, rgba(185,237,83,.12), transparent 23%),
+    linear-gradient(180deg, #08133e 0%, #11174a 58%, #1c1a49 100%);
+  border: 3px solid #343b73;
+  border-radius: 28px;
+  box-shadow: inset 0 0 80px rgba(0,0,0,.26), 0 10px 0 #080d25;
+}
+
+.space-stars,
+.space-stars::before,
+.space-stars::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+}
+
+.space-stars {
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,.9) 0 1px, transparent 1.5px),
+    radial-gradient(circle, rgba(185,237,83,.8) 0 1px, transparent 1.6px);
+  background-position: 0 0, 35px 22px;
+  background-size: 58px 58px, 91px 91px;
+  opacity: .55;
+  animation: space-drift 9s linear infinite;
+}
+
+.space-stars::before {
+  background-image: radial-gradient(circle, rgba(255,255,255,.55) 0 1px, transparent 1.4px);
+  background-size: 37px 37px;
+  opacity: .32;
+}
+
+.space-target-grid {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  gap: clamp(.45rem, 1.2vw, 1rem);
+  padding: 2rem clamp(.65rem, 2vw, 1.5rem) 0;
+}
+
+.space-target {
+  position: relative;
+  min-width: 0;
+  min-height: 118px;
+  padding: .75rem .55rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .55rem;
+  border: 2px solid rgba(255,255,255,.24);
+  border-radius: 22px;
+  background: rgba(29,36,93,.78);
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 7px 0 rgba(4,9,31,.45);
+  backdrop-filter: blur(6px);
+  animation: target-float 2.4s ease-in-out infinite alternate;
+  transition: transform .14s ease, border-color .14s ease, background .14s ease;
+}
+
+.space-target:nth-child(2n) { animation-delay: -.65s; }
+.space-target:nth-child(3n) { animation-delay: -1.1s; }
+.space-target:hover:not(:disabled),
+.space-target.aimed {
+  border-color: var(--studio-lime);
+  background: rgba(52,63,132,.92);
+  transform: translateY(-3px);
+}
+
+.space-target.aimed::after {
+  content: "LOCKED";
+  position: absolute;
+  top: .45rem;
+  right: .55rem;
+  color: var(--studio-lime);
+  font-size: .48rem;
+  font-weight: 950;
+  letter-spacing: .11em;
+}
+
+.space-target.hit {
+  background: rgba(80,137,55,.9);
+  border-color: var(--studio-lime);
+  box-shadow: 0 0 0 5px rgba(185,237,83,.14), 0 7px 0 #263c1d;
+}
+
+.space-target.miss {
+  background: rgba(139,49,76,.88);
+  border-color: #ff809b;
+}
+
+.space-target b {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: center;
+  font-size: clamp(.75rem, 1.4vw, 1.05rem);
+  line-height: 1.15;
+}
+
+.target-ring {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  border: 3px solid rgba(255,255,255,.7);
+  border-radius: 50%;
+}
+
+.target-ring i {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--studio-lime);
+  box-shadow: 0 0 13px var(--studio-lime);
+}
+
+.space-ship {
+  position: absolute;
+  z-index: 5;
+  bottom: 42px;
+  width: 66px;
+  height: 84px;
+  transform: translateX(-50%);
+  transition: left .16s cubic-bezier(.2,.8,.2,1);
+  filter: drop-shadow(0 10px 12px rgba(0,0,0,.35));
+}
+
+.ship-cockpit {
+  position: absolute;
+  left: 50%;
+  top: 5px;
+  width: 31px;
+  height: 56px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #f7f8ff 0 35%, #7a72ea 36% 58%, #fff 59%);
+  border: 3px solid #20254a;
+  border-radius: 50% 50% 34% 34%;
+}
+
+.ship-wing {
+  position: absolute;
+  bottom: 18px;
+  width: 25px;
+  height: 31px;
+  background: var(--studio-lime);
+  border: 3px solid #20254a;
+}
+.ship-wing.left { left: 4px; border-radius: 80% 10% 25% 40%; transform: rotate(-18deg); }
+.ship-wing.right { right: 4px; border-radius: 10% 80% 40% 25%; transform: rotate(18deg); }
+.ship-flame {
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 13px;
+  height: 30px;
+  transform: translateX(-50%);
+  background: linear-gradient(#ffd15f, #ff8066 60%, transparent);
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+  animation: ship-flame .28s ease-in-out infinite alternate;
+}
+
+.space-laser {
+  position: absolute;
+  z-index: 4;
+  bottom: 105px;
+  width: 5px;
+  height: 285px;
+  transform: translateX(-50%);
+  background: #fff;
+  border-radius: 99px;
+  box-shadow: 0 0 8px #fff, 0 0 18px var(--studio-lime), 0 0 30px var(--studio-lime);
+  animation: laser-shot .25s ease-out both;
+}
+.space-laser.wrong { box-shadow: 0 0 8px #fff, 0 0 18px #ff6b9a, 0 0 30px #ff6b9a; }
+
+.space-feedback,
+.maze-feedback {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  bottom: 15px;
+  transform: translateX(-50%);
+  min-height: 26px;
+  white-space: nowrap;
+  font-size: .78rem;
+  font-weight: 900;
+}
+.space-feedback span,
+.maze-feedback span {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .45rem .7rem;
+  border-radius: 999px;
+  background: #fff;
+  color: #232323;
+}
+.space-feedback .correct,
+.maze-feedback .correct { background: var(--studio-lime); }
+.space-feedback .wrong,
+.maze-feedback .wrong { background: #ffd8e1; color: #6e243b; }
+
+.arcade-controls {
+  display: flex;
+  justify-content: center;
+  gap: .65rem;
+  margin-top: 1rem;
+}
+.arcade-controls button,
+.maze-dpad button {
+  min-width: 58px;
+  min-height: 50px;
+  border: 2px solid #3b4277;
+  border-radius: 14px;
+  background: #20254a;
+  color: #fff;
+  cursor: pointer;
+  font-weight: 900;
+}
+.arcade-controls button:hover:not(:disabled),
+.maze-dpad button:hover:not(:disabled) { background: #303868; border-color: var(--studio-lime); }
+.arcade-controls button:disabled,
+.maze-dpad button:disabled { opacity: .38; cursor: default; }
+.arcade-controls .arcade-fire {
+  min-width: 150px;
+  background: var(--studio-lime);
+  color: #171a35;
+  border-color: var(--studio-lime);
+  box-shadow: 0 5px 0 #668f20;
+}
+
+.arcade-key-help {
+  margin: .75rem 0 0;
+  text-align: center;
+  color: #9ea6d4;
+  font-size: .68rem;
+}
+.arcade-key-help kbd {
+  margin: 0 .1rem;
+  padding: .18rem .34rem;
+  background: #292f58;
+  color: #fff;
+  border: 1px solid #454c81;
+  border-radius: 5px;
+  font-family: inherit;
+  font-weight: 850;
+}
+
+/* Word Maze --------------------------------------------------------------- */
+.maze-shell {
+  position: relative;
+  width: min(930px, 100%);
+  margin: 0 auto;
+  padding: 1rem;
+  background: #0c1236;
+  border: 3px solid #343b73;
+  border-radius: 28px;
+  box-shadow: 0 10px 0 #060a20;
+}
+
+.maze-board {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  display: grid;
+  background: #11183f;
+  border: 8px solid #151c49;
+  border-radius: 18px;
+  box-shadow: inset 0 0 40px rgba(0,0,0,.35);
+}
+
+.maze-cell {
+  position: relative;
+  min-width: 0;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+}
+.maze-cell.wall {
+  background: #6a5ae0;
+  box-shadow: inset 0 0 0 2px #887bea;
+}
+.maze-cell.path { background: #10173d; }
+.maze-cell.path::after {
+  content: "";
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(185,237,83,.3);
+}
+.maze-cell.portal-cell::after { display: none; }
+
+.maze-portal {
+  position: absolute;
+  z-index: 3;
+  inset: 4px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+}
+.maze-portal > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #3149ca;
+  font-size: clamp(2rem, 5vw, 4.2rem);
+  filter: drop-shadow(0 0 10px rgba(74,108,255,.65));
+  animation: portal-pulse 1.4s ease-in-out infinite alternate;
+}
+.maze-portal b {
+  position: relative;
+  z-index: 2;
+  max-width: 82px;
+  padding: .2rem;
+  overflow-wrap: anywhere;
+  color: #fff;
+  font-size: clamp(.48rem, 1vw, .72rem);
+  line-height: 1.05;
+  text-shadow: 0 2px 5px #111;
+}
+.maze-portal.correct > span { color: #83c433; }
+.maze-portal.wrong > span { color: #dc4d75; }
+
+.maze-player {
+  position: absolute;
+  z-index: 5;
+  width: 68%;
+  height: 68%;
+  display: grid;
+  place-items: center;
+  background: var(--studio-lime);
+  color: #171a35;
+  border: 3px solid #fff;
+  border-radius: 38% 62% 56% 44%;
+  box-shadow: 0 0 0 3px rgba(185,237,83,.18), 0 4px 10px rgba(0,0,0,.4);
+  animation: maze-orb 1s ease-in-out infinite alternate;
+}
+.maze-player b { font-size: clamp(.55rem, 1.3vw, .95rem); font-weight: 950; }
+.maze-player span {
+  position: absolute;
+  right: -18%;
+  bottom: -8%;
+  width: 30%;
+  height: 30%;
+  background: var(--studio-yellow);
+  border-radius: 50%;
+}
+
+.maze-dpad {
+  width: 182px;
+  margin: .9rem auto 0;
+  display: grid;
+  grid-template-columns: repeat(3, 54px);
+  grid-template-rows: repeat(3, 48px);
+  gap: 5px;
+  justify-content: center;
+}
+.maze-dpad button { min-width: 0; min-height: 0; }
+.maze-dpad .up { grid-column: 2; grid-row: 1; }
+.maze-dpad .left { grid-column: 1; grid-row: 2; }
+.maze-dpad .center { grid-column: 2; grid-row: 2; color: var(--studio-lime); }
+.maze-dpad .right { grid-column: 3; grid-row: 2; }
+.maze-dpad .down { grid-column: 2; grid-row: 3; }
+
+@keyframes space-drift { from { transform: translateY(-20px); } to { transform: translateY(38px); } }
+@keyframes target-float { from { transform: translateY(0); } to { transform: translateY(9px); } }
+@keyframes ship-flame { from { height: 23px; opacity: .7; } to { height: 34px; opacity: 1; } }
+@keyframes laser-shot { from { transform: translateX(-50%) scaleY(.05); transform-origin: bottom; opacity: .2; } to { transform: translateX(-50%) scaleY(1); transform-origin: bottom; opacity: 1; } }
+@keyframes portal-pulse { from { transform: scale(.9) rotate(0deg); opacity: .75; } to { transform: scale(1.08) rotate(12deg); opacity: 1; } }
+@keyframes maze-orb { from { transform: rotate(-4deg) scale(.95); } to { transform: rotate(5deg) scale(1.03); } }
+
+.arcade-stage.reduced-motion *,
+.arcade-stage.reduced-motion *::before,
+.arcade-stage.reduced-motion *::after {
+  animation: none !important;
+  transition-duration: .01ms !important;
+}
+
+@media (max-width: 840px) {
+  .space-arena { min-height: 440px; }
+  .space-target { min-height: 104px; }
+  .space-ship { width: 58px; height: 74px; }
+  .maze-shell { padding: .55rem; border-radius: 20px; }
+  .maze-board { border-width: 5px; }
+}
+
+@media (max-width: 620px) {
+  .arcade-hud { gap: .35rem; }
+  .arcade-hud > div { min-height: 54px; padding: .55rem; display: grid; }
+  .arcade-hud strong { font-size: 1rem; }
+  .space-target-grid { gap: .32rem; padding-inline: .45rem; }
+  .space-target { min-height: 92px; padding: .45rem .28rem; border-radius: 15px; }
+  .target-ring { width: 30px; height: 30px; }
+  .space-target.aimed::after { display: none; }
+  .space-feedback,
+  .maze-feedback { white-space: normal; width: calc(100% - 1rem); text-align: center; }
+  .maze-portal b { font-size: .43rem; max-width: 58px; }
+  .arcade-key-help { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .space-stars,
+  .space-target,
+  .ship-flame,
+  .space-laser,
+  .maze-portal > span,
+  .maze-player { animation: none !important; }
+}

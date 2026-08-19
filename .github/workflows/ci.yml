@@ -29,6 +29,9 @@ jobs:
       - name: Smart Activity Builder regression tests
         run: npm run test:smart
 
+      - name: Arcade engine regression tests
+        run: npm run test:arcade
+
       - name: Live engine and security contract tests
         run: npm run test:live
 

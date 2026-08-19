@@ -15,6 +15,10 @@ import { MatchingGame } from "./games/MatchingGame";
 import { SentenceBuilderGame } from "./games/SentenceBuilderGame";
 import { GapFillGame } from "./games/GapFillGame";
 import { QuizGame } from "./games/QuizGame";
+import { SpaceBlasterGame } from "./games/SpaceBlasterGame";
+import { WordMazeGame } from "./games/WordMazeGame";
+
+const ARCADE_MODES: readonly GameType[] = ["space-blaster", "word-maze"];
 
 export function GameHub({ activityId }: { activityId: string }) {
   const [activity, setActivity] = useState<ActivitySet | null>(null);
@@ -64,7 +68,7 @@ export function GameHub({ activityId }: { activityId: string }) {
   if (mode) {
     const common = { activity, onComplete: (score: number, correct: number, total: number) => complete(mode, score, correct, total) };
     return (
-      <main className="play-screen">
+      <main className={`play-screen ${ARCADE_MODES.includes(mode) ? "arcade-play-screen" : ""}`}>
         <header className="play-header">
           <button className="play-brand" onClick={() => setMode(null)}><b>C</b><span>ClassPlay</span></button>
           <div className="play-title"><small>{activity.topic}</small><strong>{activity.title}</strong></div>
@@ -77,9 +81,19 @@ export function GameHub({ activityId }: { activityId: string }) {
           {mode === "sentence-builder" && <SentenceBuilderGame {...common} />}
           {mode === "gap-fill" && <GapFillGame {...common} />}
           {mode === "quiz" && <QuizGame {...common} />}
+          {mode === "space-blaster" && <SpaceBlasterGame {...common} />}
+          {mode === "word-maze" && <WordMazeGame {...common} />}
         </section>
       </main>
     );
+  }
+
+  const enabledCoreGames = activity.enabledGames.filter((game) => !ARCADE_MODES.includes(game));
+  const enabledArcadeGames = activity.enabledGames.filter((game) => ARCADE_MODES.includes(game));
+
+  function modeCard(game: GameType) {
+    const info = GAME_MODE_CATALOG[game];
+    return <button key={game} className={`mode-card ${info.colorClass}`} onClick={() => setMode(game)}><span className="mode-icon"><AppIcon name={info.icon} /></span><span><strong>{info.name}</strong><small>{info.pickerDescription}</small></span><i><AppIcon name="arrow-right" /></i></button>;
   }
 
   return (
@@ -94,12 +108,8 @@ export function GameHub({ activityId }: { activityId: string }) {
       </section>
       <section className="mode-picker">
         <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{activity.enabledGames.length} games available</span></div>
-        <div className="mode-grid">
-          {activity.enabledGames.map((game) => {
-            const info = GAME_MODE_CATALOG[game];
-            return <button key={game} className={`mode-card ${info.colorClass}`} onClick={() => setMode(game)}><span className="mode-icon"><AppIcon name={info.icon} /></span><span><strong>{info.name}</strong><small>{info.pickerDescription}</small></span><i><AppIcon name="arrow-right" /></i></button>;
-          })}
-        </div>
+        {enabledCoreGames.length > 0 && <div className="mode-grid">{enabledCoreGames.map(modeCard)}</div>}
+        {enabledArcadeGames.length > 0 && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY ARCADE</small><h3>Move more. Play louder.</h3></div><span><AppIcon name="controller" /></span></div><div className="mode-grid arcade-mode-grid">{enabledArcadeGames.map(modeCard)}</div></section>}
 
         <section className="compatible-variants-panel">
           <div className="compatible-variants-heading">
@@ -108,7 +118,8 @@ export function GameHub({ activityId }: { activityId: string }) {
           </div>
           {variants.length > 0 ? <div className="compatible-variant-grid">{variants.map((variant) => {
             const info = GAME_MODE_CATALOG[variant.mode];
-            return <article className={`compatible-variant-card ${info.colorClass}`} key={variant.mode}><span className="variant-icon"><AppIcon name={info.icon} /></span><div><small>READY TO GENERATE</small><strong>{info.name}</strong><p>{variant.reason}</p>{variant.generated.length > 0 && <span className="generated-note"><AppIcon name="lightning-charge" /> Generates {variant.generated.join(" + ")}</span>}</div><button className="button button-dark button-small" disabled={addingMode === variant.mode} onClick={() => void addVariant(variant.mode)}>{addingMode === variant.mode ? "Adding…" : <>Add mode <AppIcon name="plus-lg" /></>}</button></article>;
+            const arcade = ARCADE_MODES.includes(variant.mode);
+            return <article className={`compatible-variant-card ${info.colorClass} ${arcade ? "arcade-variant" : ""}`} key={variant.mode}><span className="variant-icon"><AppIcon name={info.icon} /></span><div><small>{arcade ? "ARCADE READY" : "READY TO GENERATE"}</small><strong>{info.name}</strong><p>{variant.reason}</p>{variant.generated.length > 0 && <span className="generated-note"><AppIcon name="lightning-charge" /> Generates {variant.generated.join(" + ")}</span>}</div><button className="button button-dark button-small" disabled={addingMode === variant.mode} onClick={() => void addVariant(variant.mode)}>{addingMode === variant.mode ? "Adding…" : <>Add mode <AppIcon name="plus-lg" /></>}</button></article>;
           })}</div> : <Link href={`/edit/${activity.id}`} className="button button-soft">Edit content to unlock variants <AppIcon name="arrow-right" /></Link>}
         </section>
       </section>
