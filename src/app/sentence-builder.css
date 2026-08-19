@@ -1,0 +1,78 @@
+/* Word-by-word Sentence Builder --------------------------------------------
+   Individual word tokens need to stay compact enough for longer sentences,
+   while remaining large enough to tap comfortably on classroom devices. */
+
+.word-builder-stage {
+  max-width: 980px;
+}
+
+.word-builder-stage .builder-answer {
+  min-height: 140px;
+  padding: 1rem;
+  gap: .45rem;
+  align-content: center;
+}
+
+.word-builder-stage .sortable-token {
+  display: inline-flex;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.word-builder-stage .sortable-token .drag-handle,
+.word-builder-stage .sortable-token .token-text,
+.word-builder-stage .builder-pool button {
+  min-height: 42px;
+  padding: .58rem .72rem;
+  font-size: .9rem;
+  line-height: 1.1;
+}
+
+.word-builder-stage .sortable-token .drag-handle {
+  width: 34px;
+  min-width: 34px;
+  padding-inline: .35rem;
+  border-radius: 11px 0 0 11px !important;
+  border-right-width: 1px !important;
+  color: var(--studio-muted);
+}
+
+.word-builder-stage .sortable-token .token-text {
+  border-radius: 0 11px 11px 0 !important;
+}
+
+.word-builder-stage .builder-pool {
+  gap: .42rem;
+  margin-block: .85rem;
+}
+
+.word-builder-stage .builder-pool button {
+  padding-inline: .78rem;
+  border-radius: 11px !important;
+}
+
+.word-builder-stage .drag-help {
+  max-width: 700px;
+  margin-inline: auto;
+  line-height: 1.45;
+}
+
+@media (max-width: 620px) {
+  .word-builder-stage .game-question {
+    margin-bottom: 1.25rem;
+  }
+
+  .word-builder-stage .builder-answer {
+    min-height: 120px;
+    padding: .75rem;
+    gap: .35rem;
+  }
+
+  .word-builder-stage .sortable-token .drag-handle,
+  .word-builder-stage .sortable-token .token-text,
+  .word-builder-stage .builder-pool button {
+    min-height: 38px;
+    padding-block: .5rem;
+    font-size: .82rem;
+  }
+}
