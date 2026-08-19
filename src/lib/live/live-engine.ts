@@ -1,13 +1,13 @@
 import { getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import { gapOptions, quizOptions, sentenceGapAnswer } from "@/lib/game-engine";
-import type { ActivitySet, LiveGameMode, LiveQuestion } from "@/lib/types";
+import type { ActivitySet, DynamiteState, LiveGameMode, LivePlayer, LiveQuestion } from "@/lib/types";
 
-export const LIVE_GAME_MODES: readonly LiveGameMode[] = ["gap-fill", "quiz", "space-blaster"];
+export const LIVE_GAME_MODES: readonly LiveGameMode[] = ["gap-fill", "quiz", "space-blaster", "dynamite"];
 
-export function shuffle<T>(items: T[]): T[] {
+export function shuffle<T>(items: T[], random: () => number = Math.random): T[] {
   const copy = [...items];
   for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swap = Math.floor(Math.random() * (index + 1));
+    const swap = Math.floor(random() * (index + 1));
     [copy[index], copy[swap]] = [copy[swap], copy[index]];
   }
   return copy;
@@ -15,7 +15,19 @@ export function shuffle<T>(items: T[]): T[] {
 
 export type HostLiveQuestion = LiveQuestion & { correctAnswer: string };
 
+export function dynamiteSourceMode(activity: ActivitySet): "quiz" | "gap-fill" {
+  const quizItems = getPlayableItemsForMode(activity.items, "quiz");
+  const gapItems = getPlayableItemsForMode(activity.items, "gap-fill");
+
+  if (activity.kind === "grammar" && gapItems.length >= 2) return "gap-fill";
+  if (quizItems.length >= 2) return "quiz";
+  return "gap-fill";
+}
+
 export function liveModeItems(activity: ActivitySet, gameMode: LiveGameMode) {
+  if (gameMode === "dynamite") {
+    return getPlayableItemsForMode(activity.items, dynamiteSourceMode(activity));
+  }
   return getPlayableItemsForMode(activity.items, gameMode);
 }
 
@@ -24,11 +36,14 @@ export function liveModeQuestionCount(activity: ActivitySet, gameMode: LiveGameM
 }
 
 export function buildLiveQuestion(activity: ActivitySet, index: number, gameMode: LiveGameMode = "quiz"): HostLiveQuestion {
-  const items = liveModeItems(activity, gameMode);
+  const sourceMode = gameMode === "dynamite" ? dynamiteSourceMode(activity) : gameMode;
+  const items = gameMode === "dynamite"
+    ? getPlayableItemsForMode(activity.items, sourceMode)
+    : liveModeItems(activity, gameMode);
   const item = items[index];
   if (!item) throw new Error("Live question index is outside the selected game mode.");
 
-  const usesGap = gameMode === "gap-fill" || gameMode === "space-blaster";
+  const usesGap = sourceMode === "gap-fill" || sourceMode === "space-blaster";
   const correctAnswer = usesGap ? sentenceGapAnswer(item) : item.answer;
   const options = usesGap ? gapOptions(item, items) : quizOptions(item, items);
 
@@ -37,6 +52,7 @@ export function buildLiveQuestion(activity: ActivitySet, index: number, gameMode
     index,
     total: items.length,
     gameMode,
+    sourceMode: gameMode === "dynamite" ? sourceMode : undefined,
     prompt: usesGap ? item.gapSentence! : item.prompt,
     hint: item.hint,
     imageUrl: item.imageUrl,
@@ -50,6 +66,80 @@ export function publicLiveQuestion(question: HostLiveQuestion): LiveQuestion {
   const publicQuestion = { ...question } as Partial<HostLiveQuestion>;
   delete publicQuestion.correctAnswer;
   return publicQuestion as LiveQuestion;
+}
+
+export function createDynamiteState(
+  players: Pick<LivePlayer, "id" | "nickname">[],
+  questionCount: number,
+  random: () => number = Math.random,
+): DynamiteState {
+  if (players.length < 2) throw new Error("Dynamite needs at least two players.");
+  if (questionCount < 2) throw new Error("Dynamite needs at least two playable questions.");
+
+  const order = shuffle(players.map((player) => ({ id: player.id, name: player.nickname })), random);
+  const questionOrder = shuffle(Array.from({ length: questionCount }, (_, index) => index), random);
+  return {
+    order,
+    aliveIds: order.map((player) => player.id),
+    eliminatedIds: [],
+    currentPlayerId: order[0].id,
+    turnNumber: 1,
+    questionCursor: 0,
+    questionOrder,
+    winnerId: null,
+  };
+}
+
+export function nextAlivePlayerId(state: DynamiteState, afterPlayerId = state.currentPlayerId) {
+  if (state.aliveIds.length <= 1) return state.aliveIds[0] ?? null;
+  const alive = new Set(state.aliveIds);
+  const start = Math.max(0, state.order.findIndex((player) => player.id === afterPlayerId));
+  for (let step = 1; step <= state.order.length; step += 1) {
+    const candidate = state.order[(start + step) % state.order.length];
+    if (candidate && alive.has(candidate.id)) return candidate.id;
+  }
+  return null;
+}
+
+export function advanceDynamiteQuestion(
+  state: DynamiteState,
+  questionCount: number,
+  random: () => number = Math.random,
+) {
+  let questionOrder = state.questionOrder.length === questionCount
+    ? [...state.questionOrder]
+    : shuffle(Array.from({ length: questionCount }, (_, index) => index), random);
+  let questionCursor = state.questionCursor + 1;
+  const previousQuestion = state.questionOrder[state.questionCursor];
+
+  if (questionCursor >= questionOrder.length) {
+    questionOrder = shuffle(Array.from({ length: questionCount }, (_, index) => index), random);
+    if (questionCount > 1 && questionOrder[0] === previousQuestion) {
+      [questionOrder[0], questionOrder[1]] = [questionOrder[1], questionOrder[0]];
+    }
+    questionCursor = 0;
+  }
+
+  return {
+    state: { ...state, questionOrder, questionCursor },
+    questionIndex: questionOrder[questionCursor],
+  };
+}
+
+export function eliminateDynamitePlayer(state: DynamiteState, playerId: string) {
+  const aliveIds = state.aliveIds.filter((id) => id !== playerId);
+  const eliminatedIds = state.eliminatedIds.includes(playerId)
+    ? state.eliminatedIds
+    : [...state.eliminatedIds, playerId];
+  const winnerId = aliveIds.length === 1 ? aliveIds[0] : null;
+  const nextPlayerId = winnerId ?? nextAlivePlayerId({ ...state, aliveIds, eliminatedIds }, playerId);
+  return {
+    ...state,
+    aliveIds,
+    eliminatedIds,
+    currentPlayerId: nextPlayerId ?? "",
+    winnerId,
+  };
 }
 
 export function teamScore(players: { teamId?: string | null; score: number }[], teamId: string) {
