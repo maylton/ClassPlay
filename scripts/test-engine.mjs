@@ -22,6 +22,7 @@ const {
   quizOptions,
   sentenceGapAnswer,
   sentenceWords,
+  shouldUseCuratedQuizDistractors,
   shuffle,
 } = await importTypeScriptModule("../src/lib/game-engine.ts");
 
@@ -48,16 +49,56 @@ const unrelatedItem = {
 };
 
 assert.equal(sentenceGapAnswer(presentPerfectItem), "have visited");
+assert.equal(shouldUseCuratedQuizDistractors(presentPerfectItem), true);
 
 const safeQuizOptions = quizOptions(presentPerfectItem, [presentPerfectItem, unrelatedItem], () => 0);
 assert.equal(safeQuizOptions.length, 4);
 assert.ok(safeQuizOptions.includes("have visited"), "Quiz must always include the correct answer");
-assert.ok(!safeQuizOptions.includes("have never flown"), "Quiz should prefer the item's curated distractors over unrelated answers");
+assert.ok(!safeQuizOptions.includes("have never flown"), "Grammar Quiz should prefer the item's curated distractors over unrelated answers");
 
 const safeGapOptions = gapOptions(presentPerfectItem, [presentPerfectItem, unrelatedItem], () => 0);
 assert.equal(safeGapOptions.length, 4);
 assert.ok(safeGapOptions.includes("have visited"), "Gap Fill must always include the correct answer");
 assert.ok(!safeGapOptions.includes("have never flown"), "Gap Fill should prefer the item's curated distractors over unrelated answers");
+
+const translationItem = {
+  id: "wake-up",
+  prompt: "wake up",
+  answer: "acordar",
+  example: "I wake up at 6:30 every day.",
+  gapSentence: "I _____ at 6:30 every day.",
+  distractors: ["wakes up", "waking up", "woke up"],
+};
+const translationPool = [
+  translationItem,
+  { id: "brush", prompt: "brush my teeth", answer: "escovar os dentes", distractors: [] },
+  { id: "breakfast", prompt: "have breakfast", answer: "tomar café da manhã", distractors: [] },
+  { id: "school", prompt: "go to school", answer: "ir para a escola", distractors: [] },
+];
+assert.equal(shouldUseCuratedQuizDistractors(translationItem), false);
+const translationQuizOptions = quizOptions(translationItem, translationPool, () => 0);
+assert.ok(translationQuizOptions.includes("acordar"));
+assert.ok(translationQuizOptions.includes("escovar os dentes"));
+assert.ok(!translationQuizOptions.includes("wakes up"), "Translation Quiz should not reuse Gap Fill morphology distractors");
+
+const conditionalItem = {
+  id: "conditional",
+  prompt: "rain tomorrow",
+  answer: "If it rains tomorrow, we will stay home.",
+  example: "If it rains tomorrow, we will stay home.",
+  gapSentence: "If it rains tomorrow, we _____ home.",
+  distractors: ["stay", "would stay", "stayed"],
+};
+const conditionalPool = [
+  conditionalItem,
+  { id: "study", prompt: "study hard", answer: "If you study hard, you will pass the test.", distractors: [] },
+  { id: "bus", prompt: "miss the bus", answer: "If we miss the bus, we will be late.", distractors: [] },
+  { id: "finish", prompt: "finish early", answer: "If she finishes early, she will call us.", distractors: [] },
+];
+assert.equal(shouldUseCuratedQuizDistractors(conditionalItem), false);
+const conditionalQuizOptions = quizOptions(conditionalItem, conditionalPool, () => 0);
+assert.ok(conditionalQuizOptions.includes("If it rains tomorrow, we will stay home."));
+assert.ok(conditionalQuizOptions.every((option) => option.split(/\s+/).length >= 7), "Conditional Quiz should compare full conditional sentences, not isolated Gap Fill verbs");
 
 const duplicateSafe = buildChoiceOptions("must", ["must", "might", "can't", "could"], ["should"], 4, () => 0);
 assert.equal(duplicateSafe.filter((option) => normalizeAnswer(option) === "must").length, 1);
