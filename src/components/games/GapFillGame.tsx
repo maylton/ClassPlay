@@ -15,7 +15,7 @@ export function GapFillGame({ activity, onComplete }: GameProps) {
   const [selected, setSelected] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
   const item = questions[index];
-  const options = useMemo(() => item ? gapOptions(item) : [], [item]);
+  const options = useMemo(() => item ? gapOptions(item, questions) : [], [item, questions]);
 
   if (!item) return <div className="empty-game"><span><AppIcon name="pencil-square" /></span><h2>This set needs sentence targets.</h2><p>Add a full sentence and choose the word or expression to hide. ClassPlay will build the gap automatically.</p></div>;
 
