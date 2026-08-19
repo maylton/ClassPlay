@@ -1,0 +1,211 @@
+.student-auth-card {
+  width: min(100%, 560px);
+}
+
+.student-auth-loading {
+  margin-top: 24px;
+  padding: 14px;
+  border-radius: 14px;
+  background: #f5f4ff;
+  color: #716b7e;
+  font-weight: 700;
+}
+
+.student-auth-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-top: 25px;
+  padding: 5px;
+  border-radius: 15px;
+  background: #f1eff9;
+}
+
+.student-auth-tabs button {
+  min-height: 42px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #716b7e;
+  font: inherit;
+  font-size: .82rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.student-auth-tabs button.active {
+  background: #fff;
+  color: #5c4bd8;
+  box-shadow: 0 5px 14px rgba(63,50,140,.09);
+}
+
+.student-auth-message,
+.student-auth-callout {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  padding: 12px 13px;
+  border-radius: 13px;
+  text-align: left;
+  font-size: .81rem;
+  line-height: 1.45;
+}
+
+.student-auth-message {
+  background: #effbd9;
+  color: #4d6b19;
+}
+
+.student-auth-callout {
+  background: #f2f0ff;
+  color: #635c74;
+}
+
+.student-auth-message i,
+.student-auth-callout i {
+  flex: 0 0 auto;
+  margin-top: 1px;
+  color: #5c4bd8;
+}
+
+.student-auth-privacy {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin: 16px 0 0;
+  color: #88818f;
+  font-size: .72rem;
+}
+
+.student-auth-text-button {
+  border: 0;
+  background: transparent;
+  color: #5c4bd8;
+  font: inherit;
+  font-size: .79rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.student-signed-in {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr) auto;
+  gap: 11px;
+  align-items: center;
+  margin-top: 24px;
+  padding: 13px;
+  border-radius: 16px;
+  background: #f5f4ff;
+  text-align: left;
+}
+
+.student-signed-in > span,
+.student-account-pill > span {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: #6a5ae0;
+  color: #fff;
+  font-weight: 900;
+}
+
+.student-signed-in small,
+.student-signed-in strong,
+.student-signed-in em {
+  display: block;
+}
+
+.student-signed-in small {
+  color: #8a8391;
+  font-size: .64rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.student-signed-in strong {
+  margin-top: 1px;
+  color: #232323;
+}
+
+.student-signed-in em {
+  margin-top: 1px;
+  color: #817a89;
+  font-size: .72rem;
+  font-style: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.student-signed-in button {
+  border: 0;
+  background: transparent;
+  color: #5c4bd8;
+  font: inherit;
+  font-size: .72rem;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.student-home-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.student-account-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 4px 9px 4px 4px;
+  border: 1px solid #ddd9eb;
+  border-radius: 14px;
+  background: #fff;
+  color: #4e4857;
+  font: inherit;
+  cursor: pointer;
+}
+
+.student-account-pill > span {
+  width: 31px;
+  height: 31px;
+  border-radius: 9px;
+  font-size: .78rem;
+}
+
+.student-account-pill b {
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: .78rem;
+}
+
+.student-account-pill i {
+  color: #8e8797;
+}
+
+.student-home-login {
+  display: flex;
+  margin-top: 24px;
+  justify-content: center;
+}
+
+@media (max-width: 620px) {
+  .student-home-actions .button {
+    display: none;
+  }
+
+  .student-signed-in {
+    grid-template-columns: auto minmax(0,1fr);
+  }
+
+  .student-signed-in button {
+    grid-column: 2;
+    justify-self: start;
+  }
+}

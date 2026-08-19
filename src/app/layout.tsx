@@ -9,6 +9,11 @@ import "./arcade.css";
 import "./word-maze.css";
 import "./leaderboard.css";
 import "./classes.css";
+import "./student-auth.css";
+import "./student-account-recovery.css";
+import "./community.css";
+import "./community-actions.css";
+import "./public-entry.css";
 
 export const metadata: Metadata = {
   title: "ClassPlay — Playful English practice",
