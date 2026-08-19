@@ -147,6 +147,19 @@ export function sentenceWords(item: ActivityItem) {
   return sentenceAnswer(item).trim().split(/\s+/).filter(Boolean);
 }
 
+/**
+ * Speed bonus for objective games. Students always keep the base points for a
+ * correct answer; speed only adds a bonus. Full bonus is available during the
+ * first two seconds and then decreases linearly to zero at fifteen seconds.
+ */
+export function speedBonus(responseMs: number, maxBonus = 100, fullBonusUntilMs = 2000, zeroBonusAtMs = 15000) {
+  const elapsed = Math.max(0, responseMs);
+  if (elapsed <= fullBonusUntilMs) return maxBonus;
+  if (elapsed >= zeroBonusAtMs) return 0;
+  const range = Math.max(1, zeroBonusAtMs - fullBonusUntilMs);
+  return Math.round(maxBonus * (1 - (elapsed - fullBonusUntilMs) / range));
+}
+
 export function scoreFor(correct: boolean, streak: number) {
   if (!correct) return 0;
   return 100 + Math.min(streak, 5) * 20;
