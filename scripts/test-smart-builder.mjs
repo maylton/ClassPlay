@@ -91,6 +91,22 @@ assert.equal(lexical.find((entry) => entry.mode === "flashcards")?.status, "reco
 assert.equal(lexical.find((entry) => entry.mode === "matching")?.status, "recommended");
 assert.equal(lexical.find((entry) => entry.mode === "memory")?.status, "recommended");
 
+const lexicalWithGapVariants = lexicalItems.map((item, index) => ({
+  ...item,
+  gapSentence: index === 0 ? "I study in the _____." : "My _____ sits next to me.",
+}));
+const lexicalWithGaps = intelligence.analyzeGameModes(lexicalWithGapVariants, []);
+assert.equal(
+  lexicalWithGaps.find((entry) => entry.mode === "memory")?.status,
+  "recommended",
+  "A reusable Gap Fill variant must not hide a valid prompt ↔ answer Memory pair",
+);
+assert.equal(
+  lexicalWithGaps.find((entry) => entry.mode === "matching")?.status,
+  "recommended",
+  "A reusable Gap Fill variant must not hide a valid Matching pair",
+);
+
 const gapItems = [
   { id: "gap-1", prompt: "Ana _____ for a test now.", answer: "is studying", example: "Ana is studying for a test now.", gapSentence: "Ana _____ for a test now." },
   { id: "gap-2", prompt: "They _____ football.", answer: "are playing", example: "They are playing football.", gapSentence: "They _____ football." },
@@ -98,6 +114,7 @@ const gapItems = [
 const gaps = intelligence.analyzeGameModes(gapItems, []);
 assert.equal(gaps.find((entry) => entry.mode === "matching")?.status, "unavailable");
 assert.equal(gaps.find((entry) => entry.mode === "flashcards")?.status, "unavailable");
+assert.equal(gaps.find((entry) => entry.mode === "memory")?.status, "unavailable");
 assert.equal(gaps.find((entry) => entry.mode === "quiz")?.status, "recommended");
 assert.equal(gaps.find((entry) => entry.mode === "gap-fill")?.status, "recommended");
 
