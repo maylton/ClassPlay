@@ -1,7 +1,6 @@
-/* ClassPlay Classroom Studio — final spacing and scalability polish. */
+/* ClassPlay Classroom Studio — final spacing, scalability and mode-picker polish. */
 
-/* Keep the top margin of the floating header inside the app shell.
-   This removes the thin light strip that appeared above the colored page field. */
+/* Keep floating-header spacing inside app shells instead of letting first-child margins escape. */
 .app-shell {
   display: flow-root;
 }
@@ -36,6 +35,147 @@ body {
   font-size: .7rem;
 }
 
+/* Mode selector: keep the violet stage behind the floating header from the very first pixel.
+   Padding on the parent prevents the header margin from collapsing into the page background. */
+.mode-screen {
+  min-height: 100vh;
+  padding-top: 1rem !important;
+  background: var(--studio-violet) !important;
+}
+
+.mode-header {
+  margin: 0 auto !important;
+}
+
+/* Current game modes should feel like game pieces, not muted settings cards. */
+.mode-grid {
+  gap: 1rem !important;
+}
+
+.mode-card {
+  --mode-bg: #ffffff;
+  --mode-fg: var(--studio-ink);
+  --mode-shadow: rgba(35, 35, 35, .18);
+  position: relative;
+  overflow: hidden;
+  min-height: 138px;
+  padding: 1.25rem !important;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.16), rgba(255,255,255,0) 52%),
+    var(--mode-bg) !important;
+  color: var(--mode-fg) !important;
+  border: 3px solid rgba(35, 35, 35, .14) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 8px 0 var(--mode-shadow) !important;
+  transition: transform .16s ease, box-shadow .16s ease, filter .16s ease !important;
+}
+
+.mode-card.mint {
+  --mode-bg: #45d7aa;
+  --mode-fg: #18251f;
+  --mode-shadow: #159a72;
+}
+
+.mode-card.violet {
+  --mode-bg: #7056e8;
+  --mode-fg: #ffffff;
+  --mode-shadow: #4933b1;
+}
+
+.mode-card.blue {
+  --mode-bg: #247cf0;
+  --mode-fg: #ffffff;
+  --mode-shadow: #0c55b7;
+}
+
+.mode-card.orange {
+  --mode-bg: #ff9f43;
+  --mode-fg: #2d2116;
+  --mode-shadow: #d86c16;
+}
+
+.mode-card.pink {
+  --mode-bg: #ff6b9a;
+  --mode-fg: #2c1820;
+  --mode-shadow: #d63c70;
+}
+
+.mode-card.yellow {
+  --mode-bg: #ffd84d;
+  --mode-fg: #29230f;
+  --mode-shadow: #c7a10c;
+}
+
+.mode-card .mode-icon {
+  width: 3.25rem !important;
+  height: 3.25rem !important;
+  flex: 0 0 3.25rem;
+  display: grid;
+  place-items: center;
+  border: 0 !important;
+  border-radius: 15px !important;
+  background: rgba(255, 255, 255, .86) !important;
+  color: #25252a !important;
+  box-shadow: 0 4px 0 rgba(35, 35, 35, .12) !important;
+  font-size: 1.25rem !important;
+}
+
+.mode-card strong {
+  color: currentColor !important;
+  font-size: 1.08rem !important;
+  letter-spacing: -.02em;
+}
+
+.mode-card small {
+  color: currentColor !important;
+  opacity: .76;
+  margin-top: .3rem !important;
+  line-height: 1.35;
+}
+
+.mode-card > i {
+  width: 2.4rem !important;
+  height: 2.4rem !important;
+  display: grid !important;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .78) !important;
+  color: #25252a !important;
+  opacity: 1 !important;
+  transition: transform .16s ease !important;
+}
+
+.mode-card:hover {
+  transform: translateY(-4px) rotate(-.25deg);
+  box-shadow: 0 12px 0 var(--mode-shadow) !important;
+  filter: saturate(1.07);
+}
+
+.mode-card:nth-child(even):hover {
+  transform: translateY(-4px) rotate(.25deg);
+}
+
+.mode-card:hover > i {
+  transform: translateX(3px);
+}
+
+.mode-card:active {
+  transform: translateY(3px) !important;
+  box-shadow: 0 3px 0 var(--mode-shadow) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mode-card,
+  .mode-card > i {
+    transition: none !important;
+  }
+  .mode-card:hover,
+  .mode-card:nth-child(even):hover,
+  .mode-card:active {
+    transform: none !important;
+  }
+}
+
 @media (max-width: 760px) {
   .welcome-studio-card .studio-card-kicker {
     top: 1rem !important;
@@ -43,5 +183,13 @@ body {
 
   .welcome-studio-card h2 {
     font-size: clamp(2rem, 10vw, 2.7rem) !important;
+  }
+
+  .mode-screen {
+    padding-top: .75rem !important;
+  }
+
+  .mode-card {
+    min-height: 126px;
   }
 }
