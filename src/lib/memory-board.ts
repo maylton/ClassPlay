@@ -7,7 +7,7 @@ export function memoryBoardPairCount(availablePairs: number) {
   if (available < MEMORY_MIN_PAIRS) return available;
   if (available < MEMORY_BOARD_PAIR_SIZES[0]) return available;
 
-  let selected = MEMORY_BOARD_PAIR_SIZES[0];
+  let selected: number = MEMORY_BOARD_PAIR_SIZES[0];
   for (const size of MEMORY_BOARD_PAIR_SIZES) {
     if (size > available) break;
     selected = size;
