@@ -3,19 +3,20 @@
 import { useMemo, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { getPlayableItemsForMode, materializeItemsForMode } from "@/lib/activity-intelligence";
-import { gapOptions, sentenceGapAnswer } from "@/lib/game-engine";
+import { gapOptions, sentenceGapAnswer, shuffle } from "@/lib/game-engine";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
 
 export function GapFillGame({ activity, onComplete }: GameProps) {
-  const questions = useMemo(() => getPlayableItemsForMode(materializeItemsForMode(activity.items, "gap-fill"), "gap-fill"), [activity.items]);
+  const playableItems = useMemo(() => getPlayableItemsForMode(materializeItemsForMode(activity.items, "gap-fill"), "gap-fill"), [activity.items]);
+  const [questions, setQuestions] = useState(() => shuffle(playableItems));
   const [index, setIndex] = useState(0);
   const [correct, setCorrect] = useState(0);
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
   const item = questions[index];
-  const options = useMemo(() => item ? gapOptions(item, questions) : [], [item, questions]);
+  const options = useMemo(() => item ? gapOptions(item, playableItems) : [], [item, playableItems]);
 
   if (!item) return <div className="empty-game"><span><AppIcon name="pencil-square" /></span><h2>This set needs sentence targets.</h2><p>Add a full sentence and choose the word or expression to hide. ClassPlay will build the gap automatically.</p></div>;
 
@@ -33,6 +34,7 @@ export function GapFillGame({ activity, onComplete }: GameProps) {
   }
 
   function replay() {
+    setQuestions(shuffle(playableItems));
     setIndex(0); setCorrect(0); setScore(0); setSelected(null); setFinished(false);
   }
 
