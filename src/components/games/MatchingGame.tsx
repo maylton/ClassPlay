@@ -4,14 +4,47 @@ import { useMemo, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import { shuffle } from "@/lib/game-engine";
+import type { ActivityItem } from "@/lib/types";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
 
+function normalizedMatchValue(value: string) {
+  return value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
+}
+
+function uniqueVisiblePairs(items: ActivityItem[]) {
+  const seenAnswers = new Set<string>();
+  return shuffle(items).filter((item) => {
+    const key = normalizedMatchValue(item.answer);
+    if (!key || seenAnswers.has(key)) return false;
+    seenAnswers.add(key);
+    return true;
+  });
+}
+
+function averageLength(items: ActivityItem[], field: "prompt" | "answer") {
+  if (!items.length) return 0;
+  return items.reduce((sum, item) => sum + item[field].trim().length, 0) / items.length;
+}
+
 export function MatchingGame({ activity, onComplete }: GameProps) {
-  const playableItems = useMemo(() => getPlayableItemsForMode(activity.items, "matching"), [activity.items]);
+  const playableItems = useMemo(
+    () => uniqueVisiblePairs(getPlayableItemsForMode(activity.items, "matching")),
+    [activity.items],
+  );
   const matchingCopy = useMemo(() => {
     const context = `${activity.title} ${activity.topic}`.toLocaleLowerCase();
-    const isAdviceActivity = context.includes("advice") || context.includes("should");
+    const isAdviceActivity = context.includes("advice") || context.includes("should / shouldn't") || context.includes("should / shouldn’t");
+    const isPastSimple = context.includes("past simple") && context.includes("verb");
+    const isComparatives = context.includes("comparative") || context.includes("superlative");
+    const isConditional = context.includes("conditional");
+    const isThereIsAre = context.includes("there is") || context.includes("there are");
+    const lexicalKeywords = [
+      "vocabulary", "phrasal verb", "idiom", "slang", "gaming", "anime", "manga",
+      "environment", "job interview", "school life", "social media", "technology",
+      "travel", "academic collocation", "hedging",
+    ];
+    const isLexicalActivity = activity.kind === "vocabulary" || lexicalKeywords.some((keyword) => context.includes(keyword));
 
     if (isAdviceActivity) {
       return {
@@ -21,28 +54,51 @@ export function MatchingGame({ activity, onComplete }: GameProps) {
       };
     }
 
-    if (activity.kind === "vocabulary") {
+    if (isPastSimple) {
       return {
-        instruction: "Connect each English phrase to its meaning",
-        leftLabel: "ENGLISH",
-        rightLabel: "MEANING",
+        instruction: "Match each base verb to its past form",
+        leftLabel: "BASE VERB",
+        rightLabel: "PAST FORM",
       };
     }
 
-    if (activity.kind === "grammar") {
+    if (isComparatives) {
       return {
-        instruction: "Connect each prompt to the best sentence",
-        leftLabel: "PROMPT",
-        rightLabel: "BEST SENTENCE",
+        instruction: "Connect each adjective clue to the correct form",
+        leftLabel: "ADJECTIVE / CLUE",
+        rightLabel: "CORRECT FORM",
+      };
+    }
+
+    if (isLexicalActivity) {
+      const definitionFirst = averageLength(playableItems, "prompt") > averageLength(playableItems, "answer");
+      return definitionFirst
+        ? {
+            instruction: "Connect each meaning or clue to the English expression",
+            leftLabel: "MEANING / CLUE",
+            rightLabel: "ENGLISH",
+          }
+        : {
+            instruction: "Connect each English expression to its meaning",
+            leftLabel: "ENGLISH",
+            rightLabel: "MEANING",
+          };
+    }
+
+    if (isConditional || isThereIsAre) {
+      return {
+        instruction: "Connect each clue to the sentence that expresses it",
+        leftLabel: "CLUE",
+        rightLabel: "SENTENCE",
       };
     }
 
     return {
-      instruction: "Connect each prompt to its correct match",
-      leftLabel: "PROMPT",
-      rightLabel: "MATCH",
+      instruction: "Connect each clue to its correct answer",
+      leftLabel: "CLUE",
+      rightLabel: "ANSWER",
     };
-  }, [activity.kind, activity.title, activity.topic]);
+  }, [activity.kind, activity.title, activity.topic, playableItems]);
 
   const [left, setLeft] = useState(() => shuffle(playableItems));
   const [right, setRight] = useState(() => shuffle(playableItems));
@@ -53,7 +109,7 @@ export function MatchingGame({ activity, onComplete }: GameProps) {
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
   const [finished, setFinished] = useState(false);
 
-  if (!playableItems.length) return <div className="empty-game"><span><AppIcon name="link-45deg" /></span><h2>This set needs prompt + answer pairs.</h2><p>Add at least two usable pairs in the activity editor.</p></div>;
+  if (playableItems.length < 2) return <div className="empty-game"><span><AppIcon name="link-45deg" /></span><h2>This set needs at least two unique matches.</h2><p>Matching hides duplicate visible answers so students never have to guess between identical cards.</p></div>;
 
   function evaluate(leftId: string | null, rightId: string | null) {
     if (!leftId || !rightId) return;
@@ -75,10 +131,11 @@ export function MatchingGame({ activity, onComplete }: GameProps) {
   }
 
   function replay() {
-    setLeft(shuffle(playableItems)); setRight(shuffle(playableItems)); setSelectedLeft(null); setSelectedRight(null); setMatched([]); setAttempts(0); setFeedback(null); setFinished(false);
+    const nextItems = uniqueVisiblePairs(getPlayableItemsForMode(activity.items, "matching"));
+    setLeft(shuffle(nextItems)); setRight(shuffle(nextItems)); setSelectedLeft(null); setSelectedRight(null); setMatched([]); setAttempts(0); setFeedback(null); setFinished(false);
   }
 
   if (finished) return <CompletionCard score={Math.max(200, playableItems.length * 120 - (attempts - playableItems.length) * 40)} correct={playableItems.length} total={attempts} onReplay={replay} />;
 
-  return <div className="game-stage"><div className="game-progress-label"><span>{matchingCopy.instruction}</span><span>{matched.length}/{playableItems.length} matched</span></div><div className={`matching-board ${feedback ? `feedback-${feedback}` : ""}`}><div className="matching-column"><small>{matchingCopy.leftLabel}</small>{left.map((item) => <button key={item.id} disabled={matched.includes(item.id)} onClick={() => { setSelectedLeft(item.id); evaluate(item.id, selectedRight); }} className={selectedLeft === item.id ? "selected" : ""}>{item.hint && <span>{item.hint}</span>}{item.prompt}{matched.includes(item.id) && <i><AppIcon name="check-lg" /></i>}</button>)}</div><div className="matching-column"><small>{matchingCopy.rightLabel}</small>{right.map((item) => <button key={item.id} disabled={matched.includes(item.id)} onClick={() => { setSelectedRight(item.id); evaluate(selectedLeft, item.id); }} className={selectedRight === item.id ? "selected" : ""}>{item.answer}{matched.includes(item.id) && <i><AppIcon name="check-lg" /></i>}</button>)}</div></div></div>;
+  return <div className="game-stage"><div className="game-progress-label"><span>{matchingCopy.instruction}</span><span>{matched.length}/{playableItems.length} matched</span></div><div className={`matching-board ${feedback ? `feedback-${feedback}` : ""}`}><div className="matching-column"><small>{matchingCopy.leftLabel}</small>{left.map((item) => <button key={item.id} disabled={matched.includes(item.id)} onClick={() => { setSelectedLeft(item.id); evaluate(item.id, selectedRight); }} className={selectedLeft === item.id ? "selected" : ""}>{item.prompt}{matched.includes(item.id) && <i><AppIcon name="check-lg" /></i>}</button>)}</div><div className="matching-column"><small>{matchingCopy.rightLabel}</small>{right.map((item) => <button key={item.id} disabled={matched.includes(item.id)} onClick={() => { setSelectedRight(item.id); evaluate(selectedLeft, item.id); }} className={selectedRight === item.id ? "selected" : ""}>{item.answer}{matched.includes(item.id) && <i><AppIcon name="check-lg" /></i>}</button>)}</div></div></div>;
 }
