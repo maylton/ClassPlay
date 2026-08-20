@@ -247,9 +247,9 @@ export function resolveWildcardGrid(state: WildcardGridState, targetTeamId?: str
   const active = state.activeTeamId;
   const validTarget = targetTeamId && state.teamOrder.includes(targetTeamId) && targetTeamId !== active ? targetTeamId : undefined;
   if (effect.requiresTarget && !validTarget) throw new Error("Choose another team for this Wildcard.");
-  let scores = { ...state.teamScores };
+  const scores = { ...state.teamScores };
   let shields = { ...state.teamShields };
-  let doubles = { ...state.teamDoubleNext };
+  const doubles = { ...state.teamDoubleNext };
   const subtract = (teamId: string, amount: number) => {
     const shield = consumeShield({ ...state, teamShields: shields }, teamId);
     shields = shield.shields;
