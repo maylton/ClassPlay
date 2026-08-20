@@ -32,7 +32,7 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
   const board = useMemo(() => {
     if (!source) return null;
     return buildWordHuntBoard(source === "gap-fill" ? gapItems : quizItems, source);
-  }, [boardKey, gapItems, quizItems, source]);
+  }, [gapItems, quizItems, source]);
 
   const [targetIndex, setTargetIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -47,7 +47,7 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
 
   const target = board?.targets[targetIndex];
   const timerKey = `${boardKey}-${target?.itemId ?? "empty"}`;
-  const { elapsedMs, stop } = useQuestionTimer(timerKey);
+  const { stop } = useQuestionTimer(timerKey);
   const selectedKeys = useMemo(() => new Set(selection.map(cellKey)), [selection]);
   const foundKeys = useMemo(() => {
     const keys = new Set<string>();
