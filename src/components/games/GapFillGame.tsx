@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
+import { useQuestionTimer } from "@/hooks/useQuestionTimer";
 import { getPlayableItemsForMode, materializeItemsForMode } from "@/lib/activity-intelligence";
 import { gapOptions, sentenceGapAnswer, shuffle, speedBonus } from "@/lib/game-engine";
 import type { GameProps } from "./GameTypes";
@@ -15,35 +16,12 @@ export function GapFillGame({ activity, onComplete }: GameProps) {
   const [score, setScore] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
-  const [questionElapsedMs, setQuestionElapsedMs] = useState(0);
   const [lastPoints, setLastPoints] = useState(0);
-  const questionStartedAtRef = useRef(Date.now());
-  const questionTimerRef = useRef<number | null>(null);
   const item = questions[index];
+  const { elapsedMs: questionElapsedMs, stop: stopQuestionClock } = useQuestionTimer(`${index}:${item?.id ?? "empty"}`);
   const options = useMemo(() => item ? gapOptions(item, playableItems) : [], [item, playableItems]);
 
-  useEffect(() => {
-    questionStartedAtRef.current = Date.now();
-    setQuestionElapsedMs(0);
-    if (questionTimerRef.current !== null) window.clearInterval(questionTimerRef.current);
-    questionTimerRef.current = window.setInterval(() => setQuestionElapsedMs(Date.now() - questionStartedAtRef.current), 100);
-    return () => {
-      if (questionTimerRef.current !== null) window.clearInterval(questionTimerRef.current);
-      questionTimerRef.current = null;
-    };
-  }, [index, questions]);
-
   if (!item) return <div className="empty-game"><span><AppIcon name="pencil-square" /></span><h2>This set needs sentence targets.</h2><p>Add a full sentence and choose the word or expression to hide. ClassPlay will build the gap automatically.</p></div>;
-
-  function stopQuestionClock() {
-    if (questionTimerRef.current !== null) {
-      window.clearInterval(questionTimerRef.current);
-      questionTimerRef.current = null;
-    }
-    const elapsed = Date.now() - questionStartedAtRef.current;
-    setQuestionElapsedMs(elapsed);
-    return elapsed;
-  }
 
   function choose(option: string) {
     if (selected) return;
@@ -62,7 +40,7 @@ export function GapFillGame({ activity, onComplete }: GameProps) {
 
   function replay() {
     setQuestions(shuffle(playableItems));
-    setIndex(0); setCorrect(0); setScore(0); setSelected(null); setFinished(false); setQuestionElapsedMs(0); setLastPoints(0);
+    setIndex(0); setCorrect(0); setScore(0); setSelected(null); setFinished(false); setLastPoints(0);
   }
 
   if (finished) return <CompletionCard score={score} correct={correct} total={questions.length} onReplay={replay} />;
