@@ -2,6 +2,12 @@
 
 import { useEffect, useState } from "react";
 
+type CountdownSnapshot = {
+  key: string;
+  remaining: number;
+  preciseRemaining: number;
+};
+
 export function useLiveCountdown({
   active,
   startedAt,
@@ -13,27 +19,16 @@ export function useLiveCountdown({
   timerSeconds: number;
   intervalMs?: number;
 }) {
-  const [remaining, setRemaining] = useState<number | null>(null);
-  const [preciseRemaining, setPreciseRemaining] = useState<number | null>(null);
+  const started = startedAt ? new Date(startedAt).getTime() : Number.NaN;
+  const key = active && Number.isFinite(started) ? `${started}:${timerSeconds}` : null;
+  const [snapshot, setSnapshot] = useState<CountdownSnapshot | null>(null);
 
   useEffect(() => {
-    if (!active || !startedAt) {
-      setRemaining(null);
-      setPreciseRemaining(null);
-      return;
-    }
-
-    const started = new Date(startedAt).getTime();
-    if (!Number.isFinite(started)) {
-      setRemaining(null);
-      setPreciseRemaining(null);
-      return;
-    }
+    if (!key || !Number.isFinite(started)) return;
 
     const tick = () => {
       const precise = Math.max(0, timerSeconds - ((Date.now() - started) / 1000));
-      setPreciseRemaining(precise);
-      setRemaining(Math.ceil(precise));
+      setSnapshot({ key, preciseRemaining: precise, remaining: Math.ceil(precise) });
     };
 
     const initial = window.setTimeout(tick, 0);
@@ -42,7 +37,11 @@ export function useLiveCountdown({
       window.clearTimeout(initial);
       window.clearInterval(interval);
     };
-  }, [active, intervalMs, startedAt, timerSeconds]);
+  }, [intervalMs, key, started, timerSeconds]);
 
-  return { remaining, preciseRemaining };
+  if (!key) return { remaining: null, preciseRemaining: null };
+  if (snapshot?.key !== key) {
+    return { remaining: Math.ceil(timerSeconds), preciseRemaining: timerSeconds };
+  }
+  return { remaining: snapshot.remaining, preciseRemaining: snapshot.preciseRemaining };
 }
