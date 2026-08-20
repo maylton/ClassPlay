@@ -11,12 +11,13 @@ import { normalizeRoomCode, validateNickname } from "@/lib/live/live-engine";
 import { broadcastRoomEvent, joinLiveRoom, openLiveChannel, resumeLiveRoom, submitDynamiteAttempt, submitLiveAnswer } from "@/lib/live/room-service";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { speakEnglish } from "@/lib/tts";
-import type { ClassroomSettings, JoinRoomResult, LiveAnswerResult, LiveQuestion, ResumeRoomResult, SessionState } from "@/lib/types";
+import type { ClassroomSettings, JoinRoomResult, LiveAnswerResult, LiveQuestion, ResumeRoomResult, SessionState, WildcardGridState } from "@/lib/types";
 import { StudentDynamiteStage } from "./StudentDynamiteStage";
 import { StudentLiveSpaceBlaster } from "./StudentLiveSpaceBlaster";
+import { StudentWildcardGridStage } from "./StudentWildcardGridStage";
 
 const CREDENTIAL_KEY = "classplay.live.player.v2";
-type Credentials = { sessionId: string; playerId: string; playerToken: string; roomCode: string; activityTitle: string; nickname: string; teamName?: string | null; teamColor?: string | null };
+type Credentials = { sessionId: string; playerId: string; playerToken: string; roomCode: string; activityTitle: string; nickname: string; teamId?: string | null; teamName?: string | null; teamColor?: string | null };
 type FinalLeaderboardEntry = { id: string; name: string; score: number };
 type WinnerRef = { id: string; name: string };
 
@@ -67,7 +68,7 @@ export function StudentJoinClient({ initialCode = "" }: { initialCode?: string }
     setBusy(true); setError("");
     try {
       const result = await joinLiveRoom(cleanCode, validation.nickname);
-      const saved: Credentials = { sessionId: result.sessionId, playerId: result.playerId, playerToken: result.playerToken, roomCode: cleanCode, activityTitle: result.activityTitle, nickname: validation.nickname, teamName: result.teamName, teamColor: result.teamColor };
+      const saved: Credentials = { sessionId: result.sessionId, playerId: result.playerId, playerToken: result.playerToken, roomCode: cleanCode, activityTitle: result.activityTitle, nickname: validation.nickname, teamId: result.teamId, teamName: result.teamName, teamColor: result.teamColor };
       writeCredentials(saved);
       setJoinResult(result);
     } catch (cause) {
@@ -110,6 +111,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   const [answerResult, setAnswerResult] = useState<LiveAnswerResult | null>(null);
   const [correctAnswer, setCorrectAnswer] = useState<string | null>(null);
   const [score, setScore] = useState(0);
+  const [teamId, setTeamId] = useState<string | null>(credentials.teamId ?? initialJoin?.teamId ?? null);
   const [teamName, setTeamName] = useState<string | null>(credentials.teamName ?? null);
   const [teamColor, setTeamColor] = useState<string | null>(credentials.teamColor ?? null);
   const [connection, setConnection] = useState("Connecting…");
@@ -135,6 +137,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
       const snapshot: ResumeRoomResult = await resumeLiveRoom(credentials.playerId, credentials.playerToken);
       setState(snapshot.state); setQuestion(snapshot.currentQuestion ?? null); setSettings(snapshot.settings); setScore(snapshot.player.score);
       setCorrectAnswer(snapshot.revealedAnswer ?? null);
+      setTeamId(snapshot.player.teamId ?? credentials.teamId ?? null);
       setTeamName(snapshot.team?.name ?? credentials.teamName ?? null); setTeamColor(snapshot.team?.color ?? credentials.teamColor ?? null);
       if (snapshot.settings.dynamiteState?.winnerId) {
         const winner = snapshot.settings.dynamiteState.order.find((player) => player.id === snapshot.settings.dynamiteState?.winnerId);
@@ -143,7 +146,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not restore your room.");
     }
-  }, [credentials.playerId, credentials.playerToken, credentials.teamColor, credentials.teamName]);
+  }, [credentials.playerId, credentials.playerToken, credentials.teamColor, credentials.teamId, credentials.teamName]);
 
   useEffect(() => {
     const channel = openLiveChannel(credentials.sessionId, `player-${credentials.playerId}`);
@@ -156,9 +159,13 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
         if ((payload.settings as ClassroomSettings | undefined)?.readAloud && (payload.settings as ClassroomSettings).soundEnabled && next.activePlayerId === credentials.playerId) speakEnglish(next.prompt);
         if (payload.settings) setSettings(payload.settings as ClassroomSettings);
       })
-      .on("broadcast", { event: "dynamite-explosion" }, ({ payload }) => {
-        setDynamiteExplosionName(String(payload.playerName ?? "Player"));
+      .on("broadcast", { event: "wildcard-grid" }, ({ payload }) => {
+        setQuestion((payload.question as LiveQuestion | null | undefined) ?? null);
+        if (payload.settings) setSettings(payload.settings as ClassroomSettings);
+        setState((payload.state as SessionState | undefined) ?? "playing");
+        setSelected(null); setAnswerResult(null); setCorrectAnswer(null); setError("");
       })
+      .on("broadcast", { event: "dynamite-explosion" }, ({ payload }) => { setDynamiteExplosionName(String(payload.playerName ?? "Player")); })
       .on("broadcast", { event: "reveal" }, ({ payload }) => { setCorrectAnswer(String(payload.correctAnswer ?? "")); setState("round_results"); })
       .on("broadcast", { event: "final" }, ({ payload }) => {
         const raw: unknown[] = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
@@ -168,6 +175,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
         });
         const winner = payload.dynamiteWinner as WinnerRef | null | undefined;
         if (winner?.id) setDynamiteWinner({ id: String(winner.id), name: String(winner.name) });
+        if (payload.wildcardGridState) setSettings((current) => current ? { ...current, wildcardGridState: payload.wildcardGridState as WildcardGridState } : current);
         setFinalLeaderboard(leaderboard);
         setFinalLeaderboardKind(payload.leaderboardKind === "team" ? "team" : "individual");
         setState("final_results");
@@ -203,12 +211,9 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
     try {
       const result = await submitDynamiteAttempt(credentials.playerId, credentials.playerToken, question, option);
       setScore(result.score);
-      if (result.timeUp) {
-        setForcedTimeUp(true);
-      } else if (result.correct) {
-        setSelected(option);
-        setDynamitePassed(true);
-      } else {
+      if (result.timeUp) setForcedTimeUp(true);
+      else if (result.correct) { setSelected(option); setDynamitePassed(true); }
+      else {
         setDynamiteWrongOptions((current) => current.includes(option) ? current : [...current, option]);
         setDynamiteShake(true);
         window.setTimeout(() => setDynamiteShake(false), 340);
@@ -227,6 +232,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   };
 
   if (state === "final_results" || state === "closed") {
+    if (settings?.liveGameMode === "wildcard-grid" && settings.wildcardGridState) return <StudentWildcardGridStage nickname={credentials.nickname} playerTeamId={teamId} state={settings.wildcardGridState} connection={connection} error={error} />;
     if (settings?.liveGameMode === "dynamite" && dynamiteWinner) {
       const me = dynamiteWinner.id === credentials.playerId;
       return <main className="student-live-screen dynamite-student-final"><section className="student-result-card dynamite-winner-card"><span><AppIcon name="trophy" /></span><small>LAST ONE STANDING</small><h1>{me ? "You survived!" : `${dynamiteWinner.name} wins!`}</h1><p>{me ? "You were the final player holding on." : "The Dynamite has a winner."}</p><button className="button button-primary button-large" onClick={onLeave}>Done</button></section></main>;
@@ -249,29 +255,18 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
     );
   }
 
+  if (settings?.liveGameMode === "wildcard-grid" && settings.wildcardGridState) {
+    return <StudentWildcardGridStage nickname={credentials.nickname} playerTeamId={teamId} state={settings.wildcardGridState} connection={connection} error={error} />;
+  }
+
   if (state === "lobby" || !question) {
     const waitingMode = settings?.liveGameMode ? LIVE_MODE_CATALOG[settings.liveGameMode].label : "the live game";
-    return <main className="student-live-screen"><header className="student-live-header"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="connection-pill">● {connection}</span></header><section className="student-wait-card"><div className="waiting-orbit"><AppIcon name={settings?.liveGameMode === "dynamite" ? "fire" : "hourglass-split"} /></div><span className="eyebrow">YOU’RE IN</span><h1>Hi, {credentials.nickname}!</h1><p>Waiting for your teacher to start <strong>{waitingMode}</strong> with {credentials.activityTitle}.</p>{settings?.liveGameMode === "dynamite" && <div className="dynamite-phone-rule"><b>{settings.dynamiteTimerSeconds ?? 10}s fuse</b><span>Answer correctly before the Dynamite reaches zero. Last player alive wins.</span></div>}{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>You’re on {teamName}</div>}<div className="room-mini-code">Room {credentials.roomCode}</div>{error && <div className="student-error">{error}</div>}<button className="student-leave" onClick={onLeave}>{error ? "Rejoin with another name/code" : "Leave room"}</button></section></main>;
+    const waitingIcon = settings?.liveGameMode === "dynamite" ? "fire" : settings?.liveGameMode === "wildcard-grid" ? "grid-3x3-gap-fill" : "hourglass-split";
+    return <main className="student-live-screen"><header className="student-live-header"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="connection-pill">● {connection}</span></header><section className="student-wait-card"><div className="waiting-orbit"><AppIcon name={waitingIcon} /></div><span className="eyebrow">YOU’RE IN</span><h1>Hi, {credentials.nickname}!</h1><p>Waiting for your teacher to start <strong>{waitingMode}</strong> with {credentials.activityTitle}.</p>{settings?.liveGameMode === "dynamite" && <div className="dynamite-phone-rule"><b>{settings.dynamiteTimerSeconds ?? 10}s fuse</b><span>Answer correctly before the Dynamite reaches zero. Last player alive wins.</span></div>}{settings?.liveGameMode === "wildcard-grid" && <div className="dynamite-phone-rule"><b>{settings.wildcardGridSize ?? 12} mystery tiles</b><span>Choose numbers with your team, discuss the question and answer out loud. Hidden Wildcards can change the score.</span></div>}{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>You’re on {teamName}</div>}<div className="room-mini-code">Room {credentials.roomCode}</div>{error && <div className="student-error">{error}</div>}<button className="student-leave" onClick={onLeave}>{error ? "Rejoin with another name/code" : "Leave room"}</button></section></main>;
   }
 
   if (question.gameMode === "dynamite" && settings?.dynamiteState) {
-    return (
-      <StudentDynamiteStage
-        playerId={credentials.playerId}
-        nickname={credentials.nickname}
-        question={question}
-        state={settings.dynamiteState}
-        remaining={remaining ?? settings.dynamiteTimerSeconds ?? 10}
-        wrongOptions={dynamiteWrongOptions}
-        selected={selected}
-        passed={dynamitePassed}
-        shake={dynamiteShake}
-        explosionName={dynamiteExplosionName}
-        connection={connection}
-        error={error}
-        onAnswer={answerDynamite}
-      />
-    );
+    return <StudentDynamiteStage playerId={credentials.playerId} nickname={credentials.nickname} question={question} state={settings.dynamiteState} remaining={remaining ?? settings.dynamiteTimerSeconds ?? 10} wrongOptions={dynamiteWrongOptions} selected={selected} passed={dynamitePassed} shake={dynamiteShake} explosionName={dynamiteExplosionName} connection={connection} error={error} onAnswer={answerDynamite} />;
   }
 
   const isSpaceBlaster = question.gameMode === "space-blaster";
