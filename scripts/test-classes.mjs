@@ -38,8 +38,10 @@ assert.match(studentAccount, /rpc\("join_classroom_account"/, "v0.5 students mus
 assert.doesNotMatch(studentAccount, /signInAnonymously/, "the active v0.5 student account flow must not use anonymous auth");
 assert.match(secureRepository, /rpc\("submit_assignment_attempt"/, "assignment results must use the secure RPC client");
 
+assert.match(stage, /GAME_COMPONENTS:\s*Record<GameType,\s*ComponentType<GameProps>>/, "GameStage must use a complete typed game registry");
 for (const mode of ["flashcards", "memory", "matching", "sentence-builder", "gap-fill", "quiz", "space-blaster", "word-maze"]) {
-  assert.match(stage, new RegExp(`mode === \"${mode}\"|return <WordMazeGame`), `GameStage must support ${mode}`);
+  const key = mode.includes("-") ? `"${mode}"` : `(?:${mode}|"${mode}")`;
+  assert.match(stage, new RegExp(`${key}\\s*:`), `GameStage must register ${mode}`);
 }
 
 assert.match(join, /Class key/, "student join UI must ask for the class key when joining a class");
