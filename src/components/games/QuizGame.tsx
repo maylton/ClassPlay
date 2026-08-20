@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
+import { useQuestionTimer } from "@/hooks/useQuestionTimer";
 import { getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import { quizOptions, shuffle, speedBonus } from "@/lib/game-engine";
 import type { ActivityItem } from "@/lib/types";
@@ -50,36 +51,13 @@ export function QuizGame({ activity, onComplete }: GameProps) {
   const [streak, setStreak] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [finished, setFinished] = useState(false);
-  const [questionElapsedMs, setQuestionElapsedMs] = useState(0);
   const [lastPoints, setLastPoints] = useState(0);
-  const questionStartedAtRef = useRef(Date.now());
-  const questionTimerRef = useRef<number | null>(null);
   const item = questions[index];
+  const { elapsedMs: questionElapsedMs, stop: stopQuestionClock } = useQuestionTimer(`${index}:${item?.id ?? "empty"}`);
   const options = useMemo(() => item ? quizOptions(item, playableItems) : [], [item, playableItems]);
   const copy = useMemo(() => item ? quizCopy(item, activity.kind) : null, [item, activity.kind]);
 
-  useEffect(() => {
-    questionStartedAtRef.current = Date.now();
-    setQuestionElapsedMs(0);
-    if (questionTimerRef.current !== null) window.clearInterval(questionTimerRef.current);
-    questionTimerRef.current = window.setInterval(() => setQuestionElapsedMs(Date.now() - questionStartedAtRef.current), 100);
-    return () => {
-      if (questionTimerRef.current !== null) window.clearInterval(questionTimerRef.current);
-      questionTimerRef.current = null;
-    };
-  }, [index, questions]);
-
   if (!item || !copy) return <div className="empty-game"><span><AppIcon name="trophy" /></span><h2>This set needs usable answer pairs.</h2><p>Add at least two prompt + answer pairs with different answers.</p></div>;
-
-  function stopQuestionClock() {
-    if (questionTimerRef.current !== null) {
-      window.clearInterval(questionTimerRef.current);
-      questionTimerRef.current = null;
-    }
-    const elapsed = Date.now() - questionStartedAtRef.current;
-    setQuestionElapsedMs(elapsed);
-    return elapsed;
-  }
 
   function choose(option: string) {
     if (selected) return;
@@ -98,7 +76,7 @@ export function QuizGame({ activity, onComplete }: GameProps) {
   }
 
   function replay() {
-    setQuestions(shuffle(playableItems)); setIndex(0); setCorrect(0); setScore(0); setStreak(0); setSelected(null); setFinished(false); setQuestionElapsedMs(0); setLastPoints(0);
+    setQuestions(shuffle(playableItems)); setIndex(0); setCorrect(0); setScore(0); setStreak(0); setSelected(null); setFinished(false); setLastPoints(0);
   }
 
   if (finished) return <CompletionCard score={score} correct={correct} total={questions.length} onReplay={replay} />;
