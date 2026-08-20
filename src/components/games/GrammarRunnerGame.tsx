@@ -17,6 +17,7 @@ import { CompletionCard } from "./CompletionCard";
 
 type Lane = 0 | 1 | 2;
 type RunnerFeedback = "perfect" | "correct" | "wrong" | null;
+type LaneShift = "left" | "right" | null;
 
 const LANE_LABELS = ["LEFT", "CENTER", "RIGHT"] as const;
 
@@ -38,33 +39,61 @@ function DashRunner({ state }: { state: "running" | "celebrate" | "stumble" }) {
       <span className="runner-shadow" />
       <svg className="runner-avatar" viewBox="0 0 170 220" role="presentation">
         <g className="runner-scarf">
-          <path d="M59 73 C39 75 31 62 19 57 C25 73 39 85 58 88 Z" />
-          <path d="M53 81 C34 87 30 101 18 111 C39 108 55 99 66 88 Z" />
+          <path d="M76 78 C61 88 47 101 37 118 C53 114 68 104 80 91 Z" />
+          <path d="M73 84 C60 101 58 118 51 134 C67 124 76 108 82 91 Z" />
         </g>
-        <g className="runner-back-leg"><path d="M92 148 C105 163 113 178 119 194" /><path className="runner-shoe" d="M111 190 C123 187 136 191 143 199 C136 208 117 208 108 201 Z" /></g>
-        <g className="runner-front-leg"><path d="M79 149 C72 166 62 178 50 190" /><path className="runner-shoe" d="M41 187 C51 188 61 193 66 201 C55 208 37 204 31 197 Z" /></g>
+
+        <g className="runner-back-leg">
+          <path d="M97 145 C101 158 103 174 99 191" />
+          <path className="runner-shoe" d="M90 188 C101 185 114 188 120 195 C115 204 98 207 88 200 Z" />
+        </g>
+        <g className="runner-front-leg">
+          <path d="M73 145 C69 160 68 176 72 192" />
+          <path className="runner-shoe" d="M62 191 C72 187 85 189 91 197 C84 205 67 206 59 199 Z" />
+        </g>
+
         <g className="runner-body">
-          <path className="runner-jacket" d="M58 83 C69 76 99 76 111 87 L116 137 C106 148 66 149 52 137 Z" />
-          <path className="runner-jacket-panel" d="M82 81 L88 145" />
-          <path className="runner-jacket-pocket" d="M63 115 L78 116" />
-          <path className="runner-jacket-pocket" d="M94 116 L109 114" />
-          <circle className="runner-badge" cx="101" cy="99" r="6" />
-          <path className="runner-neck" d="M77 77 L77 88 L94 88 L95 75" />
+          <path className="runner-jacket" d="M58 86 C69 78 100 78 112 88 L117 137 C106 149 66 150 52 138 Z" />
+          <path className="runner-hood" d="M69 83 C73 74 97 73 103 83 C98 92 75 93 69 83 Z" />
+          <path className="runner-jacket-yoke" d="M60 101 C75 108 98 108 112 101" />
+          <path className="runner-jacket-panel" d="M85 106 L86 145" />
+          <path className="runner-reflector" d="M66 121 C77 124 95 124 106 121" />
+          <circle className="runner-badge" cx="102" cy="96" r="6" />
         </g>
-        <g className="runner-back-arm"><path d="M106 94 C121 105 127 117 132 132" /><circle className="runner-hand" cx="133" cy="135" r="7" /></g>
-        <g className="runner-front-arm"><path d="M58 94 C45 106 41 120 40 136" /><circle className="runner-hand" cx="39" cy="139" r="7" /></g>
+
+        <g className="runner-back-arm">
+          <path d="M109 94 C118 108 121 123 118 139" />
+          <circle className="runner-hand" cx="117" cy="143" r="7" />
+        </g>
+        <g className="runner-front-arm">
+          <path d="M59 95 C51 109 49 124 52 140" />
+          <circle className="runner-hand" cx="53" cy="144" r="7" />
+        </g>
+
         <g className="runner-head">
-          <circle className="runner-face" cx="85" cy="56" r="31" />
-          <path className="runner-hair" d="M57 53 C55 31 67 19 85 19 C104 19 116 31 115 51 C108 43 102 38 95 34 C91 44 77 45 68 39 C65 46 61 50 57 53 Z" />
-          <path className="runner-hair-tuft" d="M79 23 C83 10 98 9 105 18 C94 17 88 22 85 30 Z" />
-          <circle className="runner-eye" cx="74" cy="58" r="3.2" /><circle className="runner-eye" cx="96" cy="58" r="3.2" />
-          <path className="runner-brow" d="M68 51 Q74 47 80 50" /><path className="runner-brow" d="M90 50 Q96 47 102 51" />
-          <path className="runner-smile" d="M76 68 Q85 75 94 68" />
-          <g className="runner-headphones"><path d="M59 56 C56 35 68 24 85 23 C103 23 115 35 112 56" /><rect x="54" y="50" width="12" height="24" rx="6" /><rect x="104" y="50" width="12" height="24" rx="6" /><circle cx="60" cy="62" r="3" /><circle cx="110" cy="62" r="3" /></g>
+          <circle className="runner-head-base" cx="85" cy="57" r="31" />
+          <path className="runner-hair-back" d="M56 58 C54 33 67 19 85 18 C105 18 118 33 115 59 C109 53 105 48 101 42 C94 47 76 48 67 41 C64 49 60 55 56 58 Z" />
+          <path className="runner-hair-highlight" d="M72 29 C80 22 94 22 102 30 C92 28 82 30 74 36 Z" />
+          <g className="runner-headphones">
+            <path d="M59 57 C56 36 68 24 85 23 C103 23 115 36 112 57" />
+            <rect x="54" y="50" width="12" height="25" rx="6" />
+            <rect x="104" y="50" width="12" height="25" rx="6" />
+            <circle cx="60" cy="63" r="3" />
+            <circle cx="110" cy="63" r="3" />
+          </g>
         </g>
-        <g className="runner-sparkles"><path d="M136 61 l4 8 8 4-8 4-4 8-4-8-8-4 8-4z" /><circle cx="145" cy="99" r="4" /></g>
+
+        <g className="runner-sparkles">
+          <path d="M136 61 l4 8 8 4-8 4-4 8-4-8-8-4 8-4z" />
+          <circle cx="145" cy="99" r="4" />
+        </g>
       </svg>
-      <span className="runner-speed-line line-a" /><span className="runner-speed-line line-b" /><span className="runner-speed-line line-c" />
+      <span className="runner-speed-line line-a" />
+      <span className="runner-speed-line line-b" />
+      <span className="runner-speed-line line-c" />
+      <span className="runner-speed-line line-d" />
+      <span className="runner-speed-line line-e" />
+      <span className="runner-speed-line line-f" />
     </div>
   );
 }
@@ -90,6 +119,8 @@ export function GrammarRunnerGame({ activity, onComplete }: GameProps) {
   const [feedback, setFeedback] = useState<RunnerFeedback>(null);
   const [finished, setFinished] = useState(false);
   const [runnerState, setRunnerState] = useState<"running" | "celebrate" | "stumble">("running");
+  const [laneShift, setLaneShift] = useState<LaneShift>(null);
+  const laneShiftTimerRef = useRef<number | null>(null);
   const swipeStartX = useRef<number | null>(null);
 
   const round = rounds[roundIndex];
@@ -97,12 +128,31 @@ export function GrammarRunnerGame({ activity, onComplete }: GameProps) {
   const { elapsedMs, stop } = useQuestionTimer(round?.itemId ?? "runner-empty");
   const progress = Math.min(1, elapsedMs / Math.max(1, travelMs));
 
+  const clearLaneShift = useCallback(() => {
+    if (laneShiftTimerRef.current !== null) {
+      window.clearTimeout(laneShiftTimerRef.current);
+      laneShiftTimerRef.current = null;
+    }
+    setLaneShift(null);
+  }, []);
+
   const moveToLane = useCallback((nextLane: Lane) => {
     if (locked || finished) return;
+    const currentLane = laneRef.current;
+
+    if (nextLane !== currentLane && !settings.reducedMotion) {
+      if (laneShiftTimerRef.current !== null) window.clearTimeout(laneShiftTimerRef.current);
+      setLaneShift(nextLane < currentLane ? "left" : "right");
+      laneShiftTimerRef.current = window.setTimeout(() => {
+        laneShiftTimerRef.current = null;
+        setLaneShift(null);
+      }, 260);
+    }
+
     laneRef.current = nextLane;
     selectionMsRef.current = elapsedMs;
     setLane(nextLane);
-  }, [elapsedMs, finished, locked]);
+  }, [elapsedMs, finished, locked, settings.reducedMotion]);
 
   const move = useCallback((direction: -1 | 1) => {
     const next = Math.max(0, Math.min(2, laneRef.current + direction)) as Lane;
@@ -122,7 +172,8 @@ export function GrammarRunnerGame({ activity, onComplete }: GameProps) {
     setLocked(false);
     setFeedback(null);
     setRunnerState("running");
-  }, [onComplete, roundIndex, rounds.length]);
+    clearLaneShift();
+  }, [clearLaneShift, onComplete, roundIndex, rounds.length]);
 
   const resolveGate = useCallback(() => {
     if (!round || locked || finished) return;
@@ -163,6 +214,10 @@ export function GrammarRunnerGame({ activity, onComplete }: GameProps) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [move, moveToLane]);
 
+  useEffect(() => () => {
+    if (laneShiftTimerRef.current !== null) window.clearTimeout(laneShiftTimerRef.current);
+  }, []);
+
   function onPointerDown(event: ReactPointerEvent<HTMLElement>) { swipeStartX.current = event.clientX; }
   function onPointerUp(event: ReactPointerEvent<HTMLElement>) {
     const start = swipeStartX.current;
@@ -178,6 +233,7 @@ export function GrammarRunnerGame({ activity, onComplete }: GameProps) {
     laneRef.current = 1;
     selectionMsRef.current = null;
     setLane(1); setScore(0); setCorrectCount(0); setStreak(0); setLocked(false); setFeedback(null); setFinished(false); setRunnerState("running");
+    clearLaneShift();
   }
 
   if (!source || !rounds.length) return <div className="empty-game"><span><AppIcon name="sign-turn-right-fill" /></span><h2>Grammar Runner needs more question-ready content.</h2><p>Add at least three usable Quiz pairs or three Gap Fill sentences.</p></div>;
@@ -194,7 +250,7 @@ export function GrammarRunnerGame({ activity, onComplete }: GameProps) {
         <div className="runner-city" aria-hidden="true">{Array.from({ length: 11 }, (_, index) => <i key={index} />)}</div>
         <div className="runner-track" aria-hidden="true"><span className="runner-lane-line line-left" /><span className="runner-lane-line line-right" /><span className="runner-track-glow" /></div>
         <div className="runner-gates">{round.gates.map((gate) => <div key={`${round.itemId}-${gate.lane}-${gate.text}`} style={gateStyle(gate.lane, progress)} className={`runner-gate ${locked && gate.correct ? "gate-correct" : ""} ${locked && lane === gate.lane && !gate.correct ? "gate-wrong" : ""}`}><span className="runner-gate-frame" /><small>{LANE_LABELS[gate.lane]}</small><strong>{gate.text}</strong></div>)}</div>
-        <div className={`runner-player lane-${lane}`}><DashRunner state={runnerState} /></div>
+        <div className={`runner-player lane-${lane} ${laneShift ? `shift-${laneShift}` : ""}`}><DashRunner state={runnerState} /></div>
         <div className="runner-feedback" aria-live="polite">{feedback === "perfect" && <span className="perfect"><AppIcon name="lightning-charge-fill" /> PERFECT RUN!</span>}{feedback === "correct" && <span className="correct"><AppIcon name="check-circle-fill" /> Clean gate!</span>}{feedback === "wrong" && <span className="wrong"><AppIcon name="x-circle-fill" /> Wrong lane — {round.correctAnswer}</span>}</div>
       </section>
 
