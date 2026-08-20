@@ -2,16 +2,20 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import ts from "typescript";
 
-async function importTypeScriptModule(path) {
-  const source = await readFile(new URL(path, import.meta.url), "utf8");
+async function compileTypeScriptModule(path, replacements = []) {
+  let source = await readFile(new URL(path, import.meta.url), "utf8");
+  for (const [from, to] of replacements) source = source.replace(from, to);
   const compiled = ts.transpileModule(source, {
     compilerOptions: {
       module: ts.ModuleKind.ESNext,
       target: ts.ScriptTarget.ES2022,
     },
   }).outputText;
-  const moduleUrl = `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`;
-  return import(moduleUrl);
+  return `data:text/javascript;base64,${Buffer.from(compiled).toString("base64")}`;
+}
+
+async function importTypeScriptModule(path, replacements = []) {
+  return import(await compileTypeScriptModule(path, replacements));
 }
 
 async function importActivityIntelligence() {
@@ -41,11 +45,14 @@ function findEnglishPhraseMatch(sentence, candidate) {
 }
 
 const { findEnglishPhraseMatch } = await importTypeScriptModule("../src/lib/english-phrase-matcher.ts");
+const gameEngineUrl = await compileTypeScriptModule("../src/lib/game-engine.ts");
 const {
   MEMORY_MAX_PAIRS,
   chooseMemoryItems,
   memoryBoardPairCount,
-} = await importTypeScriptModule("../src/lib/memory-board.ts");
+} = await importTypeScriptModule("../src/lib/memory-board.ts", [
+  ['from "./game-engine"', `from "${gameEngineUrl}"`],
+]);
 
 function matchedText(sentence, target) {
   return findEnglishPhraseMatch(sentence, target)?.text ?? null;
