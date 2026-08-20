@@ -3,7 +3,7 @@ import { LiveSessionSetup } from "@/components/live/LiveSessionSetup";
 import { requireTeacher } from "@/lib/supabase/auth";
 import type { LiveGameMode } from "@/lib/types";
 
-const LIVE_GAME_MODES: readonly LiveGameMode[] = ["gap-fill", "quiz", "space-blaster", "dynamite"];
+const LIVE_GAME_MODES: readonly LiveGameMode[] = ["gap-fill", "quiz", "space-blaster", "dynamite", "wildcard-grid"];
 
 export default async function NewHostPage({ searchParams }: { searchParams: Promise<{ activity?: string; mode?: string }> }) {
   const params = await searchParams;

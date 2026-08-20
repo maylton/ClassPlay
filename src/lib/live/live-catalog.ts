@@ -27,6 +27,11 @@ export const LIVE_MODE_CATALOG = {
     description: "Pass the fuse by answering before time runs out. Last player alive wins.",
     icon: "fire",
   },
+  "wildcard-grid": {
+    label: "Wildcard Grid",
+    description: "Teams pick numbered tiles, answer out loud and uncover hidden twists.",
+    icon: "grid-3x3-gap-fill",
+  },
 } satisfies Record<LiveGameMode, LiveModePresentation>;
 
 export const LIVE_MODE_ORDER = Object.keys(LIVE_MODE_CATALOG) as LiveGameMode[];
