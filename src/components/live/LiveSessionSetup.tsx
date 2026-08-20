@@ -132,7 +132,7 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
 
   return (
     <main className="live-setup-main">
-      <section className="live-setup-heading"><span className="eyebrow">Connected Classroom</span><h1>Turn this activity into a live class.</h1><p>Students join from any phone or computer using a short code. No student account needed.</p></section>
+      <section className="live-setup-heading"><span className="eyebrow">Connected Classroom</span><h1>Turn this activity into a live class.</h1><p>{isWildcardGrid ? "Wildcard Grid works entirely from the projector. Student phones are optional companions for team and score updates." : "Students join from any phone or computer using a short code. No student account needed."}</p></section>
       {error && <div className="alert-error">{error}</div>}
       <section className="live-setup-grid">
         <article className="live-activity-preview"><span>{activity.level} · {activity.grade}</span><h2>{activity.title}</h2><p>{activity.description}</p><div><b>{selectedCompatibility?.playableItems ?? activity.items.length}</b><small>{isDynamite || isWildcardGrid ? "question pool" : "live questions"}</small></div></article>
@@ -192,7 +192,7 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
                 <button className={wildcardGridIntensity === "chaos" ? "active" : ""} onClick={() => setWildcardGridIntensity("chaos")}><b><AppIcon name="lightning-charge" /> Chaos</b><small>Can include swap, blackout or a fresh start</small></button>
               </div>
               <label className="field team-count-field"><span>Number of teams</span><select value={teamCount} onChange={(event) => setTeamCount(Number(event.target.value))}>{[2,3,4].map((count) => <option key={count} value={count}>{count} teams</option>)}</select></label>
-              <div className="dynamite-setup-note wildcard-setup-note"><AppIcon name="mic" /><div><b>Projector-first team game</b><span>Teams discuss and answer out loud. You mark Correct or Not quite; phones show team, turn and score status.</span></div></div>
+              <div className="dynamite-setup-note wildcard-setup-note"><AppIcon name="display" /><div><b>Projector-first — phones optional</b><span>Teams discuss and answer out loud. You control every tile, answer and Wildcard here; connected phones only mirror team, turn and score status.</span></div></div>
             </>
           ) : (
             <>
@@ -208,7 +208,7 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
           <div className="live-setting-summary">
             <span><AppIcon name="clock" /> {isDynamite ? `${dynamiteTimerSeconds}s fuse` : isWildcardGrid ? "Teacher-paced" : settings.timerEnabled ? `${settings.timerSeconds}s timer` : "No timer"}</span>
             <span><AppIcon name={isDynamite ? "person-check" : isWildcardGrid ? "grid-3x3-gap-fill" : settings.leaderboardEnabled ? "trophy" : "eye-slash"} /> {isDynamite ? "Last survivor wins" : isWildcardGrid ? `${selectedWildcardSize} tiles · ${teamCount} teams` : settings.leaderboardEnabled ? "Leaderboard on" : "Leaderboard off"}</span>
-            <span><AppIcon name={isWildcardGrid ? "stars" : settings.readAloud ? "volume-up" : "volume-mute"} /> {isWildcardGrid ? `${wildcardGridIntensity === "chaos" ? "Chaos" : "Balanced"} Wildcards` : settings.readAloud ? "Read aloud" : "Manual audio"}</span>
+            <span><AppIcon name={isWildcardGrid ? "display" : settings.readAloud ? "volume-up" : "volume-mute"} /> {isWildcardGrid ? "Phones optional" : settings.readAloud ? "Read aloud" : "Manual audio"}</span>
           </div>
           {!hasLiveMode && <div className="alert-error">This deck does not currently contain enough compatible content for a live mode.</div>}
           <button className="button button-primary button-large start-live-button" disabled={busy || !hasLiveMode || !selectedCompatibility?.available} onClick={() => void create()}>{busy ? "Creating room…" : <>Create live room <AppIcon name="arrow-right" /></>}</button>
