@@ -53,6 +53,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   const [busy, setBusy] = useState(false);
   const [presenceCount, setPresenceCount] = useState(0);
   const [hostRemaining, setHostRemaining] = useState<number | null>(null);
+  const [hostRemainingPrecise, setHostRemainingPrecise] = useState<number | null>(null);
   const [dynamiteExplosion, setDynamiteExplosion] = useState<string | null>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
   const loadedActivityIdRef = useRef<string | null>(null);
@@ -222,18 +223,24 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   useEffect(() => {
     if (session?.state !== "playing" || !session.currentQuestion || !session.settings.timerEnabled) {
       setHostRemaining(null);
+      setHostRemainingPrecise(null);
       return;
     }
     const startedAt = new Date(session.currentQuestion.startedAt).getTime();
     if (!Number.isFinite(startedAt)) {
       setHostRemaining(null);
+      setHostRemainingPrecise(null);
       return;
     }
-    const tick = () => setHostRemaining(Math.max(0, session.settings.timerSeconds - Math.floor((Date.now() - startedAt) / 1000)));
+    const tick = () => {
+      const precise = Math.max(0, session.settings.timerSeconds - ((Date.now() - startedAt) / 1000));
+      setHostRemaining(Math.ceil(precise));
+      setHostRemainingPrecise(isDynamite ? precise : null);
+    };
     const initial = window.setTimeout(tick, 0);
-    const interval = window.setInterval(tick, 200);
+    const interval = window.setInterval(tick, isDynamite ? 80 : 200);
     return () => { window.clearTimeout(initial); window.clearInterval(interval); };
-  }, [session?.currentQuestion, session?.settings.timerEnabled, session?.settings.timerSeconds, session?.state]);
+  }, [isDynamite, session?.currentQuestion, session?.settings.timerEnabled, session?.settings.timerSeconds, session?.state]);
 
   const advanceDynamitePass = useCallback(async () => {
     if (!activity || !session || !dynamiteState || dynamiteTransitionRef.current) return;
@@ -426,6 +433,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
         session={session}
         state={dynamiteState}
         remaining={hostRemaining ?? session.settings.dynamiteTimerSeconds ?? 10}
+        preciseRemaining={hostRemainingPrecise ?? hostRemaining ?? session.settings.dynamiteTimerSeconds ?? 10}
         explosion={dynamiteExplosion}
         onEnd={() => void endSession()}
       />
@@ -460,12 +468,13 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   );
 }
 
-function DynamiteHostStage({ session, state, remaining, explosion, onEnd }: { session: GameSession; state: DynamiteState; remaining: number; explosion: string | null; onEnd: () => void }) {
+function DynamiteHostStage({ session, state, remaining, preciseRemaining, explosion, onEnd }: { session: GameSession; state: DynamiteState; remaining: number; preciseRemaining: number; explosion: string | null; onEnd: () => void }) {
   const current = state.order.find((player) => player.id === state.currentPlayerId);
   const nextId = nextAlivePlayerId(state);
   const next = state.order.find((player) => player.id === nextId);
   const total = session.settings.dynamiteTimerSeconds ?? 10;
-  const fusePercent = Math.max(0, Math.min(100, (remaining / total) * 100));
+  const fusePercent = Math.max(0, Math.min(100, (preciseRemaining / total) * 100));
+  const fuseDash = `${fusePercent} ${Math.max(0.01, 100 - fusePercent)}`;
 
   return (
     <main className={`host-room dynamite-host-screen ${remaining <= 3 ? "dynamite-critical" : ""} ${explosion ? "is-exploding" : ""}`}>
@@ -480,7 +489,13 @@ function DynamiteHostStage({ session, state, remaining, explosion, onEnd }: { se
               <h1 className="dynamite-player-call">{current?.name ?? "Player"}&apos;s turn!</h1>
               <div className="dynamite-device" aria-label={`Dynamite fuse: ${remaining} seconds`}>
                 <div className="dynamite-sticks"><i /><i /><i /></div>
-                <div className="dynamite-fuse"><span /></div>
+                <div className="dynamite-fuse" aria-hidden="true">
+                  <svg viewBox="0 0 150 96" role="presentation">
+                    <path className="dynamite-fuse-burnt" d="M 8 86 C 35 47 65 86 96 46 C 113 24 131 17 142 9" pathLength="100" />
+                    <path className="dynamite-fuse-rope" d="M 8 86 C 35 47 65 86 96 46 C 113 24 131 17 142 9" pathLength="100" style={{ strokeDasharray: fuseDash }} />
+                  </svg>
+                  <div className="dynamite-fuse-spark" style={{ offsetDistance: `${fusePercent}%` }}><i /><i /></div>
+                </div>
                 <b>{remaining}</b><small>SECONDS</small>
               </div>
               <div className="dynamite-fuse-progress"><span style={{ width: `${fusePercent}%` }} /></div>
