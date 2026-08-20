@@ -18,7 +18,6 @@ export function getDerivedArcadeReadiness(activity: Pick<ActivitySet, "items">):
   const readiness: Record<(typeof DERIVED_ARCADE_MODE_ORDER)[number], boolean> = {
     "boss-battle": questionReady,
     "bubble-burst": questionReady,
-    "grammar-runner": questionReady,
     "phrase-forge": phraseReady,
   };
   return {
