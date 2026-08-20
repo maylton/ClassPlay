@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import type { ActivitySet, GameType } from "@/lib/types";
+import { BossBattleGame } from "./BossBattleGame";
+import { BubbleBurstGame } from "./BubbleBurstGame";
 import { FlashcardsGame } from "./FlashcardsGame";
 import { GapFillGame } from "./GapFillGame";
 import type { GameProps } from "./GameTypes";
@@ -23,6 +25,8 @@ const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
   quiz: QuizGame,
   "space-blaster": SpaceBlasterGame,
   "word-maze": WordMazeGame,
+  "boss-battle": BossBattleGame,
+  "bubble-burst": BubbleBurstGame,
 };
 
 function formatElapsed(milliseconds: number) {

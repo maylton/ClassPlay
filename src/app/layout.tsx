@@ -7,6 +7,8 @@ import "./smart-builder.css";
 import "./memory-game.css";
 import "./sentence-builder.css";
 import "./arcade.css";
+import "./boss-battle.css";
+import "./bubble-burst.css";
 import "./word-maze.css";
 import "./dynamite.css";
 import "./dynamite-fuse.css";

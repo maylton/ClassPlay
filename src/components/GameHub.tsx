@@ -16,6 +16,8 @@ import type { ActivitySet, GameType } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
 import { PracticeLeaderboard } from "./leaderboard/PracticeLeaderboard";
 import { SettingsPanel } from "./settings/SettingsPanel";
+import { BossBattleGame } from "./games/BossBattleGame";
+import { BubbleBurstGame } from "./games/BubbleBurstGame";
 import { FlashcardsGame } from "./games/FlashcardsGame";
 import { MemoryGame } from "./games/MemoryGame";
 import { MatchingGame } from "./games/MatchingGame";
@@ -25,7 +27,7 @@ import { QuizGame } from "./games/QuizGame";
 import { SpaceBlasterGame } from "./games/SpaceBlasterGame";
 import { WordMazeGame } from "./games/WordMazeGame";
 
-const ARCADE_MODES: readonly GameType[] = ["space-blaster", "word-maze"];
+const ARCADE_MODES: readonly GameType[] = ["space-blaster", "word-maze", "boss-battle", "bubble-burst"];
 type PracticeCompletion = { game: GameType; score: number; correct: number; total: number };
 
 export function GameHub({ activityId, practice = false }: { activityId: string; practice?: boolean }) {
@@ -51,15 +53,18 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
   }, [activityId, practice]);
 
   const variants = useMemo(() => !practice && activity ? compatibleVariants(activity) : [], [activity, practice]);
-  const liveQuestionPools = useMemo(() => {
-    if (practice || !activity) return { quiz: 0, gap: 0 };
+  const arcadeQuestionPools = useMemo(() => {
+    if (!activity) return { quiz: 0, gap: 0 };
     return {
       quiz: getPlayableItemsForMode(activity.items, "quiz").length,
       gap: getPlayableItemsForMode(activity.items, "gap-fill").length,
     };
-  }, [activity, practice]);
+  }, [activity]);
+  const liveQuestionPools = practice ? { quiz: 0, gap: 0 } : arcadeQuestionPools;
   const liveReady = liveQuestionPools.quiz >= 2 || liveQuestionPools.gap >= 2;
   const wildcardReady = liveQuestionPools.quiz >= 12 || liveQuestionPools.gap >= 12;
+  const bossReady = arcadeQuestionPools.quiz >= 3 || arcadeQuestionPools.gap >= 3;
+  const bubbleReady = arcadeQuestionPools.quiz >= 3 || arcadeQuestionPools.gap >= 3;
 
   if (error && !activity) {
     return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Could not open activity</h1><p>{error}</p><Link className="button button-primary" href={practice ? "/" : "/dashboard"}>{practice ? "ClassPlay home" : "Back to library"}</Link></main>;
@@ -153,6 +158,8 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
           {mode === "quiz" && <QuizGame key={gameKey} {...common} />}
           {mode === "space-blaster" && <SpaceBlasterGame key={gameKey} {...common} />}
           {mode === "word-maze" && <WordMazeGame key={gameKey} {...common} />}
+          {mode === "boss-battle" && <BossBattleGame key={gameKey} {...common} />}
+          {mode === "bubble-burst" && <BubbleBurstGame key={gameKey} {...common} />}
         </section>
         {practice && practiceCompletion && (
           <PracticeLeaderboard
@@ -171,7 +178,14 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
 
   const enabledCoreGames = activity.enabledGames.filter((game) => !ARCADE_MODES.includes(game));
   const enabledArcadeGames = activity.enabledGames.filter((game) => ARCADE_MODES.includes(game));
-  const teacherModeCount = activity.enabledGames.length + (liveReady ? 1 : 0) + (wildcardReady ? 1 : 0);
+  const availableArcadeGames: GameType[] = [...enabledArcadeGames];
+  if (bossReady && !availableArcadeGames.includes("boss-battle")) availableArcadeGames.push("boss-battle");
+  if (bubbleReady && !availableArcadeGames.includes("bubble-burst")) availableArcadeGames.push("bubble-burst");
+  const bossAddsMode = bossReady && !activity.enabledGames.includes("boss-battle");
+  const bubbleAddsMode = bubbleReady && !activity.enabledGames.includes("bubble-burst");
+  const derivedModeCount = (bossAddsMode ? 1 : 0) + (bubbleAddsMode ? 1 : 0);
+  const teacherModeCount = activity.enabledGames.length + derivedModeCount + (liveReady ? 1 : 0) + (wildcardReady ? 1 : 0);
+  const practiceModeCount = activity.enabledGames.length + derivedModeCount;
 
   function modeCard(game: GameType) {
     const info = GAME_MODE_CATALOG[game];
@@ -190,9 +204,9 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
           <div className="practice-hero-note"><AppIcon name="trophy" /><div><b>Play for the Top 10</b><span>Finish a game, enter your name, and see how your score compares with other players.</span></div></div>
         </section>
         <section className="mode-picker">
-          <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>What do you want to practise?</h2></div><span>{activity.enabledGames.length} games available</span></div>
+          <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>What do you want to practise?</h2></div><span>{practiceModeCount} games available</span></div>
           {enabledCoreGames.length > 0 && <div className="mode-grid">{enabledCoreGames.map(modeCard)}</div>}
-          {enabledArcadeGames.length > 0 && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY ARCADE</small><h3>Move more. Play louder.</h3></div><span><AppIcon name="controller" /></span></div><div className="mode-grid arcade-mode-grid">{enabledArcadeGames.map(modeCard)}</div></section>}
+          {availableArcadeGames.length > 0 && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY ARCADE</small><h3>Move more. Play louder.</h3></div><span><AppIcon name="controller" /></span></div><div className="mode-grid arcade-mode-grid">{availableArcadeGames.map(modeCard)}</div></section>}
         </section>
       </main>
     );
@@ -221,7 +235,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
       <section className="mode-picker">
         <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{teacherModeCount} modes available</span></div>
         {enabledCoreGames.length > 0 && <div className="mode-grid">{enabledCoreGames.map(modeCard)}</div>}
-        {enabledArcadeGames.length > 0 && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY ARCADE</small><h3>Move more. Play louder.</h3></div><span><AppIcon name="controller" /></span></div><div className="mode-grid arcade-mode-grid">{enabledArcadeGames.map(modeCard)}</div></section>}
+        {availableArcadeGames.length > 0 && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY ARCADE</small><h3>Move more. Play louder.</h3></div><span><AppIcon name="controller" /></span></div><div className="mode-grid arcade-mode-grid">{availableArcadeGames.map(modeCard)}</div></section>}
         {liveReady && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY LIVE</small><h3>Party modes for the whole room.</h3></div><span><AppIcon name="wifi" /></span></div><div className="mode-grid arcade-mode-grid"><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}&mode=dynamite`} className="mode-card pink"><span className="mode-icon"><AppIcon name="fire" /></span><span><strong>Dynamite</strong><small>LIVE ONLY · Pass it before it blows!</small></span><i><AppIcon name="arrow-right" /></i></Link>{wildcardReady && <Link href={`/host/new?activity=${encodeURIComponent(activity.id)}&mode=wildcard-grid`} className="mode-card green"><span className="mode-icon"><AppIcon name="grid-3x3-gap-fill" /></span><span><strong>Wildcard Grid</strong><small>LIVE ONLY · Pick a tile. Answer. Expect a twist.</small></span><i><AppIcon name="arrow-right" /></i></Link>}</div></section>}
 
         <section className="compatible-variants-panel">
