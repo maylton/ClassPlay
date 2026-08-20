@@ -139,7 +139,7 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
 
           {isDynamite ? (
             <>
-              <div className="panel-heading live-section-heading"><span>2</span><div><h2>Choose the fuse</h2><p>Every correct answer passes the Dynamite and resets this countdown.</p></div></div>
+              <div className="panel-heading" style={{ marginTop: "1.6rem" }}><span>2</span><div><h2>Choose the fuse</h2><p>Every correct answer passes the Dynamite and resets this countdown.</p></div></div>
               <div className="dynamite-timer-picker">
                 {([10, 15, 20] as DynamiteTimerSeconds[]).map((seconds) => (
                   <button key={seconds} className={dynamiteTimerSeconds === seconds ? "active" : ""} onClick={() => setDynamiteTimerSeconds(seconds)}>
@@ -151,7 +151,7 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
             </>
           ) : (
             <>
-              <div className="panel-heading live-section-heading"><span>2</span><div><h2>Choose the room style</h2><p>You can change leaderboard and timer settings during the game.</p></div></div>
+              <div className="panel-heading" style={{ marginTop: "1.6rem" }}><span>2</span><div><h2>Choose the room style</h2><p>You can change leaderboard and timer settings during the game.</p></div></div>
               <div className="mode-segmented">
                 <button className={mode === "individual" ? "active" : ""} onClick={() => setMode("individual")}><b><AppIcon name="person" /> Individual</b><small>Each student earns their own score</small></button>
                 <button className={mode === "team" ? "active" : ""} onClick={() => setMode("team")}><b><AppIcon name="people" /> Teams</b><small>Students are balanced automatically</small></button>
