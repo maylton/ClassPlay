@@ -44,8 +44,10 @@
   top: 0;
   width: 30px;
   height: 30px;
-  transform: translate(-50%, -50%);
-  transition: left .09s linear, top .09s linear;
+  offset-position: 0 0;
+  offset-anchor: 50% 50%;
+  offset-rotate: 0deg;
+  transition: offset-distance .09s linear;
   z-index: 3;
 }
 
