@@ -11,7 +11,8 @@ import "./space-blaster-rocket.css";
 import "./boss-battle.css";
 import "./ignis-boss.css";
 import "./bubble-burst.css";
-import "./grammar-runner.css";
+// Grammar Runner is paused for now. Keep its stylesheet in the repository for a future revisit.
+// import "./grammar-runner.css";
 import "./phrase-forge.css";
 import "./word-maze.css";
 import "./dynamite.css";
