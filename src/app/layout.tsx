@@ -10,6 +10,7 @@ import "./arcade.css";
 import "./word-maze.css";
 import "./dynamite.css";
 import "./dynamite-fuse.css";
+import "./wildcard-grid.css";
 import "./leaderboard.css";
 import "./classes.css";
 import "./student-auth.css";
