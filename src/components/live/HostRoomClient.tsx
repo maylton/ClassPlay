@@ -1,14 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import Link from "next/link";
-import { QRCodeSVG } from "qrcode.react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
-import { AppIcon } from "@/components/AppIcon";
-import { ActivityImage } from "@/components/media/ActivityImage";
-import { SettingsPanel } from "@/components/settings/SettingsPanel";
 import { useLiveCountdown } from "@/hooks/useLiveCountdown";
-import { LIVE_MODE_CATALOG } from "@/lib/live/live-catalog";
 import {
   advanceDynamiteQuestion,
   buildLiveQuestion,
@@ -34,7 +28,7 @@ import { resolveActivityImageUrl } from "@/lib/media";
 import { loadActivity } from "@/lib/repositories/activity-repository";
 import type { ActivitySet, ClassroomSettings, DynamiteState, GameSession, LiveGameMode, LivePlayer, Team } from "@/lib/types";
 import { DynamiteFinalHost, DynamiteHostStage } from "./DynamiteHostStage";
-import { PlayerScoreboard, TeamScoreboard } from "./LiveScoreboards";
+import { HostLobby, StandardHostFinal, StandardHostStage } from "./HostLiveViews";
 
 const subscribeToBrowserLocation = () => () => {};
 const sleep = (milliseconds: number) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
@@ -120,16 +114,25 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
 
   async function publishQuestion(index: number) {
     if (!activity || !session) return;
-    setBusy(true); setError("");
+    setBusy(true);
+    setError("");
     try {
       const hostQuestion = buildLiveQuestion(activity, index, liveGameMode);
       if (hostQuestion.imageUrl) hostQuestion.imageUrl = (await resolveActivityImageUrl(hostQuestion.imageUrl)) ?? hostQuestion.imageUrl;
       hostQuestion.startedAt = new Date().toISOString();
-      await updateHostSession(session.id, { state: "playing", current_item_index: index, current_question: hostQuestion, round_started_at: hostQuestion.startedAt });
+      await updateHostSession(session.id, {
+        state: "playing",
+        current_item_index: index,
+        current_question: hostQuestion,
+        round_started_at: hostQuestion.startedAt,
+      });
       await send("question", { question: publicLiveQuestion(hostQuestion), state: "playing", settings: session.settings });
       await refresh();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not start question."); }
-    finally { setBusy(false); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not start question.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   const publishDynamiteTurn = useCallback(async (state: DynamiteState, questionIndex: number, settingsOverride?: ClassroomSettings) => {
@@ -168,7 +171,8 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     if (!activity || !session) return;
     if (players.length < 2) return setError("Dynamite needs at least two students in the room.");
     if (liveQuestionTotal < 2) return setError("This deck needs at least two compatible questions for Dynamite.");
-    setBusy(true); setError("");
+    setBusy(true);
+    setError("");
     try {
       const state = createDynamiteState(players, liveQuestionTotal);
       const nextSettings: ClassroomSettings = {
@@ -325,8 +329,11 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       await finalizeLiveSession(session.id);
       await send("final", { state: "final_results", leaderboardKind: session.mode, leaderboard });
       await refresh();
-    } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not finish session."); }
-    finally { setBusy(false); }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Could not finish session.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function toggleLock() {
@@ -352,7 +359,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     await refresh();
   }
 
-  if (error && !session) return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Live room unavailable</h1><p>{error}</p><Link href="/dashboard" className="button button-primary">Back to library</Link></main>;
+  if (error && !session) return <main className="not-found"><h1>Live room unavailable</h1><p>{error}</p></main>;
   if (!session || !activity) return <main className="loading-screen">Opening live classroom…</main>;
 
   if (session.state === "final_results" || session.state === "closed") {
@@ -361,43 +368,38 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       return <DynamiteFinalHost roomCode={session.roomCode} winner={winner?.name ?? "Winner"} activityId={activity.id} />;
     }
     return (
-      <main className="host-room host-results">
-        <header className="live-host-header"><Link href="/dashboard" className="play-brand"><b>C</b><span>ClassPlay</span></Link><div><span>Room {session.roomCode}</span><SettingsPanel compact /></div></header>
-        <section className="final-live-card"><span className="completion-burst"><AppIcon name="trophy" /></span><span className="eyebrow">Live session complete</span><h1>Nice work, class!</h1><p>{players.length} students · {liveQuestionTotal || session.currentQuestion?.total || activity.items.length} questions · {LIVE_MODE_CATALOG[liveGameMode].label}</p>
-          {session.settings.leaderboardEnabled && (session.mode === "team" ? <TeamScoreboard teams={teams} players={players} /> : <PlayerScoreboard players={scoreboard} />)}
-          <div className="final-live-actions"><Link href={`/host/new?activity=${activity.id}`} className="button button-primary button-large"><AppIcon name="arrow-repeat" /> Play again</Link><Link href="/dashboard" className="button button-soft button-large">Back to library</Link></div>
-        </section>
-      </main>
+      <StandardHostFinal
+        session={session}
+        players={players}
+        teams={teams}
+        scoreboard={scoreboard}
+        questionTotal={liveQuestionTotal || session.currentQuestion?.total || activity.items.length}
+        liveGameMode={liveGameMode}
+        activityId={activity.id}
+      />
     );
   }
 
   if (session.state === "lobby") {
-    const fullJoinUrl = `${joinUrl}?code=${session.roomCode}`;
     return (
-      <main className="host-room lobby-screen">
-        <header className="live-host-header"><Link href="/dashboard" className="play-brand"><b>C</b><span>ClassPlay</span></Link><div><span className="live-presence">● {Math.max(0, presenceCount - 1)} live</span><SettingsPanel compact /></div></header>
-        {error && <div className="alert-error live-alert">{error}</div>}
-        <section className="lobby-layout">
-          <div className="join-panel">
-            <span className="eyebrow">Students join at</span><strong className="join-domain">{joinUrl.replace(/^https?:\/\//, "")}</strong>
-            <div className="room-code-display">{session.roomCode.slice(0,3)} <span>{session.roomCode.slice(3)}</span></div>
-            <div className="qr-shell"><QRCodeSVG value={fullJoinUrl} size={210} level="M" marginSize={2} /></div>
-            <p>Scan the QR code or enter the six-digit room code. No student account is required.</p>
-            <button className={`button ${session.locked ? "button-primary" : "button-soft"}`} onClick={() => void toggleLock()}><AppIcon name={session.locked ? "lock" : "unlock"} /> {session.locked ? "Room locked" : "Lock room"}</button>
-          </div>
-          <div className="lobby-players-panel">
-            <div className="lobby-heading"><div><span className="eyebrow">{LIVE_MODE_CATALOG[liveGameMode].label} · Live</span><h1>{activity.title}</h1></div><span className="player-count-badge">{players.length} joined</span></div>
-            <div className="lobby-player-grid">
-              {players.map((player) => <div className="lobby-player" key={player.id} style={player.teamId ? { borderColor: teams.find((team) => team.id === player.teamId)?.color } : undefined}><span>{player.nickname.slice(0,1).toUpperCase()}</span><b>{player.nickname}</b>{session.mode === "team" && !isDynamite && <button onClick={() => void cycleTeam(player)}>{teams.find((team) => team.id === player.teamId)?.name ?? "Team"} <AppIcon name="arrow-repeat" /></button>}<button className="kick-player" onClick={() => void removeLivePlayer(player.id)} aria-label={`Remove ${player.nickname}`}><AppIcon name="x-lg" /></button></div>)}
-              {!players.length && <div className="empty-lobby"><span><AppIcon name="people" /></span><strong>Waiting for students…</strong><p>Names will appear here as they join.</p></div>}
-            </div>
-            {session.mode === "team" && !isDynamite && <TeamScoreboard teams={teams} players={players} compact />}
-            {isDynamite && <div className="dynamite-lobby-rule"><AppIcon name="fire" /><div><b>{session.settings.dynamiteTimerSeconds ?? 10}s fuse · last survivor wins</b><span>The turn order will be shuffled when the game starts and will stay visible to everyone.</span></div></div>}
-            <div className="lobby-controls"><div>{!isDynamite && <><button className={`toggle-chip ${session.settings.timerEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("timerEnabled")}><AppIcon name="clock" /> Timer {session.settings.timerEnabled ? "on" : "off"}</button><button className={`toggle-chip ${session.settings.leaderboardEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("leaderboardEnabled")}><AppIcon name="trophy" /> Ranking {session.settings.leaderboardEnabled ? "on" : "off"}</button></>}</div><button className="button button-primary button-large" disabled={busy || liveQuestionTotal === 0 || (isDynamite && players.length < 2)} onClick={() => void (isDynamite ? startDynamite() : publishQuestion(0))}>Start {LIVE_MODE_CATALOG[liveGameMode].label} <AppIcon name="arrow-right" /></button></div>
-            {isDynamite && players.length < 2 && <small className="dynamite-minimum">At least 2 students must join before Dynamite can start.</small>}
-          </div>
-        </section>
-      </main>
+      <HostLobby
+        session={session}
+        activity={activity}
+        players={players}
+        teams={teams}
+        joinUrl={joinUrl}
+        presenceCount={presenceCount}
+        error={error}
+        busy={busy}
+        liveQuestionTotal={liveQuestionTotal}
+        liveGameMode={liveGameMode}
+        isDynamite={isDynamite}
+        onToggleLock={() => void toggleLock()}
+        onCycleTeam={(player) => void cycleTeam(player)}
+        onRemovePlayer={(playerId) => void removeLivePlayer(playerId)}
+        onToggleSetting={(key) => void toggleSessionSetting(key)}
+        onStart={() => void (isDynamite ? startDynamite() : publishQuestion(0))}
+      />
     );
   }
 
@@ -415,29 +417,22 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   }
 
   const questionTotal = session.currentQuestion?.total ?? (liveQuestionTotal || activity.items.length);
-  const liveEyebrow = `${LIVE_MODE_CATALOG[session.currentQuestion?.gameMode ?? liveGameMode].label.toUpperCase()} · LIVE`;
-
   return (
-    <main className="host-room live-playing-screen">
-      <header className="live-host-header"><Link href="/dashboard" className="play-brand"><b>C</b><span>ClassPlay</span></Link><div className="host-round-meta"><span>Room {session.roomCode}</span><span>{players.length} students</span><span>{currentAnswerCount}/{players.length} answered</span>{session.settings.timerEnabled && <span className={`student-timer ${(hostRemaining ?? 99) <= 5 ? "urgent" : ""}`}><AppIcon name="clock" /> {hostRemaining ?? session.settings.timerSeconds}s</span>}</div><div><button className={`toggle-chip ${session.settings.leaderboardEnabled ? "on" : ""}`} onClick={() => void toggleSessionSetting("leaderboardEnabled")} aria-label="Toggle leaderboard"><AppIcon name="trophy" /></button><SettingsPanel compact /></div></header>
-      {error && <div className="alert-error live-alert">{error}</div>}
-      <section className="host-play-layout">
-        <div className="host-question-panel">
-          <div className="game-progress-label"><span>Question {session.currentItemIndex + 1} of {questionTotal}</span><span>{session.settings.timerEnabled ? <><AppIcon name="clock" /> {hostRemaining ?? session.settings.timerSeconds}s · </> : null}{currentAnswerCount} answers</span></div>
-          <div className="game-progress"><span style={{ width: `${((session.currentItemIndex + 1) / questionTotal) * 100}%` }} /></div>
-          {session.currentQuestion && <>
-            {session.currentQuestion.imageUrl && <ActivityImage refValue={session.currentQuestion.imageUrl} alt={session.currentQuestion.prompt} className="live-question-image" />}
-            <span className="eyebrow">{liveEyebrow}</span><h1>{session.currentQuestion.prompt}</h1>{session.currentQuestion.hint && <p className="live-hint">{session.currentQuestion.hint}</p>}
-            <div className="host-options-grid">{session.currentQuestion.options.map((option, index) => <div key={option} className={session.state === "round_results" && option === currentCorrect ? "revealed-correct" : ""}><span>{String.fromCharCode(65 + index)}</span><b>{option}</b></div>)}</div>
-          </>}
-          {session.state === "round_results" && <div className="round-answer-reveal"><AppIcon name="check-lg" /> Correct answer: <strong>{currentCorrect}</strong></div>}
-          <div className="host-question-controls">
-            {session.state === "playing" ? <button className="button button-soft button-large" disabled={busy} onClick={() => void reveal()}>Reveal answer now</button> : <button className="button button-primary button-large" disabled={busy} onClick={() => void nextQuestion()}>{session.currentItemIndex + 1 >= questionTotal ? <>Finish game <AppIcon name="arrow-right" /></> : <>Next question <AppIcon name="arrow-right" /></>}</button>}
-            <button className="text-danger" disabled={busy} onClick={() => void endSession()}>End session</button>
-          </div>
-        </div>
-        {session.settings.leaderboardEnabled && <aside className="live-score-panel"><span className="eyebrow">SCOREBOARD</span>{session.mode === "team" ? <TeamScoreboard teams={teams} players={players} /> : <PlayerScoreboard players={scoreboard} />}</aside>}
-      </section>
-    </main>
+    <StandardHostStage
+      session={session}
+      players={players}
+      teams={teams}
+      scoreboard={scoreboard}
+      currentAnswerCount={currentAnswerCount}
+      currentCorrect={currentCorrect}
+      questionTotal={questionTotal}
+      hostRemaining={hostRemaining}
+      error={error}
+      busy={busy}
+      onToggleLeaderboard={() => void toggleSessionSetting("leaderboardEnabled")}
+      onReveal={() => void reveal()}
+      onNext={() => void nextQuestion()}
+      onEnd={() => void endSession()}
+    />
   );
 }
