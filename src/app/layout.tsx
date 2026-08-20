@@ -14,6 +14,7 @@ import "./bubble-burst.css";
 // Grammar Runner is paused for now. Keep its stylesheet in the repository for a future revisit.
 // import "./grammar-runner.css";
 import "./phrase-forge.css";
+import "./tower-stack.css";
 import "./word-maze.css";
 import "./dynamite.css";
 import "./dynamite-fuse.css";

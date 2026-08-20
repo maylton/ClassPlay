@@ -42,7 +42,7 @@ assert.match(secureRepository, /rpc\("submit_assignment_attempt"/, "assignment r
 assert.match(stage, /import \{ GAME_COMPONENTS \} from "\.\/game-registry"/, "GameStage must consume the shared game registry");
 assert.match(stage, /GAME_COMPONENTS\[mode\]/, "GameStage must resolve renderers through the shared registry");
 assert.match(registry, /export const GAME_COMPONENTS:\s*Record<GameType,\s*ComponentType<GameProps>>/, "shared registry must be complete and typed");
-for (const mode of ["flashcards", "memory", "matching", "sentence-builder", "gap-fill", "quiz", "space-blaster", "word-maze", "boss-battle", "bubble-burst", "grammar-runner", "phrase-forge"]) {
+for (const mode of ["flashcards", "memory", "matching", "sentence-builder", "gap-fill", "quiz", "space-blaster", "word-maze", "boss-battle", "bubble-burst", "grammar-runner", "phrase-forge", "tower-stack"]) {
   const key = mode.includes("-") ? `"${mode}"` : `(?:${mode}|"${mode}")`;
   assert.match(registry, new RegExp(`${key}\\s*:`), `shared registry must register ${mode}`);
 }

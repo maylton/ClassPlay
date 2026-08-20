@@ -10,7 +10,8 @@ export type GameType =
   | "boss-battle"
   | "bubble-burst"
   | "grammar-runner"
-  | "phrase-forge";
+  | "phrase-forge"
+  | "tower-stack";
 
 export type LiveGameMode = "gap-fill" | "quiz" | "space-blaster" | "dynamite" | "wildcard-grid";
 export type DynamiteTimerSeconds = 10 | 15 | 20;

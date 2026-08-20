@@ -19,6 +19,7 @@ export function getDerivedArcadeReadiness(activity: Pick<ActivitySet, "items">):
     "boss-battle": questionReady,
     "bubble-burst": questionReady,
     "phrase-forge": phraseReady,
+    "tower-stack": questionReady,
   };
   return {
     quiz,
