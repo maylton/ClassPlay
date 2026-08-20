@@ -12,6 +12,7 @@ export type LiveGameMode = "gap-fill" | "quiz" | "space-blaster" | "dynamite" | 
 export type DynamiteTimerSeconds = 10 | 15 | 20;
 export type WildcardGridSize = 12 | 16 | 20;
 export type WildcardGridIntensity = "balanced" | "chaos";
+export type WildcardGridQuestionSource = "smart" | "gap-fill" | "quiz" | "prompt-answer";
 export type WildcardGridPhase = "board" | "question" | "result" | "wildcard" | "finished";
 export type WildcardEffectType =
   | "jackpot"
@@ -149,6 +150,7 @@ export interface ClassroomSettings {
   dynamiteState?: DynamiteState | null;
   wildcardGridSize?: WildcardGridSize;
   wildcardGridIntensity?: WildcardGridIntensity;
+  wildcardGridSource?: WildcardGridQuestionSource;
   wildcardGridState?: WildcardGridState | null;
 }
 
@@ -186,7 +188,7 @@ export interface LiveQuestion {
   imageUrl?: string;
   options: string[];
   startedAt: string;
-  sourceMode?: "quiz" | "gap-fill";
+  sourceMode?: "quiz" | "gap-fill" | "prompt-answer";
   dynamiteTurnId?: string;
   activePlayerId?: string;
   activePlayerName?: string;
