@@ -9,6 +9,7 @@ import "./sentence-builder.css";
 import "./arcade.css";
 import "./word-maze.css";
 import "./dynamite.css";
+import "./dynamite-fuse.css";
 import "./leaderboard.css";
 import "./classes.css";
 import "./student-auth.css";
