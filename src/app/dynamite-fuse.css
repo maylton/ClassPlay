@@ -44,12 +44,8 @@
   top: 0;
   width: 30px;
   height: 30px;
-  /* Keep this path identical to the SVG fuse path above in HostRoomClient. */
-  offset-path: path("M 8 86 C 35 47 65 86 96 46 C 113 24 131 17 142 9");
-  offset-position: 0 0;
-  offset-anchor: 50% 50%;
-  offset-rotate: 0deg;
-  transition: offset-distance .09s linear;
+  transform: translate(-50%, -50%);
+  transition: left .09s linear, top .09s linear;
   z-index: 3;
 }
 
