@@ -36,6 +36,7 @@ const dynamiteHost = fs.readFileSync(new URL("../src/components/live/DynamiteHos
 const wildcardHost = fs.readFileSync(new URL("../src/components/live/WildcardGridHostStage.tsx", import.meta.url), "utf8");
 const wildcardStudent = fs.readFileSync(new URL("../src/components/live/StudentWildcardGridStage.tsx", import.meta.url), "utf8");
 const wildcardController = fs.readFileSync(new URL("../src/hooks/useWildcardGridHost.ts", import.meta.url), "utf8");
+const wildcardStyles = fs.readFileSync(new URL("../src/app/wildcard-grid.css", import.meta.url), "utf8");
 const liveStudent = fs.readFileSync(new URL("../src/components/live/StudentJoinClient.tsx", import.meta.url), "utf8");
 const liveStudentDynamite = fs.readFileSync(new URL("../src/components/live/StudentDynamiteStage.tsx", import.meta.url), "utf8");
 const liveStudentSpace = fs.readFileSync(new URL("../src/components/live/StudentLiveSpaceBlaster.tsx", import.meta.url), "utf8");
@@ -94,12 +95,21 @@ assert.match(liveEngine, /size === 12 \? 3 : size === 16 \? 4 : 5/, "Wildcard Gr
 assert.match(liveEngine, /if \(teams\.length < 2 \|\| teams\.length > 4\)/, "Wildcard Grid must support exactly two to four teams.");
 assert.match(liveEngine, /scoreFloor\(before - amount\)/, "Wildcard penalties must never push a team below zero.");
 assert.match(liveEngine, /case "shield"[\s\S]*case "double-trouble"[\s\S]*case "swap"[\s\S]*case "blackout"[\s\S]*case "fresh-start"/, "Wildcard Grid must keep its complete Balanced + Chaos effect set in the engine.");
+assert.match(liveEngine, /requested !== "smart"/, "Wildcard Grid must honor an explicit teacher-selected question source instead of always auto-picking.");
+assert.match(liveEngine, /promptAnswerItems/, "Wildcard Grid must expose prompt-and-answer content as a deliberate source for vocabulary and matching-style decks.");
 assert.match(liveSetup, /WILDCARD_GRID_SIZES\.map/, "Wildcard Grid setup must expose compatible 12, 16 and 20 tile boards.");
 assert.match(liveSetup, /\[2,3,4\]\.map/, "Wildcard Grid setup must limit the room to two, three or four teams.");
 assert.match(liveSetup, /phones optional/i, "Wildcard Grid setup must explain that student phones are optional.");
+for (const source of ["smart", "gap-fill", "quiz", "prompt-answer"]) {
+  assert.ok(liveSetup.includes(`value: "${source}"`), `Wildcard Grid setup must expose the ${source} question source.`);
+}
+assert.match(liveSetup, /wildcardGridSource,\s*wildcardGridState: null/, "The chosen Wildcard Grid source must be persisted into the live room settings.");
+assert.match(wildcardController, /liveModeQuestionCount\(activity, "wildcard-grid", questionSource\)/, "Wildcard Grid board size must be built from the teacher-selected source pool.");
+assert.match(wildcardController, /buildLiveQuestion\(activity, tile\.questionIndex, "wildcard-grid", questionSource\)/, "Every Wildcard Grid tile must use the selected question source.");
 assert.match(hostNewPage, /"wildcard-grid"/, "Wildcard Grid deep links must be accepted by the Live setup route.");
 assert.match(gameHub, /mode=wildcard-grid/, "Teacher Game Hub must surface the Wildcard Grid Live card when the deck is ready.");
 assert.match(wildcardHost, /Correct[\s\S]*Not quite|Not quite[\s\S]*Correct/, "Wildcard Grid must remain teacher-scored for oral classroom answers.");
+assert.match(wildcardHost, /wildcard-question-source/, "The projected question should show which source is currently being used.");
 assert.match(wildcardStudent, /answer out loud|Talk it through/i, "Student phones must behave as optional team companions, not answer forms.");
 assert.doesNotMatch(liveHostViews, /wildcardNeedsPlayers/, "Wildcard Grid must not require connected phones before starting.");
 assert.match(liveHostViews, /Projector-only is ready/, "The lobby must explicitly support projector-only Wildcard Grid play.");
@@ -111,6 +121,10 @@ assert.match(wildcardSql, /set search_path = ''/i, "Wildcard Grid resume hardeni
 assert.match(wildcardResultsSql, /liveGameMode'[\s\S]*wildcard-grid/i, "Session finalization must branch explicitly for Wildcard Grid.");
 assert.match(wildcardResultsSql, /player_id, team_id, score[\s\S]*null,[\s\S]*t\.id[\s\S]*teamScores/i, "Wildcard Grid finalization must persist team results rather than fake individual scores.");
 assert.match(wildcardResultsSql, /set search_path = ''/i, "Wildcard Grid result finalization must keep the SECURITY DEFINER search path locked.");
+assert.match(wildcardStyles, /@keyframes wildcardTileIn/, "Wildcard Grid board tiles must have a game-show entrance animation.");
+assert.match(wildcardStyles, /@keyframes wildcardCardReveal/, "Wildcard reveals must have a dedicated reveal animation.");
+assert.match(wildcardStyles, /wildcard-team-score\.active[\s\S]*wildcardActiveTeam/, "The active team must receive animated visual emphasis.");
+assert.match(wildcardStyles, /prefers-reduced-motion: reduce/, "Wildcard Grid game-show motion must keep a reduced-motion fallback.");
 
 const sql = fs.readFileSync(new URL("../supabase/migrations/0001_connected_classroom.sql", import.meta.url), "utf8");
 for (const table of ["profiles", "activity_sets", "activity_items", "activity_games", "game_sessions", "teams", "players", "answers", "game_results"]) {
