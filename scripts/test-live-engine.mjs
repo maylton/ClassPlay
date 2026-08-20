@@ -33,14 +33,20 @@ const liveSetup = fs.readFileSync(new URL("../src/components/live/LiveSessionSet
 const liveHost = fs.readFileSync(new URL("../src/components/live/HostRoomClient.tsx", import.meta.url), "utf8");
 const liveHostViews = fs.readFileSync(new URL("../src/components/live/HostLiveViews.tsx", import.meta.url), "utf8");
 const dynamiteHost = fs.readFileSync(new URL("../src/components/live/DynamiteHostStage.tsx", import.meta.url), "utf8");
+const wildcardHost = fs.readFileSync(new URL("../src/components/live/WildcardGridHostStage.tsx", import.meta.url), "utf8");
+const wildcardStudent = fs.readFileSync(new URL("../src/components/live/StudentWildcardGridStage.tsx", import.meta.url), "utf8");
+const wildcardController = fs.readFileSync(new URL("../src/hooks/useWildcardGridHost.ts", import.meta.url), "utf8");
 const liveStudent = fs.readFileSync(new URL("../src/components/live/StudentJoinClient.tsx", import.meta.url), "utf8");
 const liveStudentDynamite = fs.readFileSync(new URL("../src/components/live/StudentDynamiteStage.tsx", import.meta.url), "utf8");
 const liveStudentSpace = fs.readFileSync(new URL("../src/components/live/StudentLiveSpaceBlaster.tsx", import.meta.url), "utf8");
 const liveCountdown = fs.readFileSync(new URL("../src/hooks/useLiveCountdown.ts", import.meta.url), "utf8");
 const roomService = fs.readFileSync(new URL("../src/lib/live/room-service.ts", import.meta.url), "utf8");
+const hostNewPage = fs.readFileSync(new URL("../src/app/host/new/page.tsx", import.meta.url), "utf8");
+const gameHub = fs.readFileSync(new URL("../src/components/GameHub.tsx", import.meta.url), "utf8");
 const dynamiteSql = fs.readFileSync(new URL("../supabase/migrations/0014_dynamite_live_mode.sql", import.meta.url), "utf8");
+const wildcardSql = fs.readFileSync(new URL("../supabase/migrations/0015_wildcard_grid_student_state.sql", import.meta.url), "utf8");
 
-for (const mode of ["gap-fill", "quiz", "space-blaster", "dynamite"]) {
+for (const mode of ["gap-fill", "quiz", "space-blaster", "dynamite", "wildcard-grid"]) {
   assert.ok(liveEngine.includes(`"${mode}"`), `${mode} must be a supported live game mode`);
   const catalogKey = mode.includes("-") ? `"${mode}"` : `(?:${mode}|"${mode}")`;
   assert.match(liveCatalog, new RegExp(`${catalogKey}\\s*:`), `${mode} must appear in the central live-mode catalog`);
@@ -64,7 +70,7 @@ assert.match(liveEngine, /eliminateDynamitePlayer/, "Dynamite must have determin
 assert.match(liveEngine, /previousQuestion[\s\S]*questionOrder\[0\] === previousQuestion/, "A recycled Dynamite question pool must avoid an immediate repeat when possible.");
 assert.match(liveSetup, /\(\[10, 15, 20\] as DynamiteTimerSeconds\[\]\)/, "Dynamite must offer 10, 15 and 20 second fuse options.");
 assert.match(liveSetup, /gameMode === "dynamite"\) setMode\("individual"\)/, "Selecting Dynamite must reset the room style to individual.");
-assert.match(liveSetup, /mode: isDynamite \? "individual" : mode/, "Dynamite room creation must enforce individual elimination.");
+assert.match(liveSetup, /mode: isDynamite \? "individual" : isWildcardGrid \? "team" : mode/, "Special Live modes must enforce their intended room styles.");
 assert.match(liveHost, /players\.length < 2/, "Dynamite must require at least two joined students.");
 assert.match(dynamiteHost, /state\.order/, "The host must render the persisted Dynamite turn order.");
 assert.match(liveHost, /dynamite-explosion/, "The host must broadcast an elimination moment to student devices.");
@@ -82,6 +88,25 @@ assert.match(dynamiteSql, /current_question = current_question \|\| jsonb_build_
 assert.match(dynamiteSql, /revoke execute[\s\S]*from public/i, "The Dynamite SECURITY DEFINER RPC must not keep the default PUBLIC execute grant.");
 assert.match(dynamiteSql, /grant execute[\s\S]*to anon, authenticated/i, "Only the live browser roles should receive Dynamite RPC execution.");
 
+assert.match(liveEngine, /createWildcardGridState/, "Wildcard Grid must generate its persistent board in the live engine.");
+assert.match(liveEngine, /size === 12 \? 3 : size === 16 \? 4 : 5/, "Wildcard Grid must use 3, 4 and 5 Wildcards for 12, 16 and 20 tile boards.");
+assert.match(liveEngine, /if \(teams\.length < 2 \|\| teams\.length > 4\)/, "Wildcard Grid must support exactly two to four teams.");
+assert.match(liveEngine, /scoreFloor\(before - amount\)/, "Wildcard penalties must never push a team below zero.");
+assert.match(liveEngine, /case "shield"[\s\S]*case "double-trouble"[\s\S]*case "swap"[\s\S]*case "blackout"[\s\S]*case "fresh-start"/, "Wildcard Grid must keep its complete Balanced + Chaos effect set in the engine.");
+assert.match(liveSetup, /WILDCARD_GRID_SIZES\.map/, "Wildcard Grid setup must expose compatible 12, 16 and 20 tile boards.");
+assert.match(liveSetup, /\[2,3,4\]\.map/, "Wildcard Grid setup must limit the room to two, three or four teams.");
+assert.match(hostNewPage, /"wildcard-grid"/, "Wildcard Grid deep links must be accepted by the Live setup route.");
+assert.match(gameHub, /mode=wildcard-grid/, "Teacher Game Hub must surface the Wildcard Grid Live card when the deck is ready.");
+assert.match(wildcardHost, /Correct[\s\S]*Not quite|Not quite[\s\S]*Correct/, "Wildcard Grid must remain teacher-scored for oral classroom answers.");
+assert.match(wildcardStudent, /answer out loud|Talk it through/i, "Student phones must behave as optional team companions, not answer forms.");
+assert.doesNotMatch(liveHostViews, /wildcardNeedsPlayers/, "Wildcard Grid must not require connected phones before starting.");
+assert.match(liveHostViews, /Projector-only is ready/, "The lobby must explicitly support projector-only Wildcard Grid play.");
+assert.match(wildcardController, /tiles: state\.tiles\.map\(\(tile\) => \(\{ \.\.\.tile, wildcard: null \}\)\)/, "Realtime student payloads must strip every hidden tile Wildcard.");
+assert.match(wildcardController, /pendingWildcard: state\.phase === "wildcard"/, "Realtime payloads may reveal the pending Wildcard only during the reveal phase.");
+assert.match(wildcardSql, /jsonb_set\(tile, '\{wildcard\}', 'null'::jsonb, true\)/i, "Reconnect payloads must strip hidden tile Wildcards in SQL.");
+assert.match(wildcardSql, /v_grid_phase <> 'wildcard'[\s\S]*pendingWildcard/i, "Reconnect payloads must hide the pending Wildcard until reveal.");
+assert.match(wildcardSql, /set search_path = ''/i, "Wildcard Grid resume hardening must keep the SECURITY DEFINER search path locked.");
+
 const sql = fs.readFileSync(new URL("../supabase/migrations/0001_connected_classroom.sql", import.meta.url), "utf8");
 for (const table of ["profiles", "activity_sets", "activity_items", "activity_games", "game_sessions", "teams", "players", "answers", "game_results"]) {
   assert.match(sql, new RegExp(`alter table public\\.${table} enable row level security`, "i"), `${table} must have RLS enabled`);
@@ -94,4 +119,4 @@ assert.doesNotMatch(submitFunction, /return jsonb_build_object\([^\n]*correctAns
 assert.match(submitFunction, /current_question->>'correctAnswer'/i, "Server scoring must honor the current live question target for Gap Fill and Space Blaster.");
 assert.match(sql, /'revealedAnswer', case when v_session\.state = 'round_results'/i, "Reconnect during reveal must restore the revealed answer.");
 
-console.log("ClassPlay live engine + Dynamite + security contract smoke tests passed.");
+console.log("ClassPlay live engine + Dynamite + Wildcard Grid + security contract smoke tests passed.");
