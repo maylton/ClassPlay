@@ -1,4 +1,4 @@
-import { sentenceGapAnswer } from "./game-engine";
+import { buildChoiceOptions, sentenceGapAnswer, shuffle } from "./game-engine";
 import type { ActivityItem } from "./types";
 
 export type ArcadeRound = {
@@ -143,33 +143,12 @@ export const WORD_MAZE_TEMPLATES: readonly MazeTemplate[] = [
   },
 ] as const;
 
-// Backwards-compatible aliases for the first maze layout.
-export const WORD_MAZE_MAP = WORD_MAZE_TEMPLATES[0].map;
-export const WORD_MAZE_START = WORD_MAZE_TEMPLATES[0].start;
-export const WORD_MAZE_PORTALS: readonly MazePosition[] = [
+const DEFAULT_WORD_MAZE_MAP = WORD_MAZE_TEMPLATES[0].map;
+const DEFAULT_WORD_MAZE_PORTALS: readonly MazePosition[] = [
   { x: 1, y: 1 },
   { x: 13, y: 1 },
   { x: 7, y: 4 },
 ];
-
-function shuffleWith<T>(items: readonly T[], random: () => number = Math.random) {
-  const copy = [...items];
-  for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(random() * (index + 1));
-    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
-  }
-  return copy;
-}
-
-function unique(values: readonly string[]) {
-  const seen = new Set<string>();
-  return values.filter((value) => {
-    const normalized = value.trim().toLocaleLowerCase();
-    if (!normalized || seen.has(normalized)) return false;
-    seen.add(normalized);
-    return true;
-  });
-}
 
 function positionKey(position: MazePosition) {
   return `${position.x},${position.y}`;
@@ -190,12 +169,16 @@ export function buildArcadeRound(
   random: () => number = Math.random,
 ): ArcadeRound {
   const correctAnswer = sentenceGapAnswer(item);
-  const distractors = items
+  const fallbackDistractors = items
     .filter((candidate) => candidate.id !== item.id)
     .map(sentenceGapAnswer);
-  const candidates = unique([correctAnswer, ...(item.distractors ?? []), ...distractors]);
-  const shuffledDistractors = shuffleWith(candidates.filter((candidate) => candidate !== correctAnswer), random);
-  const options = shuffleWith([correctAnswer, ...shuffledDistractors.slice(0, Math.max(0, optionCount - 1))], random);
+  const options = buildChoiceOptions(
+    correctAnswer,
+    item.distractors ?? [],
+    fallbackDistractors,
+    optionCount,
+    random,
+  );
 
   return {
     itemId: item.id,
@@ -210,10 +193,10 @@ export function buildArcadeRounds(
   optionCount: number,
   random: () => number = Math.random,
 ) {
-  return shuffleWith(items, random).map((item) => buildArcadeRound(item, items, optionCount, random));
+  return shuffle(items, random).map((item) => buildArcadeRound(item, items, optionCount, random));
 }
 
-export function isMazeOpen(position: MazePosition, map: readonly string[] = WORD_MAZE_MAP) {
+export function isMazeOpen(position: MazePosition, map: readonly string[] = DEFAULT_WORD_MAZE_MAP) {
   const row = map[position.y];
   if (!row) return false;
   const cell = row[position.x];
@@ -223,7 +206,7 @@ export function isMazeOpen(position: MazePosition, map: readonly string[] = WORD
 export function moveMazePlayer(
   position: MazePosition,
   direction: MazeDirection,
-  map: readonly string[] = WORD_MAZE_MAP,
+  map: readonly string[] = DEFAULT_WORD_MAZE_MAP,
 ): MazePosition {
   const delta = direction === "up" ? { x: 0, y: -1 }
     : direction === "down" ? { x: 0, y: 1 }
@@ -233,7 +216,7 @@ export function moveMazePlayer(
   return isMazeOpen(next, map) ? next : position;
 }
 
-export function mazePortalIndex(position: MazePosition, portals: readonly MazePosition[] = WORD_MAZE_PORTALS) {
+export function mazePortalIndex(position: MazePosition, portals: readonly MazePosition[] = DEFAULT_WORD_MAZE_PORTALS) {
   return portals.findIndex((portal) => samePosition(portal, position));
 }
 
@@ -385,7 +368,7 @@ export function buildMazeLevel(
 ): MazeLevel {
   const template = WORD_MAZE_TEMPLATES[levelIndex % WORD_MAZE_TEMPLATES.length];
   const candidates = mazePortalCandidates(template.map, template.start);
-  const portals = shuffleWith(candidates, random).slice(0, Math.min(round.options.length, 3));
+  const portals = shuffle(candidates, random).slice(0, Math.min(round.options.length, 3));
   const profile = mazeMonsterProfile(levelIndex);
   const spawns = monsterSpawnPositions(template.map, template.start, portals, profile.count);
   const monsters = spawns.map((position, index): MazeMonster => ({
