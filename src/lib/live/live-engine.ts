@@ -1,17 +1,8 @@
 import { getPlayableItemsForMode } from "@/lib/activity-intelligence";
-import { gapOptions, quizOptions, sentenceGapAnswer } from "@/lib/game-engine";
+import { gapOptions, quizOptions, sentenceGapAnswer, shuffle } from "@/lib/game-engine";
 import type { ActivitySet, DynamiteState, LiveGameMode, LivePlayer, LiveQuestion } from "@/lib/types";
 
 export const LIVE_GAME_MODES: readonly LiveGameMode[] = ["gap-fill", "quiz", "space-blaster", "dynamite"];
-
-export function shuffle<T>(items: T[], random: () => number = Math.random): T[] {
-  const copy = [...items];
-  for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swap = Math.floor(random() * (index + 1));
-    [copy[index], copy[swap]] = [copy[swap], copy[index]];
-  }
-  return copy;
-}
 
 export type HostLiveQuestion = LiveQuestion & { correctAnswer: string };
 
