@@ -46,6 +46,7 @@ export function useWildcardGridHost({
 }) {
   const [busy, setBusy] = useState(false);
   const state = session?.settings.wildcardGridState ?? null;
+  const questionSource = session?.settings.wildcardGridSource ?? "smart";
 
   const persist = useCallback(async (nextState: WildcardGridState, questionMode: "keep" | "clear" = "keep") => {
     if (!session) return;
@@ -69,7 +70,7 @@ export function useWildcardGridHost({
     const size = session.settings.wildcardGridSize ?? 12;
     if (teams.length < 2 || teams.length > 4) return setError("Wildcard Grid supports two to four teams.");
     const teamRefs = teams.map((team) => ({ id: team.id, name: team.name, color: team.color }));
-    const questionCount = liveModeQuestionCount(activity, "wildcard-grid");
+    const questionCount = liveModeQuestionCount(activity, "wildcard-grid", questionSource);
     setBusy(true); setError("");
     try {
       const nextState = createWildcardGridState(teamRefs, questionCount, size, session.settings.wildcardGridIntensity ?? "balanced");
@@ -80,7 +81,7 @@ export function useWildcardGridHost({
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not start Wildcard Grid.");
     } finally { setBusy(false); }
-  }, [activity, refresh, send, session, setError, teams]);
+  }, [activity, questionSource, refresh, send, session, setError, teams]);
 
   const selectTile = useCallback(async (tileNumber: number) => {
     if (!activity || !session || !state) return;
@@ -89,7 +90,7 @@ export function useWildcardGridHost({
       const nextState = selectWildcardGridTile(state, tileNumber);
       const tile = nextState.tiles.find((candidate) => candidate.number === tileNumber);
       if (!tile) throw new Error("Could not find that Wildcard Grid tile.");
-      const hostQuestion = buildLiveQuestion(activity, tile.questionIndex, "wildcard-grid");
+      const hostQuestion = buildLiveQuestion(activity, tile.questionIndex, "wildcard-grid", questionSource);
       if (hostQuestion.imageUrl) hostQuestion.imageUrl = (await resolveActivityImageUrl(hostQuestion.imageUrl)) ?? hostQuestion.imageUrl;
       hostQuestion.startedAt = new Date().toISOString();
       hostQuestion.wildcardTileNumber = tileNumber;
@@ -107,7 +108,7 @@ export function useWildcardGridHost({
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not open this tile.");
     } finally { setBusy(false); }
-  }, [activity, refresh, send, session, setError, state]);
+  }, [activity, questionSource, refresh, send, session, setError, state]);
 
   const markAnswer = useCallback(async (correct: boolean) => {
     if (!state) return;
