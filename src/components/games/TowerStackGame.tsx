@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { useClassroomSettings } from "@/hooks/useClassroomSettings";
 import { useQuestionTimer } from "@/hooks/useQuestionTimer";
@@ -43,6 +43,28 @@ function rewardLabel(reward: TowerStackReward) {
   return "STANDARD BLOCK";
 }
 
+function readVisualTopBlock(
+  base: TowerBlockGeometry,
+  element: HTMLDivElement | null,
+  playfield: HTMLDivElement | null,
+): TowerBlockGeometry {
+  if (!element || !playfield) return base;
+
+  const transform = window.getComputedStyle(element).transform;
+  const playfieldWidth = playfield.getBoundingClientRect().width;
+  if (!transform || transform === "none" || !playfieldWidth) return base;
+
+  try {
+    const matrix = new DOMMatrixReadOnly(transform);
+    return {
+      x: base.x + (matrix.m41 / playfieldWidth) * 100,
+      width: base.width,
+    };
+  } catch {
+    return base;
+  }
+}
+
 export function TowerStackGame({ activity, onComplete }: GameProps) {
   const { settings } = useClassroomSettings();
   const quizItems = useMemo(() => getPlayableItemsForMode(activity.items, "quiz"), [activity.items]);
@@ -72,6 +94,8 @@ export function TowerStackGame({ activity, onComplete }: GameProps) {
   const [activeX, setActiveX] = useState(TOWER_STACK_FOUNDATION.x);
   const [fallingX, setFallingX] = useState<number | null>(null);
   const [finished, setFinished] = useState(false);
+  const playfieldRef = useRef<HTMLDivElement>(null);
+  const topBlockRef = useRef<HTMLDivElement>(null);
 
   const round = rounds[roundIndex];
   const { elapsedMs, stop } = useQuestionTimer(round?.itemId ?? "tower-empty");
@@ -160,7 +184,11 @@ export function TowerStackGame({ activity, onComplete }: GameProps) {
   const dropBlock = useCallback(() => {
     if (phase !== "stacking" || locked) return;
     setLocked(true);
-    const placement = resolveTowerPlacement(topBlock, { x: activeX, width: activeWidth }, activeReward);
+
+    const collisionBase = settings.reducedMotion
+      ? topBlock
+      : readVisualTopBlock(topBlock, topBlockRef.current, playfieldRef.current);
+    const placement = resolveTowerPlacement(collisionBase, { x: activeX, width: activeWidth }, activeReward);
     setPhase("feedback");
 
     if (!placement.landed) {
@@ -293,7 +321,7 @@ export function TowerStackGame({ activity, onComplete }: GameProps) {
           {phase === "stacking" && (
             <div className={`tower-drop-card reward-${activeReward}`}>
               <span className="tower-reward-icon"><AppIcon name={activeReward === "perfect" ? "stars" : activeReward === "wide" ? "arrows-expand" : activeReward === "slow" ? "hourglass-split" : "square-fill"} /></span>
-              <div><small>BLOCK UNLOCKED · {answerWidthPercent}% SIZE</small><strong>{rewardLabel(activeReward)}</strong><p>{activeReward === "perfect" ? "It snaps safely to center, but answer time still decides its width." : activeReward === "wide" ? "Your streak widened this block. Center it well to recover space." : activeReward === "slow" ? "Fast English kept more width and earned slower movement." : "Time your drop and preserve as much surface as possible."}</p></div>
+              <div><small>BLOCK UNLOCKED · {answerWidthPercent}% SIZE</small><strong>{rewardLabel(activeReward)}</strong><p>{activeReward === "perfect" ? "It snaps safely to the tower as it sways, but answer time still decides its width." : activeReward === "wide" ? "Your streak widened this block. Track the moving tower and recover space." : activeReward === "slow" ? "Fast English kept more width and earned slower movement — the tower still sways." : "Time your drop against the moving tower and preserve as much surface as possible."}</p></div>
               <button type="button" onClick={dropBlock} disabled={locked}>DROP BLOCK <kbd>SPACE</kbd></button>
             </div>
           )}
@@ -303,7 +331,7 @@ export function TowerStackGame({ activity, onComplete }: GameProps) {
               {feedback === "wrong-answer" && <><AppIcon name="x-circle-fill" /><div><strong>No block this round.</strong><span>Correct answer: {round.correctAnswer}</span></div></>}
               {feedback === "perfect" && <><AppIcon name="stars" /><div><strong>Perfect stack!</strong><span>You kept every bit of the block you earned.</span></div></>}
               {feedback === "recovered" && <><AppIcon name="arrows-expand" /><div><strong>Reinforced floor!</strong><span>Your streak helped widen the tower.</span></div></>}
-              {feedback === "placed" && <><AppIcon name="check-circle-fill" /><div><strong>Block placed.</strong><span>Keep the next one centered.</span></div></>}
+              {feedback === "placed" && <><AppIcon name="check-circle-fill" /><div><strong>Block placed.</strong><span>Keep tracking the sway.</span></div></>}
               {feedback === "miss" && <><AppIcon name="arrow-down-circle-fill" /><div><strong>Missed the tower.</strong><span>Your English points stay safe. Next question!</span></div></>}
             </div>
           )}
@@ -322,7 +350,7 @@ export function TowerStackGame({ activity, onComplete }: GameProps) {
           <div className="tower-city" aria-hidden="true">{Array.from({ length: 10 }, (_, index) => <i key={index} />)}</div>
           <div className="tower-crane" aria-hidden="true"><span /><i /></div>
 
-          <div className="tower-playfield">
+          <div className="tower-playfield" ref={playfieldRef}>
             <div className="tower-ground" aria-hidden="true" />
 
             {showCraneRig && (
@@ -337,6 +365,7 @@ export function TowerStackGame({ activity, onComplete }: GameProps) {
               return (
                 <div
                   key={block.id}
+                  ref={index === tower.length - 1 ? topBlockRef : undefined}
                   className={`tower-block placed-block reward-${block.reward} ${block.perfect ? "is-perfect" : ""} ${index === 0 ? "foundation" : ""}`}
                   style={{ left: `${block.x}%`, width: `${block.width}%`, bottom: `${bottom}px` }}
                 >
@@ -371,7 +400,7 @@ export function TowerStackGame({ activity, onComplete }: GameProps) {
         </section>
       </div>
 
-      <p className="arcade-key-help">Answer faster to keep a wider block · use <kbd>1</kbd>–<kbd>{round.options.length}</kbd> · then press <kbd>Space</kbd> / <kbd>Enter</kbd> or tap Drop</p>
+      <p className="arcade-key-help">Answer faster to keep a wider block · use <kbd>1</kbd>–<kbd>{round.options.length}</kbd> · then track the sway and press <kbd>Space</kbd> / <kbd>Enter</kbd> or tap Drop</p>
     </div>
   );
 }
