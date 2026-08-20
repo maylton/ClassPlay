@@ -4,7 +4,6 @@ import { BossBattleGame } from "./BossBattleGame";
 import { BubbleBurstGame } from "./BubbleBurstGame";
 import { FlashcardsGame } from "./FlashcardsGame";
 import { GapFillGame } from "./GapFillGame";
-import { GrammarRunnerGame } from "./GrammarRunnerGame";
 import type { GameProps } from "./GameTypes";
 import { MatchingGame } from "./MatchingGame";
 import { MemoryGame } from "./MemoryGame";
@@ -13,6 +12,10 @@ import { QuizGame } from "./QuizGame";
 import { SentenceBuilderGame } from "./SentenceBuilderGame";
 import { SpaceBlasterGame } from "./SpaceBlasterGame";
 import { WordMazeGame } from "./WordMazeGame";
+
+// Grammar Runner is intentionally paused. Keep a no-op registry slot so older
+// persisted references remain safe while the actual implementation stays archived.
+const PausedGrammarRunner = () => null;
 
 export const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
   flashcards: FlashcardsGame,
@@ -25,6 +28,6 @@ export const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
   "word-maze": WordMazeGame,
   "boss-battle": BossBattleGame,
   "bubble-burst": BubbleBurstGame,
-  "grammar-runner": GrammarRunnerGame,
+  "grammar-runner": PausedGrammarRunner,
   "phrase-forge": PhraseForgeGame,
 };
