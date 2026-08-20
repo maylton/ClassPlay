@@ -12,6 +12,8 @@ import { QuizGame } from "./QuizGame";
 import { SentenceBuilderGame } from "./SentenceBuilderGame";
 import { SpaceBlasterGame } from "./SpaceBlasterGame";
 import { TowerStackGame } from "./TowerStackGame";
+import { TypingRushGame } from "./TypingRushGame";
+import { WordHuntGame } from "./WordHuntGame";
 import { WordMazeGame } from "./WordMazeGame";
 
 // Grammar Runner is intentionally paused. Keep a no-op registry slot so older
@@ -32,4 +34,6 @@ export const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
   "grammar-runner": PausedGrammarRunner,
   "phrase-forge": PhraseForgeGame,
   "tower-stack": TowerStackGame,
+  "word-hunt": WordHuntGame,
+  "typing-rush": TypingRushGame,
 };
