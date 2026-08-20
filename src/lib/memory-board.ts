@@ -1,3 +1,5 @@
+import { shuffle } from "./game-engine";
+
 export const MEMORY_MIN_PAIRS = 2;
 export const MEMORY_MAX_PAIRS = 20;
 export const MEMORY_BOARD_PAIR_SIZES = [4, 6, 8, 10, 12, 16, 20] as const;
@@ -13,15 +15,6 @@ export function memoryBoardPairCount(availablePairs: number) {
     selected = size;
   }
   return Math.min(selected, MEMORY_MAX_PAIRS);
-}
-
-function shuffleWith<T>(items: readonly T[], random: () => number) {
-  const copy = [...items];
-  for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(random() * (index + 1));
-    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
-  }
-  return copy;
 }
 
 function sameIdSet(left: readonly string[], right: readonly string[]) {
@@ -43,7 +36,7 @@ export function chooseMemoryItems<T extends { id: string }>(
   const pairCount = memoryBoardPairCount(items.length);
   if (!pairCount) return [];
 
-  const shuffled = shuffleWith(items, random);
+  const shuffled = shuffle(items, random);
   const selected = shuffled.slice(0, pairCount);
   const selectedIds = selected.map((item) => item.id);
 

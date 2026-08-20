@@ -6,18 +6,12 @@ import { useRouter } from "next/navigation";
 import { AppIcon } from "@/components/AppIcon";
 import { useClassroomSettings } from "@/hooks/useClassroomSettings";
 import { analyzeGameModes } from "@/lib/activity-intelligence";
+import { LIVE_MODE_CATALOG, LIVE_MODE_ORDER } from "@/lib/live/live-catalog";
 import { liveModeQuestionCount } from "@/lib/live/live-engine";
 import { loadActivity, ensureCloudActivity } from "@/lib/repositories/activity-repository";
 import { createLiveSession } from "@/lib/live/room-service";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { ActivitySet, DynamiteTimerSeconds, LiveGameMode, SessionMode } from "@/lib/types";
-
-const LIVE_MODE_OPTIONS: { mode: LiveGameMode; label: string; description: string; icon: string }[] = [
-  { mode: "gap-fill", label: "Fill the Gaps", description: "Students choose the language that completes each sentence.", icon: "pencil-square" },
-  { mode: "quiz", label: "Quiz", description: "Students answer multiple-choice questions on their own devices.", icon: "trophy" },
-  { mode: "space-blaster", label: "Space Blaster", description: "Students aim at the correct answer and fire before the round ends.", icon: "rocket-takeoff" },
-  { mode: "dynamite", label: "Dynamite", description: "Pass the fuse by answering before time runs out. Last player alive wins.", icon: "fire" },
-];
 
 export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { activityId: string; initialGameMode?: LiveGameMode }) {
   const router = useRouter();
@@ -38,7 +32,7 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
     if (!activity) return new Map<LiveGameMode, { available: boolean; playableItems: number; reason: string }>();
     const analysis = analyzeGameModes(activity.items, activity.enabledGames);
     return new Map(
-      LIVE_MODE_OPTIONS.map(({ mode: gameMode }) => {
+      LIVE_MODE_ORDER.map((gameMode) => {
         if (gameMode === "dynamite") {
           const playableItems = liveModeQuestionCount(activity, "dynamite");
           return [gameMode, {
@@ -54,17 +48,10 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
     );
   }, [activity]);
 
-  useEffect(() => {
-    if (!activity) return;
-    const current = liveCompatibility.get(liveGameMode);
-    if (current?.available) return;
-    const firstAvailable = LIVE_MODE_OPTIONS.find(({ mode: gameMode }) => liveCompatibility.get(gameMode)?.available);
-    if (firstAvailable) setLiveGameMode(firstAvailable.mode);
+  const selectedLiveGameMode = useMemo(() => {
+    if (!activity || liveCompatibility.get(liveGameMode)?.available) return liveGameMode;
+    return LIVE_MODE_ORDER.find((gameMode) => liveCompatibility.get(gameMode)?.available) ?? liveGameMode;
   }, [activity, liveCompatibility, liveGameMode]);
-
-  useEffect(() => {
-    if (liveGameMode === "dynamite") setMode("individual");
-  }, [liveGameMode]);
 
   if (!isSupabaseConfigured) {
     return (
@@ -83,9 +70,9 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
   if (!activity && !error) return <main className="loading-screen">Preparing live room…</main>;
   if (error || !activity) return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Could not prepare room</h1><p>{error}</p><Link href="/dashboard" className="button button-primary">Back to library</Link></main>;
 
-  const selectedCompatibility = liveCompatibility.get(liveGameMode);
-  const hasLiveMode = LIVE_MODE_OPTIONS.some(({ mode: gameMode }) => liveCompatibility.get(gameMode)?.available);
-  const isDynamite = liveGameMode === "dynamite";
+  const selectedCompatibility = liveCompatibility.get(selectedLiveGameMode);
+  const hasLiveMode = LIVE_MODE_ORDER.some((gameMode) => liveCompatibility.get(gameMode)?.available);
+  const isDynamite = selectedLiveGameMode === "dynamite";
 
   async function create() {
     if (!selectedCompatibility?.available) return;
@@ -95,14 +82,14 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
       const liveSettings = isDynamite
         ? {
             ...settings,
-            liveGameMode,
+            liveGameMode: selectedLiveGameMode,
             timerEnabled: true,
             timerSeconds: dynamiteTimerSeconds,
             dynamiteTimerSeconds,
             dynamiteState: null,
             leaderboardEnabled: false,
           }
-        : { ...settings, liveGameMode, dynamiteState: null };
+        : { ...settings, liveGameMode: selectedLiveGameMode, dynamiteState: null };
       const session = await createLiveSession(cloudActivity, {
         mode: isDynamite ? "individual" : mode,
         teamCount,
@@ -124,14 +111,19 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
         <article className="live-options-card">
           <div className="panel-heading"><span>1</span><div><h2>Choose the live game</h2><p>Only modes that fit this deck can be selected.</p></div></div>
           <div className="mode-segmented live-mode-grid">
-            {LIVE_MODE_OPTIONS.map((option) => {
-              const compatibility = liveCompatibility.get(option.mode);
+            {LIVE_MODE_ORDER.map((gameMode) => {
+              const option = LIVE_MODE_CATALOG[gameMode];
+              const compatibility = liveCompatibility.get(gameMode);
               const available = compatibility?.available ?? false;
               return (
                 <button
-                  key={option.mode}
-                  className={liveGameMode === option.mode ? "active" : ""}
-                  onClick={() => available && setLiveGameMode(option.mode)}
+                  key={gameMode}
+                  className={selectedLiveGameMode === gameMode ? "active" : ""}
+                  onClick={() => {
+                    if (!available) return;
+                    setLiveGameMode(gameMode);
+                    if (gameMode === "dynamite") setMode("individual");
+                  }}
                   disabled={!available}
                   title={available ? `${compatibility?.playableItems ?? 0} playable questions` : compatibility?.reason}
                 >

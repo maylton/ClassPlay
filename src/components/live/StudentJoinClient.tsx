@@ -1,15 +1,19 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Link from "next/link";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { AppIcon } from "@/components/AppIcon";
 import { ActivityImage } from "@/components/media/ActivityImage";
-import { nextAlivePlayerId, normalizeRoomCode, validateNickname } from "@/lib/live/live-engine";
+import { useLiveCountdown } from "@/hooks/useLiveCountdown";
+import { LIVE_MODE_CATALOG } from "@/lib/live/live-catalog";
+import { normalizeRoomCode, validateNickname } from "@/lib/live/live-engine";
 import { broadcastRoomEvent, joinLiveRoom, openLiveChannel, resumeLiveRoom, submitDynamiteAttempt, submitLiveAnswer } from "@/lib/live/room-service";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { speakEnglish } from "@/lib/tts";
-import type { ClassroomSettings, DynamiteState, JoinRoomResult, LiveAnswerResult, LiveQuestion, ResumeRoomResult, SessionState } from "@/lib/types";
+import type { ClassroomSettings, JoinRoomResult, LiveAnswerResult, LiveQuestion, ResumeRoomResult, SessionState } from "@/lib/types";
+import { StudentDynamiteStage } from "./StudentDynamiteStage";
+import { StudentLiveSpaceBlaster } from "./StudentLiveSpaceBlaster";
 
 const CREDENTIAL_KEY = "classplay.live.player.v2";
 type Credentials = { sessionId: string; playerId: string; playerToken: string; roomCode: string; activityTitle: string; nickname: string; teamName?: string | null; teamColor?: string | null };
@@ -110,7 +114,6 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   const [teamColor, setTeamColor] = useState<string | null>(credentials.teamColor ?? null);
   const [connection, setConnection] = useState("Connecting…");
   const [error, setError] = useState("");
-  const [remaining, setRemaining] = useState<number | null>(null);
   const [finalLeaderboard, setFinalLeaderboard] = useState<FinalLeaderboardEntry[]>([]);
   const [finalLeaderboardKind, setFinalLeaderboardKind] = useState<"individual" | "team">("individual");
   const [dynamiteWrongOptions, setDynamiteWrongOptions] = useState<string[]>([]);
@@ -118,14 +121,21 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   const [dynamitePassed, setDynamitePassed] = useState(false);
   const [dynamiteExplosionName, setDynamiteExplosionName] = useState<string | null>(null);
   const [dynamiteWinner, setDynamiteWinner] = useState<WinnerRef | null>(null);
+  const [forcedTimeUp, setForcedTimeUp] = useState(false);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const { remaining: countdownRemaining } = useLiveCountdown({
+    active: Boolean(question && settings?.timerEnabled && state === "playing"),
+    startedAt: question?.startedAt,
+    timerSeconds: settings?.timerSeconds ?? 10,
+  });
+  const remaining = forcedTimeUp ? 0 : countdownRemaining;
 
-  async function hydrate() {
+  const hydrate = useCallback(async () => {
     try {
       const snapshot: ResumeRoomResult = await resumeLiveRoom(credentials.playerId, credentials.playerToken);
       setState(snapshot.state); setQuestion(snapshot.currentQuestion ?? null); setSettings(snapshot.settings); setScore(snapshot.player.score);
       setCorrectAnswer(snapshot.revealedAnswer ?? null);
-      setTeamName(snapshot.team?.name ?? teamName); setTeamColor(snapshot.team?.color ?? teamColor);
+      setTeamName(snapshot.team?.name ?? credentials.teamName ?? null); setTeamColor(snapshot.team?.color ?? credentials.teamColor ?? null);
       if (snapshot.settings.dynamiteState?.winnerId) {
         const winner = snapshot.settings.dynamiteState.order.find((player) => player.id === snapshot.settings.dynamiteState?.winnerId);
         if (winner) setDynamiteWinner(winner);
@@ -133,7 +143,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not restore your room.");
     }
-  }
+  }, [credentials.playerId, credentials.playerToken, credentials.teamColor, credentials.teamName]);
 
   useEffect(() => {
     const channel = openLiveChannel(credentials.sessionId, `player-${credentials.playerId}`);
@@ -142,7 +152,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
       .on("broadcast", { event: "question" }, ({ payload }) => {
         const next = payload.question as LiveQuestion;
         setQuestion(next); setState("playing"); setSelected(null); setAnswerResult(null); setCorrectAnswer(null); setFinalLeaderboard([]);
-        setDynamiteWrongOptions([]); setDynamitePassed(false); setDynamiteExplosionName(null); setError("");
+        setDynamiteWrongOptions([]); setDynamitePassed(false); setDynamiteExplosionName(null); setForcedTimeUp(false); setError("");
         if ((payload.settings as ClassroomSettings | undefined)?.readAloud && (payload.settings as ClassroomSettings).soundEnabled && next.activePlayerId === credentials.playerId) speakEnglish(next.prompt);
         if (payload.settings) setSettings(payload.settings as ClassroomSettings);
       })
@@ -172,21 +182,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
         }
       });
     return () => { void channel.untrack(); void channel.unsubscribe(); channelRef.current = null; };
-    // credentials identify one immutable student connection.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [credentials.sessionId, credentials.playerId, credentials.playerToken]);
-
-  useEffect(() => {
-    if (!question || !settings?.timerEnabled || state !== "playing") return;
-    const tick = () => {
-      const started = new Date(question.startedAt).getTime();
-      const left = Math.max(0, settings.timerSeconds - Math.floor((Date.now() - started) / 1000));
-      setRemaining(left);
-    };
-    const initial = window.setTimeout(tick, 0);
-    const interval = window.setInterval(tick, 200);
-    return () => { window.clearTimeout(initial); window.clearInterval(interval); };
-  }, [question, settings, state]);
+  }, [credentials.nickname, credentials.playerId, credentials.sessionId, hydrate]);
 
   async function answer(option: string) {
     if (!question || selected || (remaining !== null && remaining <= 0)) return;
@@ -208,7 +204,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
       const result = await submitDynamiteAttempt(credentials.playerId, credentials.playerToken, question, option);
       setScore(result.score);
       if (result.timeUp) {
-        setRemaining(0);
+        setForcedTimeUp(true);
       } else if (result.correct) {
         setSelected(option);
         setDynamitePassed(true);
@@ -254,14 +250,15 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   }
 
   if (state === "lobby" || !question) {
-    const waitingMode = settings?.liveGameMode === "dynamite" ? "Dynamite" : settings?.liveGameMode === "space-blaster" ? "Space Blaster" : settings?.liveGameMode === "gap-fill" ? "Fill the Gaps" : settings?.liveGameMode === "quiz" ? "Quiz" : "the live game";
+    const waitingMode = settings?.liveGameMode ? LIVE_MODE_CATALOG[settings.liveGameMode].label : "the live game";
     return <main className="student-live-screen"><header className="student-live-header"><div className="student-brand"><b>C</b><span>ClassPlay</span></div><span className="connection-pill">● {connection}</span></header><section className="student-wait-card"><div className="waiting-orbit"><AppIcon name={settings?.liveGameMode === "dynamite" ? "fire" : "hourglass-split"} /></div><span className="eyebrow">YOU’RE IN</span><h1>Hi, {credentials.nickname}!</h1><p>Waiting for your teacher to start <strong>{waitingMode}</strong> with {credentials.activityTitle}.</p>{settings?.liveGameMode === "dynamite" && <div className="dynamite-phone-rule"><b>{settings.dynamiteTimerSeconds ?? 10}s fuse</b><span>Answer correctly before the Dynamite reaches zero. Last player alive wins.</span></div>}{teamName && <div className="student-team-chip" style={{ borderColor: teamColor ?? undefined }}>You’re on {teamName}</div>}<div className="room-mini-code">Room {credentials.roomCode}</div>{error && <div className="student-error">{error}</div>}<button className="student-leave" onClick={onLeave}>{error ? "Rejoin with another name/code" : "Leave room"}</button></section></main>;
   }
 
   if (question.gameMode === "dynamite" && settings?.dynamiteState) {
     return (
       <StudentDynamiteStage
-        credentials={credentials}
+        playerId={credentials.playerId}
+        nickname={credentials.nickname}
         question={question}
         state={settings.dynamiteState}
         remaining={remaining ?? settings.dynamiteTimerSeconds ?? 10}
@@ -278,7 +275,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   }
 
   const isSpaceBlaster = question.gameMode === "space-blaster";
-  const liveModeLabel = isSpaceBlaster ? "SPACE BLASTER" : question.gameMode === "gap-fill" ? "FILL THE GAPS" : "QUIZ";
+  const liveModeLabel = LIVE_MODE_CATALOG[question.gameMode ?? "quiz"].label.toUpperCase();
   const answerDisabled = Boolean(selected) || state !== "playing" || (remaining !== null && remaining <= 0);
 
   return (
@@ -295,67 +292,5 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
         {error && <div className="student-error">{error}</div>}
       </section>
     </main>
-  );
-}
-
-function StudentDynamiteStage({ credentials, question, state, remaining, wrongOptions, selected, passed, shake, explosionName, connection, error, onAnswer }: { credentials: Credentials; question: LiveQuestion; state: DynamiteState; remaining: number; wrongOptions: string[]; selected: string | null; passed: boolean; shake: boolean; explosionName: string | null; connection: string; error: string; onAnswer: (option: string) => Promise<void> }) {
-  const alive = state.aliveIds.includes(credentials.playerId);
-  const active = question.activePlayerId === credentials.playerId && alive;
-  const nextId = nextAlivePlayerId(state);
-  const next = state.order.find((player) => player.id === nextId);
-  const current = state.order.find((player) => player.id === state.currentPlayerId);
-
-  return (
-    <main className={`student-live-screen dynamite-student-screen ${shake ? "dynamite-shake" : ""} ${remaining <= 3 ? "dynamite-critical" : ""}`}>
-      <header className="student-live-header"><div><span>{credentials.nickname}</span><b>{alive ? "ALIVE" : "SPECTATING"}</b></div><span className="connection-pill">● {connection}</span></header>
-      <section className="dynamite-student-layout">
-        {explosionName ? (
-          <div className="dynamite-phone-boom"><strong>BOOM!</strong><span>{explosionName} is out!</span></div>
-        ) : active ? (
-          <div className="dynamite-answer-card">
-            <div className="dynamite-phone-timer"><span><AppIcon name="fire" /></span><strong>{remaining}</strong><small>SECONDS</small></div>
-            <span className="eyebrow">THE DYNAMITE IS YOURS</span><h1>{question.prompt}</h1>{question.hint && <p>{question.hint}</p>}
-            <div className="student-answer-grid dynamite-answer-grid">{question.options.map((option, index) => { const wrong = wrongOptions.includes(option); const correct = passed && selected === option; return <button disabled={passed || wrong || remaining <= 0} className={correct ? "correct" : wrong ? "wrong dynamite-used" : ""} onClick={() => void onAnswer(option)} key={`${question.dynamiteTurnId}-${option}`}><span>{String.fromCharCode(65 + index)}</span><b>{option}</b></button>; })}</div>
-            {passed && <div className="student-feedback correct dynamite-pass-feedback"><AppIcon name="check-lg" /> PASS! Fuse reset.</div>}
-            {!passed && remaining === 0 && <div className="student-feedback wrong">BOOM! Waiting for the room…</div>}
-            {error && <div className="student-error">{error}</div>}
-          </div>
-        ) : (
-          <div className={`dynamite-waiting-card ${alive ? "alive" : "eliminated"}`}>
-            <div className="dynamite-mini-device"><AppIcon name={alive ? "fire" : "eye"} /></div>
-            <span className="eyebrow">{alive ? nextId === credentials.playerId ? "YOU'RE NEXT" : "GET READY" : "YOU'RE OUT"}</span>
-            <h1>{alive ? `${current?.name ?? "Someone"} has the Dynamite` : "Spectator mode"}</h1>
-            <p>{alive ? nextId === credentials.playerId ? "Your turn is coming next. Be ready to answer." : `Next up: ${next?.name ?? "—"}` : "You can still follow the order and watch the final survivors."}</p>
-            <div className={`student-timer ${(remaining ?? 99) <= 3 ? "urgent" : ""}`}><AppIcon name="clock" /> {remaining}s</div>
-          </div>
-        )}
-        <StudentDynamiteQueue state={state} playerId={credentials.playerId} />
-      </section>
-    </main>
-  );
-}
-
-function StudentDynamiteQueue({ state, playerId }: { state: DynamiteState; playerId: string }) {
-  const alive = new Set(state.aliveIds);
-  const nextId = nextAlivePlayerId(state);
-  return <section className="dynamite-phone-queue"><div><span>Turn order</span><b>{state.aliveIds.length} alive</b></div><div>{state.order.map((player, index) => { const eliminated = !alive.has(player.id); const current = player.id === state.currentPlayerId; const next = player.id === nextId && !current; const me = player.id === playerId; return <span key={player.id} className={`${current ? "current" : ""} ${next ? "next" : ""} ${eliminated ? "eliminated" : ""} ${me ? "me" : ""}`}><i>{index + 1}</i><b>{player.name}{me ? " · you" : ""}</b><small>{eliminated ? "OUT" : current ? "NOW" : next ? "NEXT" : ""}</small></span>; })}</div></section>;
-}
-
-function StudentLiveSpaceBlaster({ question, selected, answerResult, correctAnswer, disabled, reducedMotion, onAnswer }: { question: LiveQuestion; selected: string | null; answerResult: LiveAnswerResult | null; correctAnswer: string | null; disabled: boolean; reducedMotion: boolean; onAnswer: (option: string) => Promise<void> }) {
-  const [lane, setLane] = useState(0);
-  useEffect(() => { setLane(0); }, [question.itemId]);
-  const currentOption = question.options[lane];
-  const shipLeft = `${((lane + 0.5) / Math.max(1, question.options.length)) * 100}%`;
-  function targetState(option: string) {
-    if (correctAnswer) return option === correctAnswer ? "hit" : selected === option ? "miss" : "";
-    if (selected === option && answerResult) return answerResult.correct ? "hit" : "miss";
-    return "";
-  }
-  return (
-    <div className={`arcade-stage space-blaster ${reducedMotion ? "reduced-motion" : ""}`}>
-      <div className="space-question"><small>BLAST THE MISSING LANGUAGE</small><strong>{question.prompt}</strong>{question.hint && <span>{question.hint}</span>}</div>
-      <div className="space-arena"><div className="space-stars" aria-hidden="true" /><div className="space-target-grid" style={{ gridTemplateColumns: `repeat(${question.options.length}, minmax(0, 1fr))` }}>{question.options.map((option, index) => <button key={`${question.itemId}-${option}`} className={`space-target ${lane === index ? "aimed" : ""} ${targetState(option)}`} onClick={() => !disabled && setLane(index)} disabled={disabled} aria-label={`${lane === index ? "Aimed at " : "Aim at "}${option}`}><span className="target-ring" aria-hidden="true"><i /></span><b>{option}</b></button>)}</div><div className="space-ship" style={{ left: shipLeft }} aria-label={currentOption ? `Ship aimed at ${currentOption}` : "Space ship"}><span className="ship-cockpit" /><span className="ship-wing left" /><span className="ship-wing right" /><span className="ship-flame" /></div></div>
-      <div className="arcade-controls space-controls"><button onClick={() => setLane((current) => Math.max(0, current - 1))} disabled={disabled || lane === 0} aria-label="Move ship left"><AppIcon name="arrow-left" /></button><button className="arcade-fire" onClick={() => currentOption && void onAnswer(currentOption)} disabled={disabled || !currentOption}><AppIcon name="crosshair" /> FIRE</button><button onClick={() => setLane((current) => Math.min(question.options.length - 1, current + 1))} disabled={disabled || lane === question.options.length - 1} aria-label="Move ship right"><AppIcon name="arrow-right" /></button></div>
-    </div>
   );
 }
