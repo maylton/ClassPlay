@@ -51,10 +51,15 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
   }, [activityId, practice]);
 
   const variants = useMemo(() => !practice && activity ? compatibleVariants(activity) : [], [activity, practice]);
-  const liveReady = useMemo(() => !practice && activity ? (
-    getPlayableItemsForMode(activity.items, "quiz").length >= 2 ||
-    getPlayableItemsForMode(activity.items, "gap-fill").length >= 2
-  ) : false, [activity, practice]);
+  const liveQuestionPools = useMemo(() => {
+    if (practice || !activity) return { quiz: 0, gap: 0 };
+    return {
+      quiz: getPlayableItemsForMode(activity.items, "quiz").length,
+      gap: getPlayableItemsForMode(activity.items, "gap-fill").length,
+    };
+  }, [activity, practice]);
+  const liveReady = liveQuestionPools.quiz >= 2 || liveQuestionPools.gap >= 2;
+  const wildcardReady = liveQuestionPools.quiz >= 12 || liveQuestionPools.gap >= 12;
 
   if (error && !activity) {
     return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Could not open activity</h1><p>{error}</p><Link className="button button-primary" href={practice ? "/" : "/dashboard"}>{practice ? "ClassPlay home" : "Back to library"}</Link></main>;
@@ -166,7 +171,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
 
   const enabledCoreGames = activity.enabledGames.filter((game) => !ARCADE_MODES.includes(game));
   const enabledArcadeGames = activity.enabledGames.filter((game) => ARCADE_MODES.includes(game));
-  const teacherModeCount = activity.enabledGames.length + (liveReady ? 1 : 0);
+  const teacherModeCount = activity.enabledGames.length + (liveReady ? 1 : 0) + (wildcardReady ? 1 : 0);
 
   function modeCard(game: GameType) {
     const info = GAME_MODE_CATALOG[game];
@@ -203,7 +208,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
         <div className="mode-meta"><span>{activity.grade}</span><span>{activity.level}</span><span>{activity.items.length} items</span></div>
         {error && <div className="alert-error practice-share-error">{error}</div>}
         <div className="teacher-play-actions">
-          {liveReady ? <div className="connected-cta"><div><b><AppIcon name="wifi" /> Connected Classroom</b><span>Students join by code or QR. Play individually or in teams.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room <AppIcon name="arrow-right" /></Link></div> : <div className="connected-cta"><div><b><AppIcon name="wifi-off" /> Connected Classroom needs question-ready content</b><span>Add at least two prompt + answer pairs or two usable Gap Fill sentences before hosting live.</span></div><Link href={`/edit/${activity.id}`} className="button button-primary">Prepare live content <AppIcon name="arrow-right" /></Link></div>}
+          {liveReady ? <div className="connected-cta"><div><b><AppIcon name="wifi" /> Connected Classroom</b><span>Run live modes on the projector; student phones are available when a mode uses or supports them.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room <AppIcon name="arrow-right" /></Link></div> : <div className="connected-cta"><div><b><AppIcon name="wifi-off" /> Connected Classroom needs question-ready content</b><span>Add at least two prompt + answer pairs or two usable Gap Fill sentences before hosting live.</span></div><Link href={`/edit/${activity.id}`} className="button button-primary">Prepare live content <AppIcon name="arrow-right" /></Link></div>}
           <div className={`practice-share-cta ${activity.visibility === "unlisted" ? "shared" : ""}`}>
             <div><b><AppIcon name="send" /> Student practice link</b><span>{activity.visibility === "unlisted" ? "Anyone with the link can practise and join each game's Top 10." : "Create an unlisted link students can use for independent practice."}</span>{shareMessage && <small className="practice-share-message">{shareMessage}</small>}</div>
             <div className="practice-share-actions">
@@ -217,7 +222,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
         <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{teacherModeCount} modes available</span></div>
         {enabledCoreGames.length > 0 && <div className="mode-grid">{enabledCoreGames.map(modeCard)}</div>}
         {enabledArcadeGames.length > 0 && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY ARCADE</small><h3>Move more. Play louder.</h3></div><span><AppIcon name="controller" /></span></div><div className="mode-grid arcade-mode-grid">{enabledArcadeGames.map(modeCard)}</div></section>}
-        {liveReady && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY LIVE</small><h3>Party modes for the whole room.</h3></div><span><AppIcon name="wifi" /></span></div><div className="mode-grid arcade-mode-grid"><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}&mode=dynamite`} className="mode-card pink"><span className="mode-icon"><AppIcon name="fire" /></span><span><strong>Dynamite</strong><small>LIVE ONLY · Pass it before it blows!</small></span><i><AppIcon name="arrow-right" /></i></Link></div></section>}
+        {liveReady && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY LIVE</small><h3>Party modes for the whole room.</h3></div><span><AppIcon name="wifi" /></span></div><div className="mode-grid arcade-mode-grid"><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}&mode=dynamite`} className="mode-card pink"><span className="mode-icon"><AppIcon name="fire" /></span><span><strong>Dynamite</strong><small>LIVE ONLY · Pass it before it blows!</small></span><i><AppIcon name="arrow-right" /></i></Link>{wildcardReady && <Link href={`/host/new?activity=${encodeURIComponent(activity.id)}&mode=wildcard-grid`} className="mode-card green"><span className="mode-icon"><AppIcon name="grid-3x3-gap-fill" /></span><span><strong>Wildcard Grid</strong><small>LIVE ONLY · Pick a tile. Answer. Expect a twist.</small></span><i><AppIcon name="arrow-right" /></i></Link>}</div></section>}
 
         <section className="compatible-variants-panel">
           <div className="compatible-variants-heading">
