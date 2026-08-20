@@ -63,7 +63,8 @@ assert.match(liveEngine, /nextAlivePlayerId/, "Dynamite must skip eliminated pla
 assert.match(liveEngine, /eliminateDynamitePlayer/, "Dynamite must have deterministic elimination logic.");
 assert.match(liveEngine, /previousQuestion[\s\S]*questionOrder\[0\] === previousQuestion/, "A recycled Dynamite question pool must avoid an immediate repeat when possible.");
 assert.match(liveSetup, /\(\[10, 15, 20\] as DynamiteTimerSeconds\[\]\)/, "Dynamite must offer 10, 15 and 20 second fuse options.");
-assert.match(liveSetup, /liveGameMode === "dynamite"\) setMode\("individual"\)/, "Dynamite must use individual elimination rather than team scoring.");
+assert.match(liveSetup, /gameMode === "dynamite"\) setMode\("individual"\)/, "Selecting Dynamite must reset the room style to individual.");
+assert.match(liveSetup, /mode: isDynamite \? "individual" : mode/, "Dynamite room creation must enforce individual elimination.");
 assert.match(liveHost, /players\.length < 2/, "Dynamite must require at least two joined students.");
 assert.match(dynamiteHost, /state\.order/, "The host must render the persisted Dynamite turn order.");
 assert.match(liveHost, /dynamite-explosion/, "The host must broadcast an elimination moment to student devices.");
