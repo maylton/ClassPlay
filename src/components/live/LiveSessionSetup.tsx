@@ -48,17 +48,10 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
     );
   }, [activity]);
 
-  useEffect(() => {
-    if (!activity) return;
-    const current = liveCompatibility.get(liveGameMode);
-    if (current?.available) return;
-    const firstAvailable = LIVE_MODE_ORDER.find((gameMode) => liveCompatibility.get(gameMode)?.available);
-    if (firstAvailable) setLiveGameMode(firstAvailable);
+  const selectedLiveGameMode = useMemo(() => {
+    if (!activity || liveCompatibility.get(liveGameMode)?.available) return liveGameMode;
+    return LIVE_MODE_ORDER.find((gameMode) => liveCompatibility.get(gameMode)?.available) ?? liveGameMode;
   }, [activity, liveCompatibility, liveGameMode]);
-
-  useEffect(() => {
-    if (liveGameMode === "dynamite") setMode("individual");
-  }, [liveGameMode]);
 
   if (!isSupabaseConfigured) {
     return (
@@ -77,9 +70,9 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
   if (!activity && !error) return <main className="loading-screen">Preparing live room…</main>;
   if (error || !activity) return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Could not prepare room</h1><p>{error}</p><Link href="/dashboard" className="button button-primary">Back to library</Link></main>;
 
-  const selectedCompatibility = liveCompatibility.get(liveGameMode);
+  const selectedCompatibility = liveCompatibility.get(selectedLiveGameMode);
   const hasLiveMode = LIVE_MODE_ORDER.some((gameMode) => liveCompatibility.get(gameMode)?.available);
-  const isDynamite = liveGameMode === "dynamite";
+  const isDynamite = selectedLiveGameMode === "dynamite";
 
   async function create() {
     if (!selectedCompatibility?.available) return;
@@ -89,14 +82,14 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
       const liveSettings = isDynamite
         ? {
             ...settings,
-            liveGameMode,
+            liveGameMode: selectedLiveGameMode,
             timerEnabled: true,
             timerSeconds: dynamiteTimerSeconds,
             dynamiteTimerSeconds,
             dynamiteState: null,
             leaderboardEnabled: false,
           }
-        : { ...settings, liveGameMode, dynamiteState: null };
+        : { ...settings, liveGameMode: selectedLiveGameMode, dynamiteState: null };
       const session = await createLiveSession(cloudActivity, {
         mode: isDynamite ? "individual" : mode,
         teamCount,
@@ -125,8 +118,12 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
               return (
                 <button
                   key={gameMode}
-                  className={liveGameMode === gameMode ? "active" : ""}
-                  onClick={() => available && setLiveGameMode(gameMode)}
+                  className={selectedLiveGameMode === gameMode ? "active" : ""}
+                  onClick={() => {
+                    if (!available) return;
+                    setLiveGameMode(gameMode);
+                    if (gameMode === "dynamite") setMode("individual");
+                  }}
                   disabled={!available}
                   title={available ? `${compatibility?.playableItems ?? 0} playable questions` : compatibility?.reason}
                 >
