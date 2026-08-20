@@ -5,6 +5,7 @@ import {
   buildLiveQuestion,
   continueWildcardGridResult,
   createWildcardGridState,
+  liveModeQuestionCount,
   publicLiveQuestion,
   resolveWildcardGrid,
   resolveWildcardGridTie,
@@ -67,9 +68,10 @@ export function useWildcardGridHost({
     const size = session.settings.wildcardGridSize ?? 12;
     if (teams.length < 2 || teams.length > 4) return setError("Wildcard Grid supports two to four teams.");
     const teamRefs = teams.map((team) => ({ id: team.id, name: team.name, color: team.color }));
+    const questionCount = liveModeQuestionCount(activity, "wildcard-grid");
     setBusy(true); setError("");
     try {
-      const nextState = createWildcardGridState(teamRefs, activity.items.length, size, session.settings.wildcardGridIntensity ?? "balanced");
+      const nextState = createWildcardGridState(teamRefs, questionCount, size, session.settings.wildcardGridIntensity ?? "balanced");
       const settings: ClassroomSettings = { ...session.settings, wildcardGridState: nextState, timerEnabled: false, leaderboardEnabled: false };
       await updateHostSession(session.id, { state: "playing", settings, current_question: null, round_started_at: null });
       await send("wildcard-grid", { state: "playing", settings: publicWildcardSettings(settings), question: null });
