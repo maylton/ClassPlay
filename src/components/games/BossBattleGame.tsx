@@ -24,8 +24,11 @@ export function BossBattleGame({ activity, onComplete }: GameProps) {
     () => chooseBossBattleSource(activity.kind, quizItems.length, gapItems.length),
     [activity.kind, gapItems.length, quizItems.length],
   );
-  const sourceItems = source === "gap-fill" ? gapItems : source === "quiz" ? quizItems : [];
-  const rounds = useMemo(() => source ? buildBossBattleRounds(sourceItems, source) : [], [source, sourceItems]);
+  const rounds = useMemo(() => {
+    if (!source) return [];
+    const sourceItems = source === "gap-fill" ? gapItems : quizItems;
+    return buildBossBattleRounds(sourceItems, source);
+  }, [gapItems, quizItems, source]);
   const boss = useMemo(() => bossForKind(activity.kind), [activity.kind]);
   const maxHp = useMemo(() => bossMaxHp(rounds.length), [rounds.length]);
 
@@ -42,10 +45,6 @@ export function BossBattleGame({ activity, onComplete }: GameProps) {
   const [outcome, setOutcome] = useState<"victory" | "defeat" | null>(null);
   const round = rounds[roundIndex];
   const { stop } = useQuestionTimer(round?.itemId ?? "boss-empty");
-
-  useEffect(() => {
-    setBossHp(maxHp);
-  }, [maxHp]);
 
   const finish = useCallback((result: "victory" | "defeat", nextScore: number, nextCorrect: number) => {
     setOutcome(result);

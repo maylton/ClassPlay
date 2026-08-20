@@ -24,8 +24,11 @@ export function BubbleBurstGame({ activity, onComplete }: GameProps) {
     () => chooseBubbleBurstSource(activity.kind, quizItems.length, gapItems.length),
     [activity.kind, gapItems.length, quizItems.length],
   );
-  const sourceItems = source === "gap-fill" ? gapItems : source === "quiz" ? quizItems : [];
-  const rounds = useMemo(() => source ? buildBubbleBurstRounds(sourceItems, source) : [], [source, sourceItems]);
+  const rounds = useMemo(() => {
+    if (!source) return [];
+    const sourceItems = source === "gap-fill" ? gapItems : quizItems;
+    return buildBubbleBurstRounds(sourceItems, source);
+  }, [gapItems, quizItems, source]);
 
   const [roundIndex, setRoundIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -38,7 +41,7 @@ export function BubbleBurstGame({ activity, onComplete }: GameProps) {
   const [finished, setFinished] = useState(false);
   const round = rounds[roundIndex];
   const { elapsedMs, stop } = useQuestionTimer(round?.itemId ?? "bubble-empty");
-  const layout = useMemo(() => createBubbleBurstLayout(round?.options.length ?? 0), [round?.itemId, round?.options.length]);
+  const layout = useMemo(() => createBubbleBurstLayout(round?.options.length ?? 0), [round?.options.length]);
   const remainingMs = Math.max(0, BUBBLE_BURST_ROUND_MS - elapsedMs);
   const remainingPercent = Math.max(0, Math.round((remainingMs / BUBBLE_BURST_ROUND_MS) * 100));
 
