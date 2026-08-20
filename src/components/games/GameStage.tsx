@@ -80,7 +80,9 @@ export function GameStage({
   const GameComponent = GAME_COMPONENTS[mode];
   return (
     <div className="timed-game-shell">
-      <div className="game-session-timer"><span className="storage-pill"><AppIcon name="clock" /> Time {formatElapsed(elapsedMs)}</span></div>
+      <div style={{ display: "flex", justifyContent: "flex-end", margin: "0 auto .55rem", maxWidth: 1100, padding: "0 .2rem" }}>
+        <span className="storage-pill"><AppIcon name="clock" /> Time {formatElapsed(elapsedMs)}</span>
+      </div>
       <GameComponent key={`${mode}-${runKey ?? 0}`} activity={activity} onComplete={handleComplete} />
     </div>
   );
