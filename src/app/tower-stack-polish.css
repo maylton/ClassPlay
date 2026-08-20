@@ -1,4 +1,4 @@
-/* Tower Stack final MVP polish: time pressure, crane rig and deterministic structural wobble. */
+/* Tower Stack final MVP polish: time pressure, crane rig and gameplay-aware structural wobble. */
 
 .tower-stack .tower-crane {
   inset: 0;
@@ -120,8 +120,11 @@
  * progressively larger offsets, which makes the stack flex from the base
  * instead of rotating like one rigid object.
  *
- * This remains visual-only: while the moving block can be dropped, the stack
- * settles back onto its exact geometry so the collision model never changes.
+ * The sway now remains active while the player aims the moving block. The game
+ * samples the current lateral transform of the top floor at the exact drop
+ * instant, so the visible movement and collision geometry agree. Rotation is
+ * deliberately tiny and remains a visual depth cue; lateral sway is the part
+ * that changes placement difficulty.
  */
 .tower-playfield .placed-block:not(.foundation) {
   --tower-sway-left: -.35px;
@@ -130,6 +133,7 @@
   --tower-sway-rot-right: .015deg;
   transform-origin: 50% 100%;
   transition: left .18s ease, width .18s ease, bottom .28s ease, transform .22s ease;
+  will-change: transform;
 }
 
 /* Floor 4+ bends a little more than the lower floors. */
@@ -172,6 +176,8 @@
 
 /* A cropped/non-perfect latest floor carries a little more visible tension. */
 .tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .tower-preview-block)
+  .placed-block:not(.foundation),
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .active-block)
   .placed-block:not(.foundation) {
   animation-duration: 3.2s;
 }
@@ -183,17 +189,21 @@
 }
 
 .tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .tower-preview-block)
+  .placed-block:not(.foundation),
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .active-block)
   .placed-block:not(.foundation) {
   animation-duration: 2.6s;
 }
 
-/* Twelve floors: pronounced, but deliberately not dangerous. */
+/* Twelve floors: pronounced and now part of the timing challenge. */
 .tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block)
   .placed-block:not(.foundation) {
   animation-duration: 2.45s;
 }
 
 .tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .tower-preview-block)
+  .placed-block:not(.foundation),
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .active-block)
   .placed-block:not(.foundation) {
   animation-duration: 2.1s;
 }
@@ -205,10 +215,9 @@
   transform: translateX(0) rotate(0);
 }
 
-/* Fairness rule: stacking geometry is always visually neutral while aiming. */
+/* As soon as the next block is unlocked, the tower resumes swaying while aiming. */
 .tower-arena.can-drop .tower-playfield .placed-block:not(.foundation) {
-  animation: none !important;
-  transform: translateX(0) rotate(0) !important;
+  animation-play-state: running;
 }
 
 .tower-time-pressure {
