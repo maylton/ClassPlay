@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { AppIcon } from "@/components/AppIcon";
 import { useLiveCountdown } from "@/hooks/useLiveCountdown";
+import { useWildcardGridHost } from "@/hooks/useWildcardGridHost";
 import {
   advanceDynamiteQuestion,
   buildLiveQuestion,
@@ -31,6 +32,8 @@ import { loadActivity } from "@/lib/repositories/activity-repository";
 import type { ActivitySet, ClassroomSettings, DynamiteState, GameSession, LiveGameMode, LivePlayer, Team } from "@/lib/types";
 import { DynamiteFinalHost, DynamiteHostStage } from "./DynamiteHostStage";
 import { HostLobby, StandardHostFinal, StandardHostStage } from "./HostLiveViews";
+import { WildcardGridFinalHost } from "./WildcardGridFinalHost";
+import { WildcardGridHostStage } from "./WildcardGridHostStage";
 
 const subscribeToBrowserLocation = () => () => {};
 const sleep = (milliseconds: number) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
@@ -95,6 +98,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
 
   const liveGameMode: LiveGameMode = session?.settings.liveGameMode ?? session?.currentQuestion?.gameMode ?? "quiz";
   const isDynamite = liveGameMode === "dynamite";
+  const isWildcardGrid = liveGameMode === "wildcard-grid";
   const dynamiteState = session?.settings.dynamiteState ?? null;
   const liveQuestionTotal = useMemo(() => activity ? liveModeQuestionCount(activity, liveGameMode) : 0, [activity, liveGameMode]);
   const scoreboard = useMemo(() => [...players].sort((a, b) => b.score - a.score || a.nickname.localeCompare(b.nickname)), [players]);
@@ -113,6 +117,8 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   const send = useCallback(async (event: string, payload: Record<string, unknown>) => {
     if (channelRef.current) await broadcastRoomEvent(channelRef.current, event, payload);
   }, []);
+
+  const wildcardGrid = useWildcardGridHost({ activity, session, teams, refresh, send, setError });
 
   async function publishQuestion(index: number) {
     if (!activity || !session) return;
@@ -141,14 +147,12 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     if (!activity || !session) return;
     const activePlayer = state.order.find((player) => player.id === state.currentPlayerId);
     if (!activePlayer) throw new Error("Could not find the next Dynamite player.");
-
     const hostQuestion = buildLiveQuestion(activity, questionIndex, "dynamite");
     if (hostQuestion.imageUrl) hostQuestion.imageUrl = (await resolveActivityImageUrl(hostQuestion.imageUrl)) ?? hostQuestion.imageUrl;
     hostQuestion.startedAt = new Date().toISOString();
     hostQuestion.activePlayerId = activePlayer.id;
     hostQuestion.activePlayerName = activePlayer.name;
     hostQuestion.dynamiteTurnId = crypto.randomUUID();
-
     const nextSettings: ClassroomSettings = settingsOverride ?? {
       ...session.settings,
       timerEnabled: true,
@@ -157,7 +161,6 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       dynamiteState: state,
     };
     nextSettings.dynamiteState = state;
-
     await updateHostSession(session.id, {
       state: "playing",
       current_item_index: questionIndex,
@@ -195,7 +198,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   }
 
   const reveal = useCallback(async () => {
-    if (!session?.currentQuestion || session.state !== "playing" || revealInFlightRef.current || isDynamite) return;
+    if (!session?.currentQuestion || session.state !== "playing" || revealInFlightRef.current || isDynamite || isWildcardGrid) return;
     revealInFlightRef.current = true;
     setBusy(true);
     try {
@@ -208,24 +211,24 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       revealInFlightRef.current = false;
       setBusy(false);
     }
-  }, [currentCorrect, isDynamite, refresh, send, session]);
+  }, [currentCorrect, isDynamite, isWildcardGrid, refresh, send, session]);
 
   useEffect(() => {
-    if (isDynamite || session?.state !== "playing" || !session.currentQuestion || players.length === 0) return;
+    if (isDynamite || isWildcardGrid || session?.state !== "playing" || !session.currentQuestion || players.length === 0) return;
     if (currentAnswerCount < players.length) return;
     const timeout = window.setTimeout(() => void reveal(), 250);
     return () => window.clearTimeout(timeout);
-  }, [currentAnswerCount, isDynamite, players.length, reveal, session?.currentQuestion, session?.state]);
+  }, [currentAnswerCount, isDynamite, isWildcardGrid, players.length, reveal, session?.currentQuestion, session?.state]);
 
   useEffect(() => {
-    if (isDynamite || session?.state !== "playing" || !session.currentQuestion || !session.settings.timerEnabled) return;
+    if (isDynamite || isWildcardGrid || session?.state !== "playing" || !session.currentQuestion || !session.settings.timerEnabled) return;
     const startedAt = new Date(session.currentQuestion.startedAt).getTime();
     if (!Number.isFinite(startedAt)) return;
     const timerMs = Math.max(1, session.settings.timerSeconds) * 1000;
     const remainingMs = Math.max(0, startedAt + timerMs - Date.now());
     const timeout = window.setTimeout(() => void reveal(), remainingMs + 100);
     return () => window.clearTimeout(timeout);
-  }, [isDynamite, reveal, session?.currentQuestion, session?.settings.timerEnabled, session?.settings.timerSeconds, session?.state]);
+  }, [isDynamite, isWildcardGrid, reveal, session?.currentQuestion, session?.settings.timerEnabled, session?.settings.timerSeconds, session?.state]);
 
   const advanceDynamitePass = useCallback(async () => {
     if (!activity || !session || !dynamiteState || dynamiteTransitionRef.current) return;
@@ -261,25 +264,16 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       const eliminated = eliminateDynamitePlayer(dynamiteState, dynamiteState.currentPlayerId);
       setDynamiteExplosion(explodedPlayer?.name ?? "Player");
       await send("dynamite-explosion", { playerId: dynamiteState.currentPlayerId, playerName: explodedPlayer?.name ?? "Player" });
-
       if (eliminated.winnerId) {
         const winner = eliminated.order.find((player) => player.id === eliminated.winnerId);
         const finalSettings = { ...session.settings, dynamiteState: eliminated };
         await updateHostSession(session.id, { settings: finalSettings });
         await sleep(900);
         await finalizeLiveSession(session.id);
-        await send("final", {
-          state: "final_results",
-          leaderboardKind: "individual",
-          leaderboard: [],
-          dynamiteWinner: winner ?? null,
-          dynamiteOrder: eliminated.order,
-          eliminatedIds: eliminated.eliminatedIds,
-        });
+        await send("final", { state: "final_results", leaderboardKind: "individual", leaderboard: [], dynamiteWinner: winner ?? null, dynamiteOrder: eliminated.order, eliminatedIds: eliminated.eliminatedIds });
         await refresh();
         return;
       }
-
       const turnAdvanced = { ...eliminated, turnNumber: eliminated.turnNumber + 1 };
       const advanced = advanceDynamiteQuestion(turnAdvanced, liveQuestionTotal);
       const interimSettings = { ...session.settings, dynamiteState: advanced.state };
@@ -327,6 +321,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
 
   async function endSession() {
     if (!session) return;
+    if (isWildcardGrid) return wildcardGrid.finish();
     setBusy(true);
     try {
       const leaderboard = isDynamite ? [] : session.settings.leaderboardEnabled
@@ -352,7 +347,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
   }
 
   async function toggleSessionSetting(key: "leaderboardEnabled" | "timerEnabled") {
-    if (!session || isDynamite) return;
+    if (!session || isDynamite || isWildcardGrid) return;
     const nextSettings = { ...session.settings, [key]: !session.settings[key] };
     await updateHostSession(session.id, { settings: nextSettings });
     await send("settings", { settings: nextSettings });
@@ -375,17 +370,8 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       const winner = dynamiteState.order.find((player) => player.id === dynamiteState.winnerId);
       return <DynamiteFinalHost roomCode={session.roomCode} winner={winner?.name ?? "Winner"} activityId={activity.id} />;
     }
-    return (
-      <StandardHostFinal
-        session={session}
-        players={players}
-        teams={teams}
-        scoreboard={scoreboard}
-        questionTotal={liveQuestionTotal || session.currentQuestion?.total || activity.items.length}
-        liveGameMode={liveGameMode}
-        activityId={activity.id}
-      />
-    );
+    if (isWildcardGrid && wildcardGrid.state) return <WildcardGridFinalHost state={wildcardGrid.state} roomCode={session.roomCode} activityId={activity.id} />;
+    return <StandardHostFinal session={session} players={players} teams={teams} scoreboard={scoreboard} questionTotal={liveQuestionTotal || session.currentQuestion?.total || activity.items.length} liveGameMode={liveGameMode} activityId={activity.id} />;
   }
 
   if (session.state === "lobby") {
@@ -398,49 +384,42 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
         joinUrl={joinUrl}
         presenceCount={presenceCount}
         error={error}
-        busy={busy}
+        busy={busy || wildcardGrid.busy}
         liveQuestionTotal={liveQuestionTotal}
         liveGameMode={liveGameMode}
         isDynamite={isDynamite}
+        isWildcardGrid={isWildcardGrid}
         onToggleLock={() => void toggleLock()}
         onCycleTeam={(player) => void cycleTeam(player)}
         onRemovePlayer={(playerId) => void removeLivePlayer(playerId)}
         onToggleSetting={(key) => void toggleSessionSetting(key)}
-        onStart={() => void (isDynamite ? startDynamite() : publishQuestion(0))}
+        onStart={() => void (isWildcardGrid ? wildcardGrid.start() : isDynamite ? startDynamite() : publishQuestion(0))}
       />
     );
   }
 
   if (isDynamite && session.currentQuestion && dynamiteState) {
+    return <DynamiteHostStage session={session} state={dynamiteState} remaining={hostRemaining ?? session.settings.dynamiteTimerSeconds ?? 10} preciseRemaining={hostRemainingPrecise ?? hostRemaining ?? session.settings.dynamiteTimerSeconds ?? 10} explosion={dynamiteExplosion} onEnd={() => void endSession()} />;
+  }
+
+  if (isWildcardGrid && wildcardGrid.state) {
     return (
-      <DynamiteHostStage
+      <WildcardGridHostStage
         session={session}
-        state={dynamiteState}
-        remaining={hostRemaining ?? session.settings.dynamiteTimerSeconds ?? 10}
-        preciseRemaining={hostRemainingPrecise ?? hostRemaining ?? session.settings.dynamiteTimerSeconds ?? 10}
-        explosion={dynamiteExplosion}
-        onEnd={() => void endSession()}
+        state={wildcardGrid.state}
+        currentCorrect={currentCorrect}
+        busy={wildcardGrid.busy}
+        error={error}
+        onTile={(tileNumber) => void wildcardGrid.selectTile(tileNumber)}
+        onMark={(correct) => void wildcardGrid.markAnswer(correct)}
+        onContinueResult={() => void wildcardGrid.continueResult()}
+        onResolveWildcard={(targetTeamId) => void wildcardGrid.resolveWildcard(targetTeamId)}
+        onTieWinner={(teamId) => void wildcardGrid.chooseTieWinner(teamId)}
+        onFinish={() => void wildcardGrid.finish()}
       />
     );
   }
 
   const questionTotal = session.currentQuestion?.total ?? (liveQuestionTotal || activity.items.length);
-  return (
-    <StandardHostStage
-      session={session}
-      players={players}
-      teams={teams}
-      scoreboard={scoreboard}
-      currentAnswerCount={currentAnswerCount}
-      currentCorrect={currentCorrect}
-      questionTotal={questionTotal}
-      hostRemaining={hostRemaining}
-      error={error}
-      busy={busy}
-      onToggleLeaderboard={() => void toggleSessionSetting("leaderboardEnabled")}
-      onReveal={() => void reveal()}
-      onNext={() => void nextQuestion()}
-      onEnd={() => void endSession()}
-    />
-  );
+  return <StandardHostStage session={session} players={players} teams={teams} scoreboard={scoreboard} currentAnswerCount={currentAnswerCount} currentCorrect={currentCorrect} questionTotal={questionTotal} hostRemaining={hostRemaining} error={error} busy={busy} onToggleLeaderboard={() => void toggleSessionSetting("leaderboardEnabled")} onReveal={() => void reveal()} onNext={() => void nextQuestion()} onEnd={() => void endSession()} />;
 }
