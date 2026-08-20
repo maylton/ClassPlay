@@ -1,3 +1,9 @@
+/*
+ * Grammar Runner is paused and intentionally removed from the visible ClassPlay UI.
+ * The full implementation is kept here, commented out, so the concept can be revisited
+ * later without throwing away the work.
+ *
+
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
@@ -203,3 +209,5 @@ export function GrammarRunnerGame({ activity, onComplete }: GameProps) {
     </div>
   );
 }
+
+*/
