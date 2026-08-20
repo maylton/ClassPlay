@@ -1,0 +1,150 @@
+.dynamite-fuse {
+  position: absolute;
+  width: 150px;
+  height: 96px;
+  right: -18px;
+  top: -2px;
+  border: 0;
+  border-radius: 0;
+  transform: rotate(-7deg);
+  pointer-events: none;
+  overflow: visible;
+}
+
+.dynamite-fuse svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 4px 5px rgba(0, 0, 0, .26));
+}
+
+.dynamite-fuse-burnt,
+.dynamite-fuse-rope {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.dynamite-fuse-burnt {
+  stroke: rgba(31, 25, 24, .5);
+  stroke-width: 10;
+  stroke-dasharray: 2 6;
+}
+
+.dynamite-fuse-rope {
+  stroke: #685248;
+  stroke-width: 9;
+  transition: stroke-dasharray .09s linear;
+  filter: drop-shadow(0 1px 0 rgba(255, 255, 255, .12));
+}
+
+.dynamite-fuse-spark {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 30px;
+  height: 30px;
+  offset-path: path("M 8px 86px C 35px 47px 65px 86px 96px 46px C 113px 24px 131px 17px 142px 9px");
+  offset-rotate: 0deg;
+  transform: translate(-50%, -50%);
+  transition: offset-distance .09s linear;
+  z-index: 3;
+}
+
+.dynamite-fuse-spark::before {
+  content: "";
+  position: absolute;
+  inset: 5px;
+  border-radius: 52% 48% 56% 44%;
+  background: radial-gradient(circle at 44% 42%, #fffbe6 0 16%, #ffe36a 17% 38%, #ff8c35 39% 67%, #f34a2e 68% 100%);
+  box-shadow:
+    0 0 0 7px rgba(255, 153, 52, .18),
+    0 0 24px rgba(255, 111, 42, .95),
+    0 0 44px rgba(255, 72, 39, .45);
+  animation: dynamite-flame-flicker .16s ease-in-out infinite alternate;
+}
+
+.dynamite-fuse-spark::after {
+  content: "";
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  left: 2px;
+  top: 1px;
+  border-radius: 50%;
+  background: rgba(118, 105, 101, .55);
+  box-shadow: -7px -7px 0 -1px rgba(116, 106, 105, .28);
+  animation: dynamite-smoke-puff .62s ease-out infinite;
+}
+
+.dynamite-fuse-spark i {
+  position: absolute;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ffd86b;
+  box-shadow: 0 0 8px #ff8a35;
+  animation: dynamite-ember-pop .42s ease-out infinite;
+}
+
+.dynamite-fuse-spark i:first-child {
+  left: 3px;
+  top: 19px;
+}
+
+.dynamite-fuse-spark i:last-child {
+  right: 1px;
+  top: 4px;
+  animation-delay: .16s;
+}
+
+.dynamite-critical .dynamite-fuse-spark {
+  width: 38px;
+  height: 38px;
+}
+
+.dynamite-critical .dynamite-fuse-spark::before {
+  inset: 4px;
+  box-shadow:
+    0 0 0 10px rgba(255, 81, 38, .2),
+    0 0 34px rgba(255, 76, 35, 1),
+    0 0 62px rgba(255, 44, 31, .6);
+  animation-duration: .09s;
+}
+
+.dynamite-critical .dynamite-fuse-rope {
+  stroke: #59433b;
+}
+
+.dynamite-fuse-progress span {
+  transition: width .09s linear;
+}
+
+@keyframes dynamite-flame-flicker {
+  from { transform: scale(.78) rotate(-9deg); filter: brightness(.92); }
+  to { transform: scale(1.16) rotate(11deg); filter: brightness(1.2); }
+}
+
+@keyframes dynamite-smoke-puff {
+  0% { transform: translate(0, 0) scale(.55); opacity: .65; }
+  100% { transform: translate(-12px, -17px) scale(1.7); opacity: 0; }
+}
+
+@keyframes dynamite-ember-pop {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(9px, -12px) scale(.25); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dynamite-fuse-rope,
+  .dynamite-fuse-spark,
+  .dynamite-fuse-progress span {
+    transition: none;
+  }
+
+  .dynamite-fuse-spark::before,
+  .dynamite-fuse-spark::after,
+  .dynamite-fuse-spark i {
+    animation: none !important;
+  }
+}
