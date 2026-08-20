@@ -11,6 +11,7 @@ import type {
   WildcardGridIntensity,
   WildcardGridSize,
   WildcardGridState,
+  WildcardGridTeamRef,
 } from "@/lib/types";
 
 export const LIVE_GAME_MODES: readonly LiveGameMode[] = ["gap-fill", "quiz", "space-blaster", "dynamite", "wildcard-grid"];
@@ -35,7 +36,6 @@ export const WILDCARD_EFFECTS: Record<WildcardEffectType, WildcardEffect> = {
 export function dynamiteSourceMode(activity: ActivitySet): "quiz" | "gap-fill" {
   const quizItems = getPlayableItemsForMode(activity.items, "quiz");
   const gapItems = getPlayableItemsForMode(activity.items, "gap-fill");
-
   if (activity.kind === "grammar" && gapItems.length >= 2) return "gap-fill";
   if (quizItems.length >= 2) return "quiz";
   return "gap-fill";
@@ -44,7 +44,6 @@ export function dynamiteSourceMode(activity: ActivitySet): "quiz" | "gap-fill" {
 export function wildcardGridSourceMode(activity: ActivitySet): "quiz" | "gap-fill" {
   const quizItems = getPlayableItemsForMode(activity.items, "quiz");
   const gapItems = getPlayableItemsForMode(activity.items, "gap-fill");
-
   if (activity.kind === "grammar" && gapItems.length >= 12) return "gap-fill";
   if (quizItems.length >= 12) return "quiz";
   return gapItems.length >= quizItems.length ? "gap-fill" : "quiz";
@@ -71,11 +70,9 @@ export function buildLiveQuestion(activity: ActivitySet, index: number, gameMode
     : liveModeItems(activity, gameMode);
   const item = items[index];
   if (!item) throw new Error("Live question index is outside the selected game mode.");
-
   const usesGap = sourceMode === "gap-fill" || sourceMode === "space-blaster";
   const correctAnswer = usesGap ? sentenceGapAnswer(item) : item.answer;
   const options = usesGap ? gapOptions(item, items) : quizOptions(item, items);
-
   return {
     itemId: item.id,
     index,
@@ -97,26 +94,12 @@ export function publicLiveQuestion(question: HostLiveQuestion): LiveQuestion {
   return publicQuestion as LiveQuestion;
 }
 
-export function createDynamiteState(
-  players: Pick<LivePlayer, "id" | "nickname">[],
-  questionCount: number,
-  random: () => number = Math.random,
-): DynamiteState {
+export function createDynamiteState(players: Pick<LivePlayer, "id" | "nickname">[], questionCount: number, random: () => number = Math.random): DynamiteState {
   if (players.length < 2) throw new Error("Dynamite needs at least two players.");
   if (questionCount < 2) throw new Error("Dynamite needs at least two playable questions.");
-
   const order = shuffle(players.map((player) => ({ id: player.id, name: player.nickname })), random);
   const questionOrder = shuffle(Array.from({ length: questionCount }, (_, index) => index), random);
-  return {
-    order,
-    aliveIds: order.map((player) => player.id),
-    eliminatedIds: [],
-    currentPlayerId: order[0].id,
-    turnNumber: 1,
-    questionCursor: 0,
-    questionOrder,
-    winnerId: null,
-  };
+  return { order, aliveIds: order.map((player) => player.id), eliminatedIds: [], currentPlayerId: order[0].id, turnNumber: 1, questionCursor: 0, questionOrder, winnerId: null };
 }
 
 export function nextAlivePlayerId(state: DynamiteState, afterPlayerId = state.currentPlayerId) {
@@ -130,45 +113,24 @@ export function nextAlivePlayerId(state: DynamiteState, afterPlayerId = state.cu
   return null;
 }
 
-export function advanceDynamiteQuestion(
-  state: DynamiteState,
-  questionCount: number,
-  random: () => number = Math.random,
-) {
-  let questionOrder = state.questionOrder.length === questionCount
-    ? [...state.questionOrder]
-    : shuffle(Array.from({ length: questionCount }, (_, index) => index), random);
+export function advanceDynamiteQuestion(state: DynamiteState, questionCount: number, random: () => number = Math.random) {
+  let questionOrder = state.questionOrder.length === questionCount ? [...state.questionOrder] : shuffle(Array.from({ length: questionCount }, (_, index) => index), random);
   let questionCursor = state.questionCursor + 1;
   const previousQuestion = state.questionOrder[state.questionCursor];
-
   if (questionCursor >= questionOrder.length) {
     questionOrder = shuffle(Array.from({ length: questionCount }, (_, index) => index), random);
-    if (questionCount > 1 && questionOrder[0] === previousQuestion) {
-      [questionOrder[0], questionOrder[1]] = [questionOrder[1], questionOrder[0]];
-    }
+    if (questionCount > 1 && questionOrder[0] === previousQuestion) [questionOrder[0], questionOrder[1]] = [questionOrder[1], questionOrder[0]];
     questionCursor = 0;
   }
-
-  return {
-    state: { ...state, questionOrder, questionCursor },
-    questionIndex: questionOrder[questionCursor],
-  };
+  return { state: { ...state, questionOrder, questionCursor }, questionIndex: questionOrder[questionCursor] };
 }
 
 export function eliminateDynamitePlayer(state: DynamiteState, playerId: string) {
   const aliveIds = state.aliveIds.filter((id) => id !== playerId);
-  const eliminatedIds = state.eliminatedIds.includes(playerId)
-    ? state.eliminatedIds
-    : [...state.eliminatedIds, playerId];
+  const eliminatedIds = state.eliminatedIds.includes(playerId) ? state.eliminatedIds : [...state.eliminatedIds, playerId];
   const winnerId = aliveIds.length === 1 ? aliveIds[0] : null;
   const nextPlayerId = winnerId ?? nextAlivePlayerId({ ...state, aliveIds, eliminatedIds }, playerId);
-  return {
-    ...state,
-    aliveIds,
-    eliminatedIds,
-    currentPlayerId: nextPlayerId ?? "",
-    winnerId,
-  };
+  return { ...state, aliveIds, eliminatedIds, currentPlayerId: nextPlayerId ?? "", winnerId };
 }
 
 function wildcardCount(size: WildcardGridSize) {
@@ -180,15 +142,15 @@ function pickEffect(types: WildcardEffectType[], random: () => number) {
 }
 
 export function createWildcardGridState(
-  teamIds: string[],
+  teams: WildcardGridTeamRef[],
   questionCount: number,
   size: WildcardGridSize,
   intensity: WildcardGridIntensity,
   random: () => number = Math.random,
 ): WildcardGridState {
-  if (teamIds.length < 2 || teamIds.length > 4) throw new Error("Wildcard Grid supports two to four teams.");
+  if (teams.length < 2 || teams.length > 4) throw new Error("Wildcard Grid supports two to four teams.");
   if (questionCount < size) throw new Error(`Wildcard Grid needs at least ${size} compatible questions.`);
-
+  const teamIds = teams.map((team) => team.id);
   const teamOrder = shuffle([...teamIds], random);
   const questionOrder = shuffle(Array.from({ length: questionCount }, (_, index) => index), random).slice(0, size);
   const count = wildcardCount(size);
@@ -198,32 +160,17 @@ export function createWildcardGridState(
   const balancedPool: WildcardEffectType[] = [...positive, ...interaction, ...risk];
   const selected: WildcardEffectType[] = [pickEffect(positive, random), pickEffect(interaction, random), pickEffect(risk, random)];
   const unused = () => balancedPool.filter((type) => !selected.includes(type));
-
   while (selected.length < count) {
-    if (intensity === "chaos" && selected.length === count - 1 && random() < 0.6) {
-      selected.push(pickEffect(["swap", "blackout", "fresh-start"], random));
-    } else {
-      selected.push(pickEffect(unused().length ? unused() : balancedPool, random));
-    }
+    if (intensity === "chaos" && selected.length === count - 1 && random() < 0.6) selected.push(pickEffect(["swap", "blackout", "fresh-start"], random));
+    else selected.push(pickEffect(unused().length ? unused() : balancedPool, random));
   }
-
-  const wildcardTiles = new Map(
-    shuffle(Array.from({ length: size }, (_, index) => index), random)
-      .slice(0, count)
-      .map((tileIndex, effectIndex) => [tileIndex, WILDCARD_EFFECTS[selected[effectIndex]]]),
-  );
-
+  const wildcardTiles = new Map(shuffle(Array.from({ length: size }, (_, index) => index), random).slice(0, count).map((tileIndex, effectIndex) => [tileIndex, WILDCARD_EFFECTS[selected[effectIndex]]]));
   return {
     size,
     intensity,
     phase: "board",
-    tiles: questionOrder.map((questionIndex, index) => ({
-      number: index + 1,
-      questionIndex,
-      wildcard: wildcardTiles.get(index) ?? null,
-      opened: false,
-      resolved: false,
-    })),
+    tiles: questionOrder.map((questionIndex, index) => ({ number: index + 1, questionIndex, wildcard: wildcardTiles.get(index) ?? null, opened: false, resolved: false })),
+    teams: teams.map((team) => ({ ...team })),
     teamOrder,
     activeTeamId: teamOrder[0],
     teamScores: Object.fromEntries(teamOrder.map((teamId) => [teamId, 0])),
@@ -253,7 +200,6 @@ export function scoreWildcardGridAnswer(state: WildcardGridState, correct: boole
   const points = correct ? (double ? 40 : 20) : 0;
   const tile = state.tiles.find((candidate) => candidate.number === state.currentTileNumber);
   if (!tile) throw new Error("Wildcard Grid could not find the active tile.");
-
   return {
     ...state,
     phase: "result" as const,
@@ -279,35 +225,14 @@ function finishOrAdvanceWildcardTurn(state: WildcardGridState): WildcardGridStat
   const completedTurns = state.completedTurns + 1;
   const tiles = state.tiles.map((tile) => tile.number === state.currentTileNumber ? { ...tile, opened: true, resolved: true } : tile);
   const allDone = tiles.every((tile) => tile.resolved);
-
   if (allDone) {
     const best = Math.max(...state.teamOrder.map((teamId) => state.teamScores[teamId] ?? 0));
     const tiedTeamIds = state.teamOrder.filter((teamId) => (state.teamScores[teamId] ?? 0) === best);
-    return {
-      ...state,
-      tiles,
-      phase: "finished",
-      completedTurns,
-      currentTileNumber: null,
-      pendingWildcard: null,
-      tiedTeamIds,
-      winnerTeamId: tiedTeamIds.length === 1 ? tiedTeamIds[0] : null,
-    };
+    return { ...state, tiles, phase: "finished", completedTurns, currentTileNumber: null, pendingWildcard: null, tiedTeamIds, winnerTeamId: tiedTeamIds.length === 1 ? tiedTeamIds[0] : null };
   }
-
   const currentIndex = Math.max(0, state.teamOrder.indexOf(state.activeTeamId));
   const activeTeamId = state.teamOrder[(currentIndex + 1) % state.teamOrder.length];
-  return {
-    ...state,
-    tiles,
-    phase: "board",
-    activeTeamId,
-    completedTurns,
-    currentTileNumber: null,
-    lastAnswerCorrect: null,
-    lastBasePoints: 0,
-    pendingWildcard: null,
-  };
+  return { ...state, tiles, phase: "board", activeTeamId, completedTurns, currentTileNumber: null, lastAnswerCorrect: null, lastBasePoints: 0, pendingWildcard: null };
 }
 
 export function continueWildcardGridResult(state: WildcardGridState) {
@@ -322,11 +247,9 @@ export function resolveWildcardGrid(state: WildcardGridState, targetTeamId?: str
   const active = state.activeTeamId;
   const validTarget = targetTeamId && state.teamOrder.includes(targetTeamId) && targetTeamId !== active ? targetTeamId : undefined;
   if (effect.requiresTarget && !validTarget) throw new Error("Choose another team for this Wildcard.");
-
   let scores = { ...state.teamScores };
   let shields = { ...state.teamShields };
   let doubles = { ...state.teamDoubleNext };
-
   const subtract = (teamId: string, amount: number) => {
     const shield = consumeShield({ ...state, teamShields: shields }, teamId);
     shields = shield.shields;
@@ -336,40 +259,20 @@ export function resolveWildcardGrid(state: WildcardGridState, targetTeamId?: str
     scores[teamId] = after;
     return before - after;
   };
-
   switch (effect.type) {
     case "jackpot": scores[active] = (scores[active] ?? 0) + 50; break;
     case "little-boost": scores[active] = (scores[active] ?? 0) + 20; break;
     case "oops": subtract(active, 10); break;
-    case "heist": {
-      const stolen = subtract(validTarget!, 20);
-      scores[active] = (scores[active] ?? 0) + stolen;
-      break;
-    }
+    case "heist": { const stolen = subtract(validTarget!, 20); scores[active] = (scores[active] ?? 0) + stolen; break; }
     case "gift": scores[validTarget!] = (scores[validTarget!] ?? 0) + 20; break;
-    case "equalizer": {
-      const lowest = Math.min(...state.teamOrder.map((teamId) => scores[teamId] ?? 0));
-      const teamId = state.teamOrder.find((candidate) => (scores[candidate] ?? 0) === lowest) ?? active;
-      scores[teamId] = (scores[teamId] ?? 0) + 30;
-      break;
-    }
-    case "pickpocket": {
-      const opponents = state.teamOrder.filter((teamId) => teamId !== active).sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0)).slice(0, 2);
-      const stolen = opponents.reduce((sum, teamId) => sum + subtract(teamId, 10), 0);
-      scores[active] = (scores[active] ?? 0) + stolen;
-      break;
-    }
+    case "equalizer": { const lowest = Math.min(...state.teamOrder.map((teamId) => scores[teamId] ?? 0)); const teamId = state.teamOrder.find((candidate) => (scores[candidate] ?? 0) === lowest) ?? active; scores[teamId] = (scores[teamId] ?? 0) + 30; break; }
+    case "pickpocket": { const opponents = state.teamOrder.filter((teamId) => teamId !== active).sort((a, b) => (scores[b] ?? 0) - (scores[a] ?? 0)).slice(0, 2); const stolen = opponents.reduce((sum, teamId) => sum + subtract(teamId, 10), 0); scores[active] = (scores[active] ?? 0) + stolen; break; }
     case "shield": shields[active] = true; break;
     case "double-trouble": doubles[active] = true; break;
-    case "swap": {
-      const target = validTarget!;
-      [scores[active], scores[target]] = [scores[target] ?? 0, scores[active] ?? 0];
-      break;
-    }
+    case "swap": { const target = validTarget!; [scores[active], scores[target]] = [scores[target] ?? 0, scores[active] ?? 0]; break; }
     case "blackout": state.teamOrder.forEach((teamId) => { subtract(teamId, 20); }); break;
     case "fresh-start": state.teamOrder.forEach((teamId) => { scores[teamId] = 0; }); break;
   }
-
   return finishOrAdvanceWildcardTurn({ ...state, teamScores: scores, teamShields: shields, teamDoubleNext: doubles });
 }
 
