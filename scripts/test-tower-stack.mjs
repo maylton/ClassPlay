@@ -21,6 +21,7 @@ const towerUrl = await compileModule("../src/lib/tower-stack-engine.ts", [
 ]);
 const tower = await import(towerUrl);
 const towerPolishCss = await readFile(new URL("../src/app/tower-stack-polish.css", import.meta.url), "utf8");
+const towerGameSource = await readFile(new URL("../src/components/games/TowerStackGame.tsx", import.meta.url), "utf8");
 
 const items = [
   { id: "a", prompt: "watch TV", answer: "watches TV", example: "Marcel watches TV every evening.", gapSentence: "Marcel _____ every evening.", distractors: ["watch TV", "watching TV", "watched TV"] },
@@ -94,9 +95,12 @@ assert.equal(tower.towerHeightMeters(10), 42);
 assert.equal(tower.towerRank(130), "Skyline Master");
 
 assert.match(towerPolishCss, /@keyframes tower-structural-sway/, "final MVP should keep the progressive tower wobble");
-assert.match(towerPolishCss, /\.tower-arena\.can-drop[\s\S]*animation:\s*none\s*!important/, "tower must settle while the student aims so visual sway cannot change collision expectations");
+assert.match(towerPolishCss, /\.tower-arena\.can-drop[\s\S]*animation-play-state:\s*running/, "tower must keep swaying while the student aims");
+assert.doesNotMatch(towerPolishCss, /\.tower-arena\.can-drop[\s\S]{0,220}animation:\s*none\s*!important/, "aiming must not freeze the structural sway");
+assert.match(towerPolishCss, /\.placed-block:not\(\.is-perfect\) \+ \.active-block/, "a cropped latest floor should keep its extra tension during aiming");
 assert.match(towerPolishCss, /\.placed-block\.is-perfect \+ \.tower-preview-block/, "a latest Perfect Stack should visually stabilize the following question");
-assert.match(towerPolishCss, /\.placed-block:not\(\.is-perfect\) \+ \.tower-preview-block/, "cropped latest floors should increase visible structural tension");
 assert.match(towerPolishCss, /reduced-motion[\s\S]*placed-block/, "Reduced Motion must disable structural sway");
+assert.match(towerGameSource, /function readVisualTopBlock[\s\S]*getComputedStyle[\s\S]*DOMMatrixReadOnly/, "drop logic must sample the visible top-floor sway");
+assert.match(towerGameSource, /resolveTowerPlacement\(collisionBase,/, "placement must use the visual collision base while the tower sways");
 
-console.log("Tower Stack engine and final motion contracts passed.");
+console.log("Tower Stack engine and gameplay-aware motion contracts passed.");
