@@ -339,6 +339,16 @@
   font-size: .76rem;
 }
 
+.community-notice {
+  margin: 18px auto 0;
+  width: min(1180px, calc(100% - 40px));
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #eef8e8;
+  color: #3f6e2a;
+  font-weight: 700;
+}
+
 .community-error {
   width: min(1180px, calc(100% - 40px));
   margin: 18px auto 0;
@@ -536,9 +546,25 @@
   font-weight: 800;
 }
 
+.community-card-actions {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  margin-top: 16px;
+}
+
+.community-card-actions .community-play {
+  margin-top: 0;
+}
+
 .community-play {
   width: 100%;
   margin-top: 16px;
+  justify-content: center;
+}
+
+.community-copy {
+  width: 100%;
   justify-content: center;
 }
 
