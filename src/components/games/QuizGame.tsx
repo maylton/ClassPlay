@@ -53,7 +53,7 @@ export function QuizGame({ activity, onComplete }: GameProps) {
   const [finished, setFinished] = useState(false);
   const [lastPoints, setLastPoints] = useState(0);
   const item = questions[index];
-  const { elapsedMs: questionElapsedMs, stop: stopQuestionClock } = useQuestionTimer(`${index}:${item?.id ?? "empty"}`);
+  const { elapsedMs: questionElapsedMs, restart: restartQuestionClock, stop: stopQuestionClock } = useQuestionTimer(`${index}:${item?.id ?? "empty"}`);
   const options = useMemo(() => item ? quizOptions(item, playableItems) : [], [item, playableItems]);
   const copy = useMemo(() => item ? quizCopy(item, activity.kind) : null, [item, activity.kind]);
 
@@ -76,6 +76,7 @@ export function QuizGame({ activity, onComplete }: GameProps) {
   }
 
   function replay() {
+    restartQuestionClock();
     setQuestions(shuffle(playableItems)); setIndex(0); setCorrect(0); setScore(0); setStreak(0); setSelected(null); setFinished(false); setLastPoints(0);
   }
 
