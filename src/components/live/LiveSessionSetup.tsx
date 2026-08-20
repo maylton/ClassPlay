@@ -11,7 +11,9 @@ import { liveModeQuestionCount } from "@/lib/live/live-engine";
 import { loadActivity, ensureCloudActivity } from "@/lib/repositories/activity-repository";
 import { createLiveSession } from "@/lib/live/room-service";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
-import type { ActivitySet, DynamiteTimerSeconds, LiveGameMode, SessionMode } from "@/lib/types";
+import type { ActivitySet, DynamiteTimerSeconds, LiveGameMode, SessionMode, WildcardGridIntensity, WildcardGridSize } from "@/lib/types";
+
+const WILDCARD_GRID_SIZES: WildcardGridSize[] = [12, 16, 20];
 
 export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { activityId: string; initialGameMode?: LiveGameMode }) {
   const router = useRouter();
@@ -20,6 +22,8 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
   const [mode, setMode] = useState<SessionMode>("individual");
   const [liveGameMode, setLiveGameMode] = useState<LiveGameMode>(initialGameMode);
   const [dynamiteTimerSeconds, setDynamiteTimerSeconds] = useState<DynamiteTimerSeconds>(10);
+  const [wildcardGridSize, setWildcardGridSize] = useState<WildcardGridSize>(12);
+  const [wildcardGridIntensity, setWildcardGridIntensity] = useState<WildcardGridIntensity>("balanced");
   const [teamCount, setTeamCount] = useState(4);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -39,6 +43,14 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
             available: playableItems >= 2,
             playableItems,
             reason: playableItems >= 2 ? "Ready for elimination play." : "Dynamite needs at least two Quiz or Fill the Gaps questions.",
+          }] as const;
+        }
+        if (gameMode === "wildcard-grid") {
+          const playableItems = liveModeQuestionCount(activity, "wildcard-grid");
+          return [gameMode, {
+            available: playableItems >= 12,
+            playableItems,
+            reason: playableItems >= 12 ? "Ready for team board play." : "Wildcard Grid needs at least 12 compatible Quiz or Fill the Gaps questions.",
           }] as const;
         }
         const entry = analysis.find((candidate) => candidate.mode === gameMode);
@@ -73,6 +85,10 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
   const selectedCompatibility = liveCompatibility.get(selectedLiveGameMode);
   const hasLiveMode = LIVE_MODE_ORDER.some((gameMode) => liveCompatibility.get(gameMode)?.available);
   const isDynamite = selectedLiveGameMode === "dynamite";
+  const isWildcardGrid = selectedLiveGameMode === "wildcard-grid";
+  const selectedWildcardSize = selectedCompatibility && selectedCompatibility.playableItems >= wildcardGridSize
+    ? wildcardGridSize
+    : WILDCARD_GRID_SIZES.filter((size) => (selectedCompatibility?.playableItems ?? 0) >= size).at(-1) ?? 12;
 
   async function create() {
     if (!selectedCompatibility?.available) return;
@@ -87,12 +103,24 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
             timerSeconds: dynamiteTimerSeconds,
             dynamiteTimerSeconds,
             dynamiteState: null,
+            wildcardGridState: null,
             leaderboardEnabled: false,
           }
-        : { ...settings, liveGameMode: selectedLiveGameMode, dynamiteState: null };
+        : isWildcardGrid
+          ? {
+              ...settings,
+              liveGameMode: selectedLiveGameMode,
+              timerEnabled: false,
+              leaderboardEnabled: false,
+              dynamiteState: null,
+              wildcardGridSize: selectedWildcardSize,
+              wildcardGridIntensity,
+              wildcardGridState: null,
+            }
+          : { ...settings, liveGameMode: selectedLiveGameMode, dynamiteState: null, wildcardGridState: null };
       const session = await createLiveSession(cloudActivity, {
-        mode: isDynamite ? "individual" : mode,
-        teamCount,
+        mode: isDynamite ? "individual" : isWildcardGrid ? "team" : mode,
+        teamCount: isWildcardGrid ? Math.min(4, Math.max(2, teamCount)) : teamCount,
         settings: liveSettings,
       });
       router.push(`/host/${session.id}`);
@@ -107,7 +135,7 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
       <section className="live-setup-heading"><span className="eyebrow">Connected Classroom</span><h1>Turn this activity into a live class.</h1><p>Students join from any phone or computer using a short code. No student account needed.</p></section>
       {error && <div className="alert-error">{error}</div>}
       <section className="live-setup-grid">
-        <article className="live-activity-preview"><span>{activity.level} · {activity.grade}</span><h2>{activity.title}</h2><p>{activity.description}</p><div><b>{selectedCompatibility?.playableItems ?? activity.items.length}</b><small>{isDynamite ? "question pool" : "live questions"}</small></div></article>
+        <article className="live-activity-preview"><span>{activity.level} · {activity.grade}</span><h2>{activity.title}</h2><p>{activity.description}</p><div><b>{selectedCompatibility?.playableItems ?? activity.items.length}</b><small>{isDynamite || isWildcardGrid ? "question pool" : "live questions"}</small></div></article>
         <article className="live-options-card">
           <div className="panel-heading"><span>1</span><div><h2>Choose the live game</h2><p>Only modes that fit this deck can be selected.</p></div></div>
           <div className="mode-segmented live-mode-grid">
@@ -123,6 +151,10 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
                     if (!available) return;
                     setLiveGameMode(gameMode);
                     if (gameMode === "dynamite") setMode("individual");
+                    if (gameMode === "wildcard-grid") {
+                      setMode("team");
+                      setTeamCount((count) => Math.min(4, Math.max(2, count)));
+                    }
                   }}
                   disabled={!available}
                   title={available ? `${compatibility?.playableItems ?? 0} playable questions` : compatibility?.reason}
@@ -146,6 +178,22 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
               </div>
               <div className="dynamite-setup-note"><AppIcon name="people" /><div><b>Individual elimination</b><span>The player order is shuffled when you press Start. Everyone can see who is current and who comes next.</span></div></div>
             </>
+          ) : isWildcardGrid ? (
+            <>
+              <div className="panel-heading" style={{ marginTop: "1.6rem" }}><span>2</span><div><h2>Build the board</h2><p>Every tile contains a question. Some also hide a Wildcard.</p></div></div>
+              <div className="dynamite-timer-picker wildcard-size-picker">
+                {WILDCARD_GRID_SIZES.map((size) => {
+                  const available = (selectedCompatibility?.playableItems ?? 0) >= size;
+                  return <button key={size} disabled={!available} className={selectedWildcardSize === size ? "active" : ""} onClick={() => available && setWildcardGridSize(size)}><b>{size}</b><small>{size === 12 ? "Quick" : size === 16 ? "Full" : "Long"} board</small></button>;
+                })}
+              </div>
+              <div className="mode-segmented wildcard-intensity-picker">
+                <button className={wildcardGridIntensity === "balanced" ? "active" : ""} onClick={() => setWildcardGridIntensity("balanced")}><b><AppIcon name="shield-check" /> Balanced</b><small>Surprises without score-destroying resets</small></button>
+                <button className={wildcardGridIntensity === "chaos" ? "active" : ""} onClick={() => setWildcardGridIntensity("chaos")}><b><AppIcon name="lightning-charge" /> Chaos</b><small>Can include swap, blackout or a fresh start</small></button>
+              </div>
+              <label className="field team-count-field"><span>Number of teams</span><select value={teamCount} onChange={(event) => setTeamCount(Number(event.target.value))}>{[2,3,4].map((count) => <option key={count} value={count}>{count} teams</option>)}</select></label>
+              <div className="dynamite-setup-note wildcard-setup-note"><AppIcon name="mic" /><div><b>Projector-first team game</b><span>Teams discuss and answer out loud. You mark Correct or Not quite; phones show team, turn and score status.</span></div></div>
+            </>
           ) : (
             <>
               <div className="panel-heading" style={{ marginTop: "1.6rem" }}><span>2</span><div><h2>Choose the room style</h2><p>You can change leaderboard and timer settings during the game.</p></div></div>
@@ -158,9 +206,9 @@ export function LiveSessionSetup({ activityId, initialGameMode = "quiz" }: { act
           )}
 
           <div className="live-setting-summary">
-            <span><AppIcon name="clock" /> {isDynamite ? `${dynamiteTimerSeconds}s fuse` : settings.timerEnabled ? `${settings.timerSeconds}s timer` : "No timer"}</span>
-            <span><AppIcon name={isDynamite ? "person-check" : settings.leaderboardEnabled ? "trophy" : "eye-slash"} /> {isDynamite ? "Last survivor wins" : settings.leaderboardEnabled ? "Leaderboard on" : "Leaderboard off"}</span>
-            <span><AppIcon name={settings.readAloud ? "volume-up" : "volume-mute"} /> {settings.readAloud ? "Read aloud" : "Manual audio"}</span>
+            <span><AppIcon name="clock" /> {isDynamite ? `${dynamiteTimerSeconds}s fuse` : isWildcardGrid ? "Teacher-paced" : settings.timerEnabled ? `${settings.timerSeconds}s timer` : "No timer"}</span>
+            <span><AppIcon name={isDynamite ? "person-check" : isWildcardGrid ? "grid-3x3-gap-fill" : settings.leaderboardEnabled ? "trophy" : "eye-slash"} /> {isDynamite ? "Last survivor wins" : isWildcardGrid ? `${selectedWildcardSize} tiles · ${teamCount} teams` : settings.leaderboardEnabled ? "Leaderboard on" : "Leaderboard off"}</span>
+            <span><AppIcon name={isWildcardGrid ? "stars" : settings.readAloud ? "volume-up" : "volume-mute"} /> {isWildcardGrid ? `${wildcardGridIntensity === "chaos" ? "Chaos" : "Balanced"} Wildcards` : settings.readAloud ? "Read aloud" : "Manual audio"}</span>
           </div>
           {!hasLiveMode && <div className="alert-error">This deck does not currently contain enough compatible content for a live mode.</div>}
           <button className="button button-primary button-large start-live-button" disabled={busy || !hasLiveMode || !selectedCompatibility?.available} onClick={() => void create()}>{busy ? "Creating room…" : <>Create live room <AppIcon name="arrow-right" /></>}</button>
