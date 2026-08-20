@@ -13,15 +13,19 @@ export function useQuestionTimer(questionKey: string | number) {
     timerRef.current = null;
   }, []);
 
-  useEffect(() => {
+  const restart = useCallback(() => {
     clearTimer();
     startedAtRef.current = Date.now();
     setElapsedMs(0);
     timerRef.current = window.setInterval(() => {
       setElapsedMs(Date.now() - startedAtRef.current);
     }, 100);
+  }, [clearTimer]);
+
+  useEffect(() => {
+    restart();
     return clearTimer;
-  }, [clearTimer, questionKey]);
+  }, [clearTimer, questionKey, restart]);
 
   const stop = useCallback(() => {
     clearTimer();
@@ -30,5 +34,5 @@ export function useQuestionTimer(questionKey: string | number) {
     return elapsed;
   }, [clearTimer]);
 
-  return { elapsedMs, stop };
+  return { elapsedMs, restart, stop };
 }
