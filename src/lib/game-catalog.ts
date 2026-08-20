@@ -21,6 +21,7 @@ export const GAME_MODE_CATALOG = {
   "word-maze": { icon: "map", name: "Word Maze", shortName: "Maze", colorClass: "maze", pickerDescription: "Navigate to the correct answer portal", editorDescription: "Find the correct language inside a maze", landingDescription: "Navigate a playful maze and reach the portal with the correct missing language." },
   "boss-battle": { icon: "shield-shaded", name: "Boss Battle", shortName: "Boss", colorClass: "boss", pickerDescription: "Answer fast, build a streak and defeat Ignis", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Turn correct answers, speed and streaks into attacks against Ignis." },
   "bubble-burst": { icon: "circle", name: "Bubble Burst", shortName: "Bubbles", colorClass: "bubble", pickerDescription: "Read, react and pop the correct answer", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Pop floating answer bubbles while keeping the language easy to read." },
+  // Kept for backwards compatibility only. Grammar Runner is paused and hidden from the UI.
   "grammar-runner": { icon: "sign-turn-right-fill", name: "Grammar Runner", shortName: "Runner", colorClass: "runner", pickerDescription: "Choose a lane and outrun the wrong answer", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Read the prompt, choose a lane and race through the correct language gate." },
   "phrase-forge": { icon: "hammer", name: "Phrase Forge", shortName: "Forge", colorClass: "forge", pickerDescription: "Forge complete sentences from word ingots", editorDescription: "Arcade mode generated from Sentence Builder content", landingDescription: "Heat the forge by rebuilding complete sentences word by word." },
 } satisfies Record<GameType, GameModePresentation>;
@@ -41,7 +42,6 @@ export const GAME_MODE_ORDER: GameType[] = [
 export const DERIVED_ARCADE_MODE_ORDER = [
   "boss-battle",
   "bubble-burst",
-  "grammar-runner",
   "phrase-forge",
 ] as const satisfies readonly GameType[];
 
