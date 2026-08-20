@@ -28,6 +28,8 @@ export type TowerPlacementResult = TowerBlockGeometry & {
 export const TOWER_STACK_MIN_PLAYABLE_ITEMS = 3;
 export const TOWER_STACK_MIN_BLOCK_WIDTH = 6;
 export const TOWER_STACK_FOUNDATION: TowerBlockGeometry = { x: 20, width: 60 };
+export const TOWER_STACK_MIN_TIME_WIDTH_PERCENT = 55;
+export const TOWER_STACK_SHRINK_WINDOW_MS = 15000;
 const FAST_REWARD_MS = 2600;
 const PERFECT_ALIGNMENT_PERCENT = 2.25;
 
@@ -51,6 +53,16 @@ export function buildTowerStackRounds(
   return buildQuizGapArcadeRounds(items, source, 4, random);
 }
 
+export function towerAnswerWidthPercent(responseMs: number) {
+  const progress = clamp(Math.max(0, responseMs) / TOWER_STACK_SHRINK_WINDOW_MS, 0, 1);
+  return Math.round(100 - progress * (100 - TOWER_STACK_MIN_TIME_WIDTH_PERCENT));
+}
+
+export function towerTimedBlockWidth(baseWidth: number, responseMs: number) {
+  const safeBase = clamp(baseWidth, TOWER_STACK_MIN_BLOCK_WIDTH, 88);
+  return Math.max(TOWER_STACK_MIN_BLOCK_WIDTH, safeBase * towerAnswerWidthPercent(responseMs) / 100);
+}
+
 export function resolveTowerStackAnswer(correct: boolean, responseMs: number, streak: number): TowerAnswerResult {
   if (!correct) return { correct: false, points: 0, nextStreak: 0, reward: "normal" };
 
@@ -64,9 +76,9 @@ export function resolveTowerStackAnswer(correct: boolean, responseMs: number, st
   return { correct: true, points, nextStreak, reward };
 }
 
-export function towerActiveBlockWidth(baseWidth: number, reward: TowerStackReward) {
-  const safeBase = clamp(baseWidth, TOWER_STACK_MIN_BLOCK_WIDTH, 88);
-  return reward === "wide" ? Math.min(82, safeBase + 14) : safeBase;
+export function towerActiveBlockWidth(baseWidth: number, reward: TowerStackReward, responseMs = 0) {
+  const timedWidth = towerTimedBlockWidth(baseWidth, responseMs);
+  return reward === "wide" ? Math.min(82, timedWidth + 14) : timedWidth;
 }
 
 export function towerSweepDurationMs(floors: number, reward: TowerStackReward) {
@@ -88,10 +100,13 @@ export function resolveTowerPlacement(
   moving: TowerBlockGeometry,
   reward: TowerStackReward,
 ): TowerPlacementResult {
+  const baseCenter = base.x + base.width / 2;
+
   if (reward === "perfect") {
+    const width = Math.min(base.width, moving.width);
     return {
-      x: base.x,
-      width: base.width,
+      x: clamp(baseCenter - width / 2, 0, 100 - width),
+      width,
       landed: true,
       perfect: true,
       recovered: false,
@@ -111,12 +126,13 @@ export function resolveTowerPlacement(
     return { x: moving.x, width: moving.width, landed: false, perfect: false, recovered: false, points: 0 };
   }
 
-  const baseCenter = base.x + base.width / 2;
   const movingCenter = moving.x + moving.width / 2;
   const nearlyCentered = Math.abs(baseCenter - movingCenter) <= PERFECT_ALIGNMENT_PERCENT;
 
   if (nearlyCentered) {
-    const recoveredWidth = reward === "wide" ? Math.min(82, base.width + 10) : Math.min(base.width, moving.width);
+    const recoveredWidth = reward === "wide"
+      ? Math.min(82, moving.width, base.width + 10)
+      : Math.min(base.width, moving.width);
     const x = clamp(baseCenter - recoveredWidth / 2, 0, 100 - recoveredWidth);
     return {
       x,
@@ -128,15 +144,15 @@ export function resolveTowerPlacement(
     };
   }
 
-  if (reward === "wide" && overlap >= base.width * 0.76) {
-    const recoveredWidth = Math.min(82, Math.max(overlap, base.width + 6));
+  if (reward === "wide" && moving.width > base.width && overlap >= base.width * 0.76) {
+    const recoveredWidth = Math.min(82, moving.width, Math.max(overlap, base.width + 6));
     const x = clamp(baseCenter - recoveredWidth / 2, 0, 100 - recoveredWidth);
     return {
       x,
       width: recoveredWidth,
       landed: true,
       perfect: false,
-      recovered: true,
+      recovered: recoveredWidth > base.width,
       points: 130,
     };
   }

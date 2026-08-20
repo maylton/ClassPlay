@@ -47,6 +47,15 @@ assert.equal(tower.resolveTowerStackAnswer(true, 4000, 2).reward, "wide");
 assert.equal(tower.resolveTowerStackAnswer(true, 4000, 4).reward, "perfect");
 assert.ok(tower.resolveTowerStackAnswer(true, 900, 1).points > tower.resolveTowerStackAnswer(true, 14000, 1).points);
 
+assert.equal(tower.towerAnswerWidthPercent(0), 100);
+assert.equal(tower.towerAnswerWidthPercent(tower.TOWER_STACK_SHRINK_WINDOW_MS), tower.TOWER_STACK_MIN_TIME_WIDTH_PERCENT);
+assert.equal(tower.towerAnswerWidthPercent(tower.TOWER_STACK_SHRINK_WINDOW_MS * 2), tower.TOWER_STACK_MIN_TIME_WIDTH_PERCENT);
+assert.ok(tower.towerAnswerWidthPercent(3000) > tower.towerAnswerWidthPercent(10000));
+const quickWidth = tower.towerActiveBlockWidth(60, "normal", 1000);
+const slowWidth = tower.towerActiveBlockWidth(60, "normal", 12000);
+assert.ok(quickWidth > slowWidth, "answer time must shrink the actual moving block");
+assert.ok(tower.towerActiveBlockWidth(60, "wide", 12000) > slowWidth, "wide streak reward should still help after a slow answer");
+
 assert.ok(tower.towerSweepDurationMs(12, "normal") < tower.towerSweepDurationMs(0, "normal"));
 assert.ok(tower.towerSweepDurationMs(5, "slow") > tower.towerSweepDurationMs(5, "normal"));
 const movingX = tower.towerMovingBlockX(800, 2400, 40);
@@ -71,6 +80,12 @@ const recovered = tower.resolveTowerPlacement(base, { x: 14, width: 74 }, "wide"
 assert.equal(recovered.landed, true);
 assert.equal(recovered.recovered, true);
 assert.ok(recovered.width > base.width);
+
+const timedPerfect = tower.resolveTowerPlacement(base, { x: 0, width: 36 }, "perfect");
+assert.equal(timedPerfect.landed, true);
+assert.equal(timedPerfect.perfect, true);
+assert.equal(timedPerfect.width, 36, "perfect reward should center the earned block, not erase the time penalty");
+assert.equal(timedPerfect.x, 32);
 
 const guaranteed = tower.resolveTowerPlacement({ x: 32, width: 34 }, { x: 0, width: 34 }, "perfect");
 assert.deepEqual({ x: guaranteed.x, width: guaranteed.width }, { x: 32, width: 34 });
