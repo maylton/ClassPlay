@@ -2,23 +2,16 @@
 
 import { useMemo, useState } from "react";
 import { DndContext, KeyboardSensor, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, arrayMove, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
+import { SortableContext, rectSortingStrategy, sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { AppIcon } from "@/components/AppIcon";
-import { getPlayableItemsForMode, materializeItemsForMode } from "@/lib/activity-intelligence";
+import { getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import { isCorrectAnswer, sentenceAnswer, sentenceWords, shuffle } from "@/lib/game-engine";
-import type { ActivityItem } from "@/lib/types";
+import { reorderWordTokens, sentenceWordTokens, type WordToken } from "@/lib/word-token-engine";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
 
-type Token = { id: string; text: string };
-
-function wordTokens(item?: ActivityItem): Token[] {
-  if (!item) return [];
-  return sentenceWords(item).map((text, tokenIndex) => ({ id: `word-${tokenIndex}-${text}`, text }));
-}
-
-function SortableToken({ token, onRemove }: { token: Token; onRemove: () => void }) {
+function SortableToken({ token, onRemove }: { token: WordToken; onRemove: () => void }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: token.id });
   return (
     <div
@@ -33,10 +26,10 @@ function SortableToken({ token, onRemove }: { token: Token; onRemove: () => void
 }
 
 export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
-  const questions = useMemo(() => getPlayableItemsForMode(materializeItemsForMode(activity.items, "sentence-builder"), "sentence-builder"), [activity.items]);
+  const questions = useMemo(() => getPlayableItemsForMode(activity.items, "sentence-builder"), [activity.items]);
   const [index, setIndex] = useState(0);
-  const [pool, setPool] = useState<Token[]>(() => shuffle(wordTokens(questions[0])));
-  const [answer, setAnswer] = useState<Token[]>([]);
+  const [pool, setPool] = useState<WordToken[]>(() => shuffle(sentenceWordTokens(questions[0])));
+  const [answer, setAnswer] = useState<WordToken[]>([]);
   const [correct, setCorrect] = useState(0);
   const [score, setScore] = useState(0);
   const [feedback, setFeedback] = useState<"correct" | "wrong" | null>(null);
@@ -52,19 +45,15 @@ export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
 
   function resetQuestion(nextIndex: number) {
     setAnswer([]); setFeedback(null);
-    setPool(shuffle(wordTokens(questions[nextIndex])));
+    setPool(shuffle(sentenceWordTokens(questions[nextIndex])));
   }
 
-  function addToken(token: Token) { setPool((current) => current.filter((entry) => entry.id !== token.id)); setAnswer((current) => [...current, token]); }
-  function removeToken(token: Token) { if (feedback) return; setAnswer((current) => current.filter((entry) => entry.id !== token.id)); setPool((current) => [...current, token]); }
+  function addToken(token: WordToken) { setPool((current) => current.filter((entry) => entry.id !== token.id)); setAnswer((current) => [...current, token]); }
+  function removeToken(token: WordToken) { if (feedback) return; setAnswer((current) => current.filter((entry) => entry.id !== token.id)); setPool((current) => [...current, token]); }
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id || feedback) return;
-    setAnswer((current) => {
-      const oldIndex = current.findIndex((token) => token.id === active.id);
-      const newIndex = current.findIndex((token) => token.id === over.id);
-      return oldIndex >= 0 && newIndex >= 0 ? arrayMove(current, oldIndex, newIndex) : current;
-    });
+    setAnswer((current) => reorderWordTokens(current, active.id, over.id));
   }
 
   function check() {

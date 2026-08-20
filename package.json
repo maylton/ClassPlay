@@ -9,7 +9,7 @@
     "lint": "eslint .",
     "test:engine": "node scripts/test-engine.mjs",
     "test:smart": "node scripts/test-smart-builder.mjs",
-    "test:arcade": "node scripts/test-arcade.mjs && node scripts/test-arcade-expansion.mjs",
+    "test:arcade": "node scripts/test-arcade.mjs && node scripts/test-arcade-expansion.mjs && node scripts/test-v010-arcade.mjs && node scripts/test-game-architecture.mjs",
     "test:leaderboard": "node scripts/test-leaderboard.mjs",
     "test:classes": "node scripts/test-classes.mjs",
     "test:community-auth": "node scripts/test-community-auth.mjs",

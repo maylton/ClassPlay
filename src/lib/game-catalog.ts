@@ -19,14 +19,13 @@ export const GAME_MODE_CATALOG = {
   quiz: { icon: "trophy", name: "Quiz", shortName: "Quiz", colorClass: "yellow", pickerDescription: "Fast multiple-choice challenge", editorDescription: "Quick multiple choice", landingDescription: "Turn the same content into a quick whole-class check." },
   "space-blaster": { icon: "rocket-takeoff", name: "Space Blaster", shortName: "Blaster", colorClass: "space", pickerDescription: "Move, aim and blast the right answer", editorDescription: "Blast the language that completes the sentence", landingDescription: "Pilot a ClassPlay ship and fire at the language that completes each sentence." },
   "word-maze": { icon: "map", name: "Word Maze", shortName: "Maze", colorClass: "maze", pickerDescription: "Navigate to the correct answer portal", editorDescription: "Find the correct language inside a maze", landingDescription: "Navigate a playful maze and reach the portal with the correct missing language." },
-  "boss-battle": { icon: "shield-shaded", name: "Boss Battle", shortName: "Boss", colorClass: "boss", pickerDescription: "Answer fast, build a streak and defeat the boss", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Turn correct answers and streaks into attacks against a ClassPlay boss." },
+  "boss-battle": { icon: "shield-shaded", name: "Boss Battle", shortName: "Boss", colorClass: "boss", pickerDescription: "Answer fast, build a streak and defeat Ignis", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Turn correct answers, speed and streaks into attacks against Ignis." },
   "bubble-burst": { icon: "circle", name: "Bubble Burst", shortName: "Bubbles", colorClass: "bubble", pickerDescription: "Read, react and pop the correct answer", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Pop floating answer bubbles while keeping the language easy to read." },
+  "grammar-runner": { icon: "sign-turn-right-fill", name: "Grammar Runner", shortName: "Runner", colorClass: "runner", pickerDescription: "Choose a lane and outrun the wrong answer", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Read the prompt, choose a lane and race through the correct language gate." },
+  "phrase-forge": { icon: "hammer", name: "Phrase Forge", shortName: "Forge", colorClass: "forge", pickerDescription: "Forge complete sentences from word ingots", editorDescription: "Arcade mode generated from Sentence Builder content", landingDescription: "Heat the forge by rebuilding complete sentences word by word." },
 } satisfies Record<GameType, GameModePresentation>;
 
-// These are authorable source modes. Boss Battle and Bubble Burst are derived
-// Arcade experiences: they appear automatically when Quiz or Gap Fill content
-// provides a strong enough question pool, so they are intentionally excluded
-// from Smart Variants and the activity editor's persisted mode list.
+/** Authorable source modes persisted in activity_games. */
 export const GAME_MODE_ORDER: GameType[] = [
   "flashcards",
   "memory",
@@ -37,3 +36,28 @@ export const GAME_MODE_ORDER: GameType[] = [
   "space-blaster",
   "word-maze",
 ];
+
+/** Runtime-only Arcade experiences derived from existing source content. */
+export const DERIVED_ARCADE_MODE_ORDER = [
+  "boss-battle",
+  "bubble-burst",
+  "grammar-runner",
+  "phrase-forge",
+] as const satisfies readonly GameType[];
+
+export type DerivedArcadeMode = (typeof DERIVED_ARCADE_MODE_ORDER)[number];
+
+/** All local/practice Arcade experiences, including authorable Arcade modes. */
+export const ARCADE_MODE_ORDER = [
+  "space-blaster",
+  "word-maze",
+  ...DERIVED_ARCADE_MODE_ORDER,
+] as const satisfies readonly GameType[];
+
+export function isArcadeMode(mode: GameType) {
+  return (ARCADE_MODE_ORDER as readonly GameType[]).includes(mode);
+}
+
+export function isDerivedArcadeMode(mode: GameType): mode is DerivedArcadeMode {
+  return (DERIVED_ARCADE_MODE_ORDER as readonly GameType[]).includes(mode);
+}

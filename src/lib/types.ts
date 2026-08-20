@@ -8,7 +8,9 @@ export type GameType =
   | "space-blaster"
   | "word-maze"
   | "boss-battle"
-  | "bubble-burst";
+  | "bubble-burst"
+  | "grammar-runner"
+  | "phrase-forge";
 
 export type LiveGameMode = "gap-fill" | "quiz" | "space-blaster" | "dynamite" | "wildcard-grid";
 export type DynamiteTimerSeconds = 10 | 15 | 20;

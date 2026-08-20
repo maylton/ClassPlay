@@ -1,33 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import type { ActivitySet, GameType } from "@/lib/types";
-import { BossBattleGame } from "./BossBattleGame";
-import { BubbleBurstGame } from "./BubbleBurstGame";
-import { FlashcardsGame } from "./FlashcardsGame";
-import { GapFillGame } from "./GapFillGame";
-import type { GameProps } from "./GameTypes";
-import { MatchingGame } from "./MatchingGame";
-import { MemoryGame } from "./MemoryGame";
-import { QuizGame } from "./QuizGame";
-import { SentenceBuilderGame } from "./SentenceBuilderGame";
-import { SpaceBlasterGame } from "./SpaceBlasterGame";
-import { WordMazeGame } from "./WordMazeGame";
+import { GAME_COMPONENTS } from "./game-registry";
 
 const REPLAY_EVENT = "classplay:game-replay";
-const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
-  flashcards: FlashcardsGame,
-  memory: MemoryGame,
-  matching: MatchingGame,
-  "sentence-builder": SentenceBuilderGame,
-  "gap-fill": GapFillGame,
-  quiz: QuizGame,
-  "space-blaster": SpaceBlasterGame,
-  "word-maze": WordMazeGame,
-  "boss-battle": BossBattleGame,
-  "bubble-burst": BubbleBurstGame,
-};
 
 function formatElapsed(milliseconds: number) {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
