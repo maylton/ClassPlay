@@ -12,9 +12,10 @@ Wildcard Grid is inspired by classroom board games where teams choose numbered t
 1. Every tile always contains a learning question.
 2. Some tiles also hide a second layer: a Wildcard.
 3. The pedagogical sequence is always **Language → Result → Surprise**.
-4. The projector is the main play surface; student phones show team/turn/status, not multiple-choice answering.
-5. The teacher is the authority for oral answers and marks **Correct** or **Not quite**.
-6. Board layout, Wildcards, scores and current turn are persisted in the live session so refresh/reconnect does not reroll the game.
+4. The projector is the complete primary play surface. **Student phones are optional** and only add team/turn/status information.
+5. The game must remain fully playable with **zero connected student devices**.
+6. The teacher is the authority for oral answers and marks **Correct** or **Not quite**.
+7. Board layout, Wildcards, scores and current turn are persisted in the live session so refresh/reconnect does not reroll the game.
 
 ## v0.8 — Playable MVP
 
@@ -23,6 +24,7 @@ Wildcard Grid is inspired by classroom board games where teams choose numbered t
 - Add `wildcard-grid` to ClassPlay Live.
 - Force Team mode.
 - Allow **2, 3 or 4 teams**.
+- Allow the teacher to start immediately without students joining on phones.
 - Board sizes: **12, 16 or 20 tiles**.
 - Disable board sizes larger than the compatible question pool.
 - Question source:
@@ -31,6 +33,23 @@ Wildcard Grid is inspired by classroom board games where teams choose numbered t
 - Wildcard intensity:
   - **Balanced** (default)
   - **Chaos**
+
+### Two valid classroom flows
+
+#### Projector only
+
+- Teacher creates the room and teams.
+- No student joins by QR/code.
+- Teams are physical classroom groups.
+- Teacher controls tile choice, answer marking, Wildcards and score entirely from the projector.
+- This is a first-class mode, not a degraded fallback.
+
+#### Connected companion
+
+- Students may join by QR/code.
+- Joined students are assigned to one of the same teams.
+- Phones show team, current turn, score, Shield/×2 status and revealed Wildcards.
+- Phones never become required for answering or advancing the board.
 
 ### Board state
 
@@ -110,7 +129,8 @@ Board phase:
 - active-team highlight;
 - large responsive numbered grid;
 - opened tiles visually disabled;
-- room code + End session action.
+- room code + End session action;
+- no connected-device requirement.
 
 Question phase:
 
@@ -129,12 +149,13 @@ Wildcard phase:
 - score delta animation;
 - **Continue** action.
 
-### Student phone UX
+### Student phone UX — optional companion
 
 Lobby:
 
 - assigned team;
-- Wildcard Grid explanation.
+- Wildcard Grid explanation;
+- clear indication that answers happen with the team, out loud.
 
 During game:
 
@@ -146,7 +167,7 @@ During game:
 - during question: `Talk with your team and answer out loud.`
 - during Wildcard: show the revealed effect and updated score.
 
-Students never submit the oral answer from the phone in this mode.
+Students never submit the oral answer from the phone in this mode. The host must never wait for a phone event before advancing.
 
 ### Finish + ties
 
@@ -181,6 +202,7 @@ Students never submit the oral answer from the phone in this mode.
 - `LiveGameMode` includes `wildcard-grid` but `GameType` does not; it remains Live-only.
 - Wildcard Grid must not write fake answer rows or fake individual scores.
 - Team scores are stored in `wildcardGridState.teamScores`.
+- **No player connection is required to start or complete a Wildcard Grid session.**
 - Refreshing host/student must reconstruct the exact same board and turn.
 - Public student payload never includes hidden Wildcard assignments for unopened tiles.
 - Teacher-only state may contain the full hidden board because host access is authenticated.
@@ -192,13 +214,15 @@ Students never submit the oral answer from the phone in this mode.
 
 - 12/16/20 board setup works according to deck size.
 - 2–4 teams supported.
+- **projector-only session works from start to finish with zero connected phones.**
+- connected phones remain optional companions.
 - every tile maps to one compatible question.
 - board survives host refresh without rerolling.
 - teacher can mark correct/incorrect.
 - base scoring works.
 - at least the Balanced Wildcard set is playable.
 - target-selection effects work.
-- phones show correct team/turn/score status.
+- phones show correct team/turn/score status when used.
 - final ranking works.
 - all existing ClassPlay CI contracts stay green.
 - TypeScript, ESLint and production build pass.
