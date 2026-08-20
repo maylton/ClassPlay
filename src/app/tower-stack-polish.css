@@ -1,0 +1,332 @@
+/* Tower Stack final MVP polish: time pressure, crane rig and gameplay-aware structural wobble. */
+
+.tower-stack .tower-crane {
+  inset: 0;
+  width: auto;
+  height: auto;
+  right: auto;
+  top: auto;
+  opacity: .5;
+  pointer-events: none;
+}
+
+.tower-stack .tower-crane > span,
+.tower-stack .tower-crane > i {
+  display: none;
+}
+
+.tower-stack .tower-crane::before {
+  content: "";
+  position: absolute;
+  z-index: 1;
+  right: 7%;
+  top: 5%;
+  bottom: 5%;
+  width: 10px;
+  border-radius: 4px;
+  background:
+    repeating-linear-gradient(45deg, transparent 0 12px, rgba(126, 149, 255, .48) 12px 15px, transparent 15px 27px),
+    linear-gradient(90deg, #202d67 0 28%, #4056a4 28% 72%, #202d67 72% 100%);
+  box-shadow: 0 0 0 2px rgba(18, 27, 70, .25);
+}
+
+.tower-stack .tower-crane::after {
+  content: "";
+  position: absolute;
+  z-index: 2;
+  left: 8%;
+  right: 7%;
+  top: 5%;
+  height: 15px;
+  border-top: 6px solid #24336e;
+  border-bottom: 4px solid #24336e;
+  background: repeating-linear-gradient(135deg, transparent 0 24px, rgba(126, 149, 255, .62) 24px 28px, transparent 28px 50px);
+  filter: drop-shadow(0 3px 0 rgba(12, 18, 54, .18));
+}
+
+.tower-crane-rig {
+  position: absolute;
+  z-index: 9;
+  top: 5%;
+  width: 0;
+  pointer-events: none;
+  transition: left .06s linear, bottom .2s ease;
+}
+
+.tower-crane-rig::before {
+  content: "";
+  position: absolute;
+  top: 11px;
+  bottom: 0;
+  left: -1px;
+  width: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #1d285c, #7088d4, #1d285c);
+  box-shadow: 0 0 5px rgba(11, 17, 56, .25);
+}
+
+.tower-crane-trolley {
+  position: absolute;
+  left: -13px;
+  top: 1px;
+  width: 26px;
+  height: 13px;
+  border: 3px solid #223168;
+  border-radius: 5px;
+  background: #f0b94a;
+  box-shadow: 0 3px 0 rgba(12, 18, 54, .28);
+}
+
+.tower-crane-trolley::before,
+.tower-crane-trolley::after {
+  content: "";
+  position: absolute;
+  top: -7px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #17234f;
+}
+
+.tower-crane-trolley::before { left: 2px; }
+.tower-crane-trolley::after { right: 2px; }
+
+.tower-crane-hook {
+  position: absolute;
+  left: -8px;
+  bottom: -10px;
+  width: 16px;
+  height: 16px;
+  border: 4px solid #202d67;
+  border-top: 0;
+  border-left-color: transparent;
+  border-radius: 0 0 11px 11px;
+  transform: rotate(-10deg);
+}
+
+.tower-preview-block {
+  z-index: 9;
+  opacity: .72;
+  border-style: dashed;
+  filter: saturate(.8);
+  animation: tower-preview-breathe .85s ease-in-out infinite alternate;
+}
+
+/*
+ * Structural wobble
+ * -----------------
+ * The foundation never moves. Once the tower reaches four real floors, every
+ * placed floor participates in one synchronized sway cycle. Higher floors get
+ * progressively larger offsets, which makes the stack flex from the base
+ * instead of rotating like one rigid object.
+ *
+ * The sway now remains active while the player aims the moving block. The game
+ * samples the current lateral transform of the top floor at the exact drop
+ * instant, so the visible movement and collision geometry agree. Rotation is
+ * deliberately tiny and remains a visual depth cue; lateral sway is the part
+ * that changes placement difficulty.
+ */
+.tower-playfield .placed-block:not(.foundation) {
+  --tower-sway-left: -.35px;
+  --tower-sway-right: .35px;
+  --tower-sway-rot-left: -.015deg;
+  --tower-sway-rot-right: .015deg;
+  transform-origin: 50% 100%;
+  transition: left .18s ease, width .18s ease, bottom .28s ease, transform .22s ease;
+  will-change: transform;
+}
+
+/* Floor 4+ bends a little more than the lower floors. */
+.tower-playfield .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block {
+  --tower-sway-left: -1.05px;
+  --tower-sway-right: 1.05px;
+  --tower-sway-rot-left: -.045deg;
+  --tower-sway-rot-right: .045deg;
+}
+
+/* Floor 8+ makes the upper half visibly flexible. */
+.tower-playfield .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block {
+  --tower-sway-left: -2.15px;
+  --tower-sway-right: 2.15px;
+  --tower-sway-rot-left: -.09deg;
+  --tower-sway-rot-right: .09deg;
+}
+
+/* Floor 12+ gives tall towers a clear skyline sway without looking broken. */
+.tower-playfield .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block {
+  --tower-sway-left: -3.7px;
+  --tower-sway-right: 3.7px;
+  --tower-sway-rot-left: -.16deg;
+  --tower-sway-rot-right: .16deg;
+}
+
+/* 15+ floors: strongest visual flex, still capped so blocks never look detached. */
+.tower-playfield .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block {
+  --tower-sway-left: -5px;
+  --tower-sway-right: 5px;
+  --tower-sway-rot-left: -.22deg;
+  --tower-sway-rot-right: .22deg;
+}
+
+/* Four floors (foundation + 4 blocks): wobble begins subtly. */
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block)
+  .placed-block:not(.foundation) {
+  animation: tower-structural-sway 3.8s ease-in-out infinite;
+}
+
+/* A cropped/non-perfect latest floor carries a little more visible tension. */
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .tower-preview-block)
+  .placed-block:not(.foundation),
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .active-block)
+  .placed-block:not(.foundation) {
+  animation-duration: 3.2s;
+}
+
+/* Eight floors: the wind/height effect becomes easier to notice. */
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block)
+  .placed-block:not(.foundation) {
+  animation-duration: 3.05s;
+}
+
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .tower-preview-block)
+  .placed-block:not(.foundation),
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .active-block)
+  .placed-block:not(.foundation) {
+  animation-duration: 2.6s;
+}
+
+/* Twelve floors: pronounced and now part of the timing challenge. */
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block)
+  .placed-block:not(.foundation) {
+  animation-duration: 2.45s;
+}
+
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .tower-preview-block)
+  .placed-block:not(.foundation),
+.tower-playfield:has(.placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block):has(.placed-block:not(.is-perfect) + .active-block)
+  .placed-block:not(.foundation) {
+  animation-duration: 2.1s;
+}
+
+/* A Perfect Stack stabilizes the completed tower for the following question. */
+.tower-playfield:has(.placed-block.is-perfect + .tower-preview-block)
+  .placed-block:not(.foundation) {
+  animation: none;
+  transform: translateX(0) rotate(0);
+}
+
+/* As soon as the next block is unlocked, the tower resumes swaying while aiming. */
+.tower-arena.can-drop .tower-playfield .placed-block:not(.foundation) {
+  animation-play-state: running;
+}
+
+.tower-time-pressure {
+  margin-top: .1rem;
+  padding: .78rem .85rem;
+  display: grid;
+  gap: .48rem;
+  border: 1px solid #dce2f5;
+  border-radius: 16px;
+  background: #f7f9ff;
+}
+
+.tower-time-pressure-copy {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+}
+
+.tower-time-pressure-copy span {
+  display: inline-flex;
+  align-items: center;
+  gap: .35rem;
+  color: #5e6a93;
+  font-size: .68rem;
+  font-weight: 900;
+  letter-spacing: .06em;
+}
+
+.tower-time-pressure-copy strong {
+  color: #344bb3;
+  font-size: .8rem;
+}
+
+.tower-time-block-shell {
+  height: 18px;
+  padding: 3px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: #e2e7f7;
+  box-shadow: inset 0 1px 2px rgba(30, 42, 92,.12);
+}
+
+.tower-time-block-shell > span {
+  display: block;
+  height: 100%;
+  margin-inline: auto;
+  border-radius: 5px;
+  background: linear-gradient(90deg, #66e0ff, #4567f2);
+  box-shadow: inset 0 -3px 0 rgba(20,50,125,.18);
+  transition: width .1s linear;
+}
+
+.tower-time-pressure small {
+  color: #7a849f;
+  font-size: .66rem;
+  line-height: 1.3;
+}
+
+.tower-stack.reduced-motion .tower-preview-block,
+.tower-stack.reduced-motion .tower-playfield .placed-block:not(.foundation) {
+  animation: none !important;
+  transform: none !important;
+}
+
+.tower-stack.reduced-motion .tower-crane-rig {
+  transition-duration: .08s;
+}
+
+@keyframes tower-preview-breathe {
+  from { opacity: .62; }
+  to { opacity: .82; }
+}
+
+@keyframes tower-structural-sway {
+  0%, 100% {
+    transform: translateX(0) rotate(0);
+  }
+  22% {
+    transform: translateX(var(--tower-sway-left)) rotate(var(--tower-sway-rot-left));
+  }
+  50% {
+    transform: translateX(0) rotate(0);
+  }
+  78% {
+    transform: translateX(var(--tower-sway-right)) rotate(var(--tower-sway-rot-right));
+  }
+}
+
+@media (max-width: 600px) {
+  .tower-stack .tower-crane::before { right: 6%; }
+  .tower-stack .tower-crane::after { left: 6%; right: 6%; }
+  .tower-time-pressure { padding: .68rem .72rem; }
+
+  /* Smaller screens need less pixel displacement to keep floors visually joined. */
+  .tower-playfield .placed-block:not(.foundation) {
+    --tower-sway-left: -.25px;
+    --tower-sway-right: .25px;
+  }
+  .tower-playfield .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block {
+    --tower-sway-left: -.75px;
+    --tower-sway-right: .75px;
+  }
+  .tower-playfield .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block {
+    --tower-sway-left: -1.45px;
+    --tower-sway-right: 1.45px;
+  }
+  .tower-playfield .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block ~ .placed-block {
+    --tower-sway-left: -2.5px;
+    --tower-sway-right: 2.5px;
+  }
+}

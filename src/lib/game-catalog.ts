@@ -24,6 +24,7 @@ export const GAME_MODE_CATALOG = {
   // Kept for backwards compatibility only. Grammar Runner is paused and hidden from the UI.
   "grammar-runner": { icon: "sign-turn-right-fill", name: "Grammar Runner", shortName: "Runner", colorClass: "runner", pickerDescription: "Choose a lane and outrun the wrong answer", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Read the prompt, choose a lane and race through the correct language gate." },
   "phrase-forge": { icon: "hammer", name: "Phrase Forge", shortName: "Forge", colorClass: "forge", pickerDescription: "Forge complete sentences from word ingots", editorDescription: "Arcade mode generated from Sentence Builder content", landingDescription: "Heat the forge by rebuilding complete sentences word by word." },
+  "tower-stack": { icon: "building", name: "Tower Stack", shortName: "Tower", colorClass: "tower", pickerDescription: "Earn blocks, time the drop and build higher", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Answer correctly to earn blocks, then time each drop to build the tallest tower you can." },
 } satisfies Record<GameType, GameModePresentation>;
 
 /** Authorable source modes persisted in activity_games. */
@@ -43,6 +44,7 @@ export const DERIVED_ARCADE_MODE_ORDER = [
   "boss-battle",
   "bubble-burst",
   "phrase-forge",
+  "tower-stack",
 ] as const satisfies readonly GameType[];
 
 export type DerivedArcadeMode = (typeof DERIVED_ARCADE_MODE_ORDER)[number];
