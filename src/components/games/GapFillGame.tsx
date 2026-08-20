@@ -18,7 +18,7 @@ export function GapFillGame({ activity, onComplete }: GameProps) {
   const [finished, setFinished] = useState(false);
   const [lastPoints, setLastPoints] = useState(0);
   const item = questions[index];
-  const { elapsedMs: questionElapsedMs, stop: stopQuestionClock } = useQuestionTimer(`${index}:${item?.id ?? "empty"}`);
+  const { elapsedMs: questionElapsedMs, restart: restartQuestionClock, stop: stopQuestionClock } = useQuestionTimer(`${index}:${item?.id ?? "empty"}`);
   const options = useMemo(() => item ? gapOptions(item, playableItems) : [], [item, playableItems]);
 
   if (!item) return <div className="empty-game"><span><AppIcon name="pencil-square" /></span><h2>This set needs sentence targets.</h2><p>Add a full sentence and choose the word or expression to hide. ClassPlay will build the gap automatically.</p></div>;
@@ -39,6 +39,7 @@ export function GapFillGame({ activity, onComplete }: GameProps) {
   }
 
   function replay() {
+    restartQuestionClock();
     setQuestions(shuffle(playableItems));
     setIndex(0); setCorrect(0); setScore(0); setSelected(null); setFinished(false); setLastPoints(0);
   }
