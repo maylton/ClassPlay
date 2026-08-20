@@ -16,12 +16,6 @@ import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { ActivitySet, TeacherProfile } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
 
-const activityKindIcons = {
-  vocabulary: "type",
-  grammar: "braces",
-  mixed: "layers",
-} as const;
-
 export function DashboardClient() {
   const [activities, setActivities] = useState<ActivitySet[]>([]);
   const [profile, setProfile] = useState<TeacherProfile>({ name: "Teacher" });
@@ -150,7 +144,6 @@ export function DashboardClient() {
                   className={`activity-visual ${previewImage ? "has-image" : ""}`}
                   style={previewImage ? { backgroundImage: `linear-gradient(180deg, rgba(18,15,45,.08), rgba(18,15,45,.76)), url("${previewImage}")` } : undefined}
                 >
-                  <div className="activity-icon"><AppIcon name={activityKindIcons[activity.kind]} /></div>
                   <span className="activity-level">{activity.level}</span>
                   <div className="activity-visual-copy">
                     <small>{activity.kind === "mixed" ? "Mixed practice" : `${activity.kind} practice`}</small>
