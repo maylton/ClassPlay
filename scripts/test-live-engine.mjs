@@ -42,7 +42,8 @@ const dynamiteSql = fs.readFileSync(new URL("../supabase/migrations/0014_dynamit
 
 for (const mode of ["gap-fill", "quiz", "space-blaster", "dynamite"]) {
   assert.ok(liveEngine.includes(`"${mode}"`), `${mode} must be a supported live game mode`);
-  assert.ok(liveCatalog.includes(`${JSON.stringify(mode)}:`), `${mode} must appear in the central live-mode catalog`);
+  const catalogKey = mode.includes("-") ? `"${mode}"` : `(?:${mode}|"${mode}")`;
+  assert.match(liveCatalog, new RegExp(`${catalogKey}\\s*:`), `${mode} must appear in the central live-mode catalog`);
 }
 assert.match(liveSetup, /LIVE_MODE_ORDER\.map/, "The teacher picker must render from the central live-mode catalog.");
 assert.match(liveHost, /buildLiveQuestion\(activity,\s*index,\s*liveGameMode\)/, "The standard host flow must build rounds using the selected live mode.");
