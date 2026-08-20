@@ -58,11 +58,12 @@ export function wildcardGridSourceMode(
   if (activity.kind === "grammar" && gapItems.length >= 12) return "gap-fill";
   if (quizItems.length >= 12) return "quiz";
   if (pairItems.length >= 12) return "prompt-answer";
-  return ([
+  const candidates: Array<[ResolvedWildcardGridSource, number]> = [
     ["gap-fill", gapItems.length],
     ["quiz", quizItems.length],
     ["prompt-answer", pairItems.length],
-  ] as const).sort((a, b) => b[1] - a[1])[0][0];
+  ];
+  return candidates.reduce((best, candidate) => candidate[1] > best[1] ? candidate : best)[0];
 }
 
 export function wildcardGridItems(activity: ActivitySet, source: WildcardGridQuestionSource = "smart") {
@@ -96,17 +97,18 @@ export function buildLiveQuestion(
   gameMode: LiveGameMode = "quiz",
   wildcardSource: WildcardGridQuestionSource = "smart",
 ): HostLiveQuestion {
-  const resolvedWildcardSource = gameMode === "wildcard-grid" ? wildcardGridSourceMode(activity, wildcardSource) : null;
-  const sourceMode = gameMode === "dynamite"
-    ? dynamiteSourceMode(activity)
-    : gameMode === "wildcard-grid"
-      ? resolvedWildcardSource!
-      : gameMode;
-  const items = gameMode === "dynamite"
-    ? getPlayableItemsForMode(activity.items, sourceMode)
-    : gameMode === "wildcard-grid"
-      ? wildcardGridItems(activity, wildcardSource)
-      : liveModeItems(activity, gameMode);
+  let sourceMode: "quiz" | "gap-fill" | "space-blaster" | "prompt-answer";
+  let items;
+  if (gameMode === "dynamite") {
+    sourceMode = dynamiteSourceMode(activity);
+    items = getPlayableItemsForMode(activity.items, sourceMode);
+  } else if (gameMode === "wildcard-grid") {
+    sourceMode = wildcardGridSourceMode(activity, wildcardSource);
+    items = wildcardGridItems(activity, wildcardSource);
+  } else {
+    sourceMode = gameMode;
+    items = liveModeItems(activity, gameMode);
+  }
   const item = items[index];
   if (!item) throw new Error("Live question index is outside the selected game mode.");
   const usesGap = sourceMode === "gap-fill" || sourceMode === "space-blaster";
@@ -117,11 +119,7 @@ export function buildLiveQuestion(
     index,
     total: items.length,
     gameMode,
-    sourceMode: gameMode === "dynamite"
-      ? sourceMode as "quiz" | "gap-fill"
-      : gameMode === "wildcard-grid"
-        ? resolvedWildcardSource ?? undefined
-        : undefined,
+    sourceMode: gameMode === "dynamite" || gameMode === "wildcard-grid" ? sourceMode as "quiz" | "gap-fill" | "prompt-answer" : undefined,
     prompt: usesGap ? item.gapSentence! : item.prompt,
     hint: item.hint,
     imageUrl: item.imageUrl,
