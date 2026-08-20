@@ -103,7 +103,7 @@ export function WildcardGridHostStage({
                 onClick={() => onTile(tile.number)}
                 aria-label={tile.opened ? `Tile ${tile.number} completed` : `Open tile ${tile.number}`}
               >
-                {tile.resolved ? <><AppIcon name="check-lg" /><small>{tile.number}</small></> : <strong>{tile.number}</strong>}
+                {tile.resolved ? <><AppIcon name="check-lg" /><small style={{ fontSize: "clamp(1rem, 1.6vw, 1.35rem)", lineHeight: 1 }}>{tile.number}</small></> : <strong>{tile.number}</strong>}
               </button>
             ))}
           </div>
