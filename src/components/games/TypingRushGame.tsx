@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { useClassroomSettings } from "@/hooks/useClassroomSettings";
 import { useQuestionTimer } from "@/hooks/useQuestionTimer";
@@ -26,7 +26,7 @@ export function TypingRushGame({ activity, onComplete }: GameProps) {
   const gapItems = useMemo(() => getPlayableItemsForMode(activity.items, "gap-fill"), [activity.items]);
   const source = useMemo(() => chooseTypingRushSource(activity.kind, quizItems.length, gapItems.length), [activity.kind, gapItems.length, quizItems.length]);
   const [runKey, setRunKey] = useState(0);
-  const rounds = useMemo(() => source ? buildTypingRushRounds(source === "gap-fill" ? gapItems : quizItems, source) : [], [gapItems, quizItems, runKey, source]);
+  const rounds = useMemo(() => source ? buildTypingRushRounds(source === "gap-fill" ? gapItems : quizItems, source) : [], [gapItems, quizItems, source]);
   const [roundIndex, setRoundIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -73,7 +73,8 @@ export function TypingRushGame({ activity, onComplete }: GameProps) {
 
   useEffect(() => {
     if (!round || finished || locked || elapsedMs < TYPING_RUSH_ROUND_MS) return;
-    failRound("timeout");
+    const timeout = window.setTimeout(() => failRound("timeout"), 0);
+    return () => window.clearTimeout(timeout);
   }, [elapsedMs, failRound, finished, locked, round]);
 
   function submit(event: FormEvent) {
