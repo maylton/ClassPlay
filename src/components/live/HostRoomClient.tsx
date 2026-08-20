@@ -248,7 +248,8 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     if (!isDynamite || session?.state !== "playing" || !session.currentQuestion || !dynamiteState) return;
     if (session.currentQuestion.activePlayerId !== dynamiteState.currentPlayerId) return;
     if (session.currentQuestion.passedBy !== dynamiteState.currentPlayerId) return;
-    void advanceDynamitePass();
+    const timeout = window.setTimeout(() => void advanceDynamitePass(), 0);
+    return () => window.clearTimeout(timeout);
   }, [advanceDynamitePass, dynamiteState, isDynamite, session?.currentQuestion, session?.state]);
 
   const explodeDynamite = useCallback(async () => {
@@ -299,7 +300,8 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     if (!isDynamite || session?.state !== "playing" || !session.currentQuestion || !dynamiteState) return;
     if (hostRemaining !== 0 || session.currentQuestion.passedBy) return;
     if (session.currentQuestion.activePlayerId !== dynamiteState.currentPlayerId) return;
-    void explodeDynamite();
+    const timeout = window.setTimeout(() => void explodeDynamite(), 0);
+    return () => window.clearTimeout(timeout);
   }, [dynamiteState, explodeDynamite, hostRemaining, isDynamite, session?.currentQuestion, session?.state]);
 
   useEffect(() => {
@@ -308,8 +310,12 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     if (session.currentQuestion.activePlayerId === dynamiteState.currentPlayerId) return;
     const questionIndex = dynamiteState.questionOrder[dynamiteState.questionCursor];
     if (typeof questionIndex !== "number") return;
-    dynamiteTransitionRef.current = true;
-    void publishDynamiteTurn(dynamiteState, questionIndex).finally(() => { dynamiteTransitionRef.current = false; });
+    const timeout = window.setTimeout(() => {
+      if (dynamiteTransitionRef.current) return;
+      dynamiteTransitionRef.current = true;
+      void publishDynamiteTurn(dynamiteState, questionIndex).finally(() => { dynamiteTransitionRef.current = false; });
+    }, 0);
+    return () => window.clearTimeout(timeout);
   }, [dynamiteState, isDynamite, publishDynamiteTurn, session?.currentQuestion, session?.state]);
 
   async function nextQuestion() {
