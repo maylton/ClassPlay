@@ -109,11 +109,18 @@ export interface WildcardGridTile {
   resolved: boolean;
 }
 
+export interface WildcardGridTeamRef {
+  id: string;
+  name: string;
+  color: string;
+}
+
 export interface WildcardGridState {
   size: WildcardGridSize;
   intensity: WildcardGridIntensity;
   phase: WildcardGridPhase;
   tiles: WildcardGridTile[];
+  teams: WildcardGridTeamRef[];
   teamOrder: string[];
   activeTeamId: string;
   teamScores: Record<string, number>;
