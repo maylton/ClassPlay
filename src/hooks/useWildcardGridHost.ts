@@ -23,7 +23,8 @@ function publicWildcardSettings(settings: ClassroomSettings): ClassroomSettings 
     ...settings,
     wildcardGridState: {
       ...state,
-      tiles: state.tiles.map((tile) => tile.opened ? tile : { ...tile, wildcard: null }),
+      tiles: state.tiles.map((tile) => ({ ...tile, wildcard: null })),
+      pendingWildcard: state.phase === "wildcard" ? state.pendingWildcard ?? null : null,
     },
   };
 }
@@ -150,8 +151,9 @@ export function useWildcardGridHost({
       const leaderboard = grid
         ? [...grid.teams].map((team) => ({ id: team.id, name: team.name, score: grid.teamScores[team.id] ?? 0 })).sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
         : [];
+      const publicGrid = grid ? publicWildcardSettings({ ...session.settings, wildcardGridState: grid }).wildcardGridState ?? null : null;
       await finalizeLiveSession(session.id);
-      await send("final", { state: "final_results", leaderboardKind: "team", leaderboard, wildcardGridState: grid ?? null });
+      await send("final", { state: "final_results", leaderboardKind: "team", leaderboard, wildcardGridState: publicGrid });
       await refresh();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not finish Wildcard Grid.");
