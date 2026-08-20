@@ -1,0 +1,79 @@
+.mode-card.boss {
+  --mode-bg: #ff684a;
+  --mode-fg: #fff;
+  --mode-shadow: #9d2d28;
+}
+.compatible-variant-card.boss { --variant-accent: #e5523a; }
+
+.boss-battle { --boss-accent: #ff684a; --boss-glow: #ffb054; }
+.boss-hud strong { color: #ffd569; }
+.boss-arena {
+  position: relative;
+  min-height: 680px;
+  overflow: hidden;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  background:
+    radial-gradient(circle at 50% 18%, rgba(255,104,74,.28), transparent 28%),
+    radial-gradient(circle at 15% 45%, rgba(122,90,234,.2), transparent 25%),
+    linear-gradient(180deg, #181636 0%, #10142f 58%, #090c22 100%);
+  border: 3px solid #3a3e70;
+  border-radius: 28px;
+  box-shadow: inset 0 0 90px rgba(0,0,0,.32), 0 10px 0 #07091b;
+}
+.boss-battle.enraged { --boss-accent: #ff405f; --boss-glow: #ff405f; }
+.boss-battle.enraged .boss-arena { animation: boss-enraged-pulse 1.6s ease-in-out infinite; }
+.boss-status { display:flex; justify-content:space-between; gap:1rem; align-items:flex-start; position:relative; z-index:4; }
+.boss-status small { color:#ffd569; font-size:.58rem; font-weight:950; letter-spacing:.15em; }
+.boss-status h2 { margin:.15rem 0 0; font-size:clamp(1.4rem,3vw,2.4rem); }
+.boss-status p { margin:.2rem 0 0; color:#abb2dd; font-size:.78rem; }
+.boss-hearts { display:flex; gap:.28rem; padding:.55rem .7rem; background:rgba(10,13,37,.7); border:1px solid #424874; border-radius:999px; color:#ff5f7b; font-size:1.2rem; }
+.boss-hp-wrap { position:relative; z-index:4; margin:.8rem 0 0; }
+.boss-hp-label { display:flex; justify-content:space-between; margin-bottom:.32rem; color:#c7cbed; font-size:.68rem; font-weight:900; }
+.boss-hp-track { height:18px; overflow:hidden; background:#272b50; border:2px solid #454b79; border-radius:999px; }
+.boss-hp-track span { display:block; height:100%; background:linear-gradient(90deg,var(--boss-accent),var(--boss-glow)); border-radius:inherit; transition:width .36s cubic-bezier(.2,.8,.2,1); box-shadow:0 0 20px var(--boss-glow); }
+.boss-character { position:relative; z-index:2; width:min(310px,52vw); height:245px; margin:1rem auto -1rem; filter:drop-shadow(0 24px 24px rgba(0,0,0,.38)); }
+.boss-aura { position:absolute; inset:12% 8% 0; border-radius:50%; background:radial-gradient(circle, color-mix(in srgb,var(--boss-glow) 32%, transparent), transparent 67%); animation:boss-aura 2s ease-in-out infinite alternate; }
+.boss-body { position:absolute; left:50%; top:28px; width:156px; height:158px; transform:translateX(-50%); background:linear-gradient(150deg,#7771ed 0 48%,#4a459d 49%); border:8px solid #25234f; border-radius:42% 42% 35% 35%; box-shadow:inset 0 -18px 0 rgba(0,0,0,.12); }
+.grammar-golem .boss-body { border-radius:28px; background:linear-gradient(145deg,#9a91ff,#5751ad); }
+.vocabulary-dragon .boss-body { background:linear-gradient(145deg,#ef745c,#8d303d); transform:translateX(-50%) rotate(-2deg); }
+.final-exam-bot .boss-body { border-radius:28px 28px 46px 46px; background:linear-gradient(145deg,#80dbd2,#348a9d); }
+.boss-eye { position:absolute; top:52px; width:26px; height:18px; background:#fff; border:5px solid #25234f; border-radius:50%; }
+.boss-eye::after { content:""; position:absolute; width:7px; height:7px; border-radius:50%; background:var(--boss-accent); top:1px; left:6px; box-shadow:0 0 8px var(--boss-glow); }
+.boss-eye.left { left:29px; } .boss-eye.right { right:29px; }
+.boss-mouth { position:absolute; left:50%; bottom:34px; width:54px; height:15px; transform:translateX(-50%); border:5px solid #25234f; border-top:0; border-radius:0 0 30px 30px; }
+.boss-arm { position:absolute; top:92px; width:88px; height:42px; background:#5550ad; border:7px solid #25234f; border-radius:99px; }
+.boss-arm.left { left:18px; transform:rotate(24deg); } .boss-arm.right { right:18px; transform:rotate(-24deg); }
+.vocabulary-dragon .boss-arm { background:#963848; } .final-exam-bot .boss-arm { background:#3c94a3; }
+.boss-character.taking-hit { animation:boss-hit .34s ease-out; }
+.boss-damage { position:absolute; z-index:7; left:50%; top:0; transform:translateX(-50%); color:#fff; font-size:2rem; text-shadow:0 3px 0 #8e2832,0 0 18px #ff7c63; animation:boss-damage-pop .65s ease-out both; }
+.boss-damage.critical { color:#ffd569; font-size:2.45rem; }
+.boss-question-card { position:relative; z-index:5; width:min(920px,100%); margin:0 auto; padding:1rem; background:#fff; color:#1e203d; border-radius:22px; box-shadow:0 8px 0 #343864; }
+.boss-question-meta { display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-bottom:.45rem; }
+.boss-question-meta > span { color:#7a45db; font-size:.58rem; font-weight:950; letter-spacing:.14em; }
+.boss-question-meta small { color:#6f728b; font-size:.68rem; }
+.boss-question-card > strong { display:block; font-size:clamp(1.25rem,2.7vw,2rem); line-height:1.18; }
+.boss-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.65rem; margin-top:1rem; }
+.boss-options button { min-height:68px; display:flex; align-items:center; gap:.7rem; padding:.65rem .8rem; border:2px solid #d8dbec; border-radius:15px; background:#f7f7fc; color:#232642; cursor:pointer; text-align:left; font:inherit; font-weight:850; transition:transform .12s ease,border-color .12s ease,background .12s ease; }
+.boss-options button:hover:not(:disabled) { transform:translateY(-2px); border-color:#7a5ae8; background:#f0edff; }
+.boss-options button.correct { border-color:#74b82f; background:#eaf8d4; }
+.boss-options button.wrong { border-color:#e9576b; background:#ffe1e6; }
+.boss-options kbd { flex:0 0 auto; width:28px; height:28px; display:grid; place-items:center; border-radius:8px; background:#272a50; color:#fff; font:inherit; font-size:.68rem; font-weight:950; }
+.boss-feedback { min-height:32px; display:flex; align-items:end; justify-content:center; margin-top:.5rem; font-size:.76rem; font-weight:950; }
+.boss-feedback span { display:inline-flex; align-items:center; gap:.35rem; padding:.35rem .6rem; border-radius:999px; }
+.boss-feedback .critical { background:#fff0b8; color:#755000; } .boss-feedback .hit { background:#eaf8d4; color:#416b18; } .boss-feedback .wrong { background:#ffe1e6; color:#842f3e; }
+.boss-result { width:min(720px,100%); margin:2rem auto; padding:clamp(1.5rem,4vw,3rem); text-align:center; background:#fff; color:#20233e; border-radius:28px; box-shadow:0 10px 0 #2d315d; }
+.boss-result-icon { width:78px; height:78px; margin:0 auto 1rem; display:grid; place-items:center; border-radius:24px; background:#b9ed53; color:#1c2814; font-size:2rem; transform:rotate(-4deg); }
+.boss-result.defeat .boss-result-icon { background:#ffd6de; color:#7c2d3b; }
+.boss-result small { color:#7656df; font-size:.62rem; font-weight:950; letter-spacing:.16em; }
+.boss-result h2 { margin:.35rem 0; font-size:clamp(1.8rem,4vw,3rem); }
+.boss-result p { color:#70748a; }
+.boss-result-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:.7rem; margin:1.3rem 0; }
+.boss-result-stats div { padding:.8rem; background:#f2f3f8; border-radius:14px; display:grid; gap:.15rem; }
+.boss-result-stats b { font-size:1.25rem; } .boss-result-stats span { color:#76798d; font-size:.65rem; font-weight:800; }
+@keyframes boss-hit { 0%,100%{transform:translateX(0)} 30%{transform:translateX(-18px) rotate(-2deg)} 65%{transform:translateX(13px) rotate(2deg)} }
+@keyframes boss-damage-pop { 0%{opacity:0;transform:translate(-50%,20px) scale(.65)} 30%{opacity:1;transform:translate(-50%,-8px) scale(1.15)} 100%{opacity:0;transform:translate(-50%,-54px) scale(1)} }
+@keyframes boss-aura { from{transform:scale(.92);opacity:.55} to{transform:scale(1.08);opacity:1} }
+@keyframes boss-enraged-pulse { 0%,100%{box-shadow:inset 0 0 90px rgba(255,64,95,.12),0 10px 0 #07091b} 50%{box-shadow:inset 0 0 120px rgba(255,64,95,.32),0 10px 0 #07091b} }
+@media (max-width:700px) { .boss-arena{min-height:650px}.boss-status{align-items:center}.boss-status p{display:none}.boss-character{height:220px}.boss-options{grid-template-columns:1fr}.boss-options button{min-height:56px}.boss-result-stats{grid-template-columns:repeat(3,1fr)} }
+@media (prefers-reduced-motion: reduce) { .boss-battle *, .boss-result * { animation:none !important; transition:none !important; } }
+.boss-battle.reduced-motion *, .boss-battle.reduced-motion *::before, .boss-battle.reduced-motion *::after { animation:none !important; transition:none !important; }

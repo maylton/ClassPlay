@@ -6,7 +6,9 @@ export type GameType =
   | "gap-fill"
   | "quiz"
   | "space-blaster"
-  | "word-maze";
+  | "word-maze"
+  | "boss-battle"
+  | "bubble-burst";
 
 export type LiveGameMode = "gap-fill" | "quiz" | "space-blaster" | "dynamite" | "wildcard-grid";
 export type DynamiteTimerSeconds = 10 | 15 | 20;
