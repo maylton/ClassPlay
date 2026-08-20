@@ -11,7 +11,9 @@ export type GameType =
   | "bubble-burst"
   | "grammar-runner"
   | "phrase-forge"
-  | "tower-stack";
+  | "tower-stack"
+  | "word-hunt"
+  | "typing-rush";
 
 export type LiveGameMode = "gap-fill" | "quiz" | "space-blaster" | "dynamite" | "wildcard-grid";
 export type DynamiteTimerSeconds = 10 | 15 | 20;
