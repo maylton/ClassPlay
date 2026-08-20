@@ -43,7 +43,7 @@ export function GameStage({
   runKey?: string | number;
   onComplete: (score: number, correct: number, total: number) => void;
 }) {
-  const startedAtRef = useRef(Date.now());
+  const startedAtRef = useRef<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
   const [running, setRunning] = useState(true);
 
@@ -54,7 +54,8 @@ export function GameStage({
   }, []);
 
   useEffect(() => {
-    restartClock();
+    const timeout = window.setTimeout(restartClock, 0);
+    return () => window.clearTimeout(timeout);
   }, [mode, runKey, activity.id, restartClock]);
 
   useEffect(() => {
@@ -65,14 +66,16 @@ export function GameStage({
 
   useEffect(() => {
     if (!running) return;
-    const tick = () => setElapsedMs(Date.now() - startedAtRef.current);
-    tick();
-    const interval = window.setInterval(tick, 250);
+    const interval = window.setInterval(() => {
+      if (startedAtRef.current === null) return;
+      setElapsedMs(Date.now() - startedAtRef.current);
+    }, 250);
     return () => window.clearInterval(interval);
   }, [running]);
 
   function handleComplete(score: number, correct: number, total: number) {
-    setElapsedMs(Date.now() - startedAtRef.current);
+    const startedAt = startedAtRef.current;
+    setElapsedMs(startedAt === null ? 0 : Date.now() - startedAt);
     setRunning(false);
     onComplete(score, correct, total);
   }
