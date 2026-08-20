@@ -29,9 +29,12 @@ export type BossBattleHit = {
 };
 
 export const BOSS_BATTLE_STARTING_HEARTS = 3;
-const BASE_DAMAGE = 120;
-const CRITICAL_DAMAGE = 60;
-const CRITICAL_WINDOW_MS = 2200;
+const BASE_DAMAGE = 110;
+const MAX_SPEED_DAMAGE = 170;
+const SPEED_FULL_BONUS_UNTIL_MS = 1200;
+const SPEED_ZERO_BONUS_AT_MS = 12000;
+const CRITICAL_DAMAGE = 50;
+const CRITICAL_WINDOW_MS = 1800;
 
 export function bossForKind(kind: ActivityKind): BossBattleBoss {
   if (kind === "grammar") return { id: "grammar-golem", name: "Grammar Golem", subtitle: "Break its rules before it breaks your streak." };
@@ -54,10 +57,15 @@ export function bossMaxHp(roundCount: number) {
 export function resolveBossBattleHit(correct: boolean, responseMs: number, streak: number): BossBattleHit {
   if (!correct) return { correct: false, critical: false, damage: 0, points: 0, nextStreak: 0, heartsLost: 1 };
   const nextStreak = streak + 1;
-  const speed = speedBonus(responseMs, 80);
+  const speedDamage = speedBonus(
+    responseMs,
+    MAX_SPEED_DAMAGE,
+    SPEED_FULL_BONUS_UNTIL_MS,
+    SPEED_ZERO_BONUS_AT_MS,
+  );
   const streakDamage = Math.min(Math.max(0, nextStreak - 1), 5) * 15;
   const critical = responseMs <= CRITICAL_WINDOW_MS;
-  const damage = BASE_DAMAGE + speed + streakDamage + (critical ? CRITICAL_DAMAGE : 0);
+  const damage = BASE_DAMAGE + speedDamage + streakDamage + (critical ? CRITICAL_DAMAGE : 0);
   const points = 100 + speedBonus(responseMs) + Math.min(streak, 5) * 20;
   return { correct: true, critical, damage, points, nextStreak, heartsLost: 0 };
 }

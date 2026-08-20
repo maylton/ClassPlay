@@ -1,0 +1,108 @@
+/* Ignis — adapted from the teacher-provided animated boss mockup. */
+.ignis-character {
+  --ignis-main:#dc2626;
+  --ignis-dark:#991b1b;
+  --ignis-accent:#facc15;
+  position:relative;
+  z-index:2;
+  width:min(330px,58vw);
+  height:255px;
+  margin:.5rem auto -.4rem;
+  filter:drop-shadow(0 24px 24px rgba(0,0,0,.4));
+}
+.ignis-aura {
+  position:absolute;
+  inset:10% 4% 2%;
+  border-radius:50%;
+  background:radial-gradient(circle,rgba(250,204,21,.18),rgba(220,38,38,.12) 42%,transparent 70%);
+  animation:ignis-aura 2.1s ease-in-out infinite alternate;
+}
+.ignis-reactor { position:relative; z-index:2; width:100%; height:220px; transform-origin:50% 80%; animation:ignis-float 3s ease-in-out infinite; }
+.ignis-svg { display:block; width:100%; height:100%; overflow:visible; }
+.ignis-body { fill:var(--ignis-main); stroke:#681b28; stroke-width:4; }
+.ignis-horn { fill:var(--ignis-accent); stroke:#7f6110; stroke-width:2.5; stroke-linejoin:round; }
+.ignis-arm rect { fill:var(--ignis-dark); stroke:#681b28; stroke-width:2; }
+.ignis-arm.left { transform-origin:45px 112px; animation:ignis-wiggle-left 4s ease-in-out infinite; }
+.ignis-arm.right { transform-origin:155px 112px; animation:ignis-wiggle-right 4s ease-in-out infinite; }
+.ignis-spot { fill:var(--ignis-dark); opacity:.4; }
+.ignis-eye { transform-box:fill-box; transform-origin:center; animation:ignis-blink 5s infinite; }
+.ignis-eye-white { fill:#fff; stroke:#f3d8d8; stroke-width:1; }
+.ignis-iris { fill:var(--ignis-accent); }
+.ignis-pupil-slit { fill:#0f172a; }
+.ignis-eye-glint { fill:#fff; }
+.ignis-pupil { transition:transform .08s linear; }
+.ignis-brow { fill:var(--ignis-dark); }
+.ignis-mouth { fill:#0f172a; stroke:#741b28; stroke-width:2; }
+.ignis-tooth { fill:#fff; }
+.ignis-shadow {
+  position:absolute;
+  z-index:1;
+  left:50%;
+  bottom:8px;
+  width:138px;
+  height:22px;
+  transform:translateX(-50%);
+  border-radius:50%;
+  background:rgba(0,0,0,.48);
+  filter:blur(2px);
+  animation:ignis-shadow 3s ease-in-out infinite;
+}
+.ignis-character.reaction-hit .ignis-reactor { animation:ignis-hit .58s cubic-bezier(.25,.8,.35,1); }
+.ignis-character.reaction-critical .ignis-reactor { animation:ignis-critical .66s cubic-bezier(.2,.95,.25,1); }
+.ignis-character.reaction-taunt .ignis-reactor { animation:ignis-taunt .72s cubic-bezier(.3,.8,.3,1); }
+.ignis-character.is-enraged .ignis-aura { background:radial-gradient(circle,rgba(255,64,95,.34),rgba(220,38,38,.24) 42%,transparent 72%); animation-duration:.75s; }
+.ignis-character.is-enraged .ignis-body { fill:#e52334; filter:drop-shadow(0 0 9px rgba(255,64,95,.35)); }
+.ignis-character.is-enraged .ignis-horn { filter:drop-shadow(0 0 7px rgba(250,204,21,.6)); }
+.ignis-character.is-enraged.reaction-idle .ignis-reactor { animation:ignis-enraged-idle 1.15s ease-in-out infinite; }
+.ignis-damage {
+  position:absolute;
+  z-index:8;
+  left:50%;
+  top:2px;
+  transform:translateX(-50%);
+  color:#fff;
+  font-size:2rem;
+  text-shadow:0 3px 0 #8e2832,0 0 18px #ff7c63;
+  animation:ignis-damage-pop .65s ease-out both;
+}
+.ignis-damage.critical { color:#ffe26f; font-size:2.45rem; }
+.ignis-taunt-mark {
+  position:absolute;
+  z-index:8;
+  right:15%;
+  top:12px;
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border-radius:50% 50% 50% 8px;
+  background:#fff;
+  color:#b21f2f;
+  font-size:1.5rem;
+  font-weight:950;
+  transform:rotate(8deg);
+  animation:ignis-taunt-mark .55s ease-out both;
+}
+
+@keyframes ignis-float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
+@keyframes ignis-shadow { 0%,100%{transform:translateX(-50%) scale(1);opacity:.5} 50%{transform:translateX(-50%) scale(.8);opacity:.24} }
+@keyframes ignis-blink { 0%,45%,55%,100%{transform:scaleY(1)} 50%{transform:scaleY(.1)} }
+@keyframes ignis-wiggle-left { 0%,100%{transform:rotate(0)} 50%{transform:rotate(-15deg)} }
+@keyframes ignis-wiggle-right { 0%,100%{transform:rotate(0)} 50%{transform:rotate(15deg)} }
+@keyframes ignis-aura { from{transform:scale(.92);opacity:.5} to{transform:scale(1.08);opacity:1} }
+@keyframes ignis-hit { 0%{transform:translateY(0) scale(1)} 18%{transform:translateY(8px) scale(1.08,.88)} 48%{transform:translateY(-42px) translateX(-10px) rotate(-5deg) scale(.94,1.08)} 78%{transform:translateY(3px) scale(1.05,.94)} 100%{transform:translateY(0) scale(1)} }
+@keyframes ignis-critical { 0%{transform:translateY(0) scale(1)} 18%{transform:translateY(12px) scale(1.14,.82)} 47%{transform:translateY(-58px) rotate(8deg) scale(.9,1.15)} 72%{transform:translateY(-5px) rotate(-4deg) scale(1.08,.9)} 100%{transform:translateY(0) rotate(0) scale(1)} }
+@keyframes ignis-enraged-idle { 0%,100%{transform:translateY(-3px) scale(1)} 45%{transform:translateY(-15px) scale(1.035)} 55%{transform:translateY(-11px) scale(1.02) rotate(-1deg)} 65%{transform:translateY(-14px) scale(1.035) rotate(1deg)} }
+@keyframes ignis-taunt { 0%,100%{transform:translateY(0) rotate(0)} 22%{transform:translateY(-10px) rotate(-4deg)} 44%{transform:translateY(0) rotate(5deg)} 66%{transform:translateY(-6px) rotate(-3deg)} 84%{transform:translateY(0) rotate(2deg)} }
+@keyframes ignis-damage-pop { 0%{opacity:0;transform:translate(-50%,18px) scale(.65)} 30%{opacity:1;transform:translate(-50%,-8px) scale(1.18)} 100%{opacity:0;transform:translate(-50%,-58px) scale(1)} }
+@keyframes ignis-taunt-mark { from{opacity:0;transform:translateY(12px) rotate(8deg) scale(.6)} 50%{opacity:1;transform:translateY(-5px) rotate(-6deg) scale(1.15)} to{opacity:1;transform:translateY(0) rotate(8deg) scale(1)} }
+
+@media (max-width:700px) {
+  .ignis-character { width:min(270px,70vw); height:215px; margin:.2rem auto -.2rem; }
+  .ignis-reactor { height:185px; }
+  .ignis-shadow { bottom:3px; width:112px; height:18px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ignis-character, .ignis-character *, .ignis-pupil { animation:none !important; transition:none !important; }
+}
+.ignis-character.reduced-motion, .ignis-character.reduced-motion * { animation:none !important; transition:none !important; }

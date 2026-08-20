@@ -37,15 +37,19 @@ assert.equal(boss.bossForKind("vocabulary").name, "Vocabulary Dragon");
 assert.equal(boss.bossForKind("mixed").name, "Final Exam Bot");
 assert.ok(boss.bossMaxHp(4) >= 600);
 
-const normalHit = boss.resolveBossBattleHit(true, 6000, 0);
-const criticalHit = boss.resolveBossBattleHit(true, 900, 3);
+const blazingHit = boss.resolveBossBattleHit(true, 900, 0);
+const mediumHit = boss.resolveBossBattleHit(true, 6000, 0);
+const slowHit = boss.resolveBossBattleHit(true, 14000, 0);
+const streakHit = boss.resolveBossBattleHit(true, 900, 3);
 const wrongHit = boss.resolveBossBattleHit(false, 1200, 4);
-assert.equal(normalHit.correct, true);
+assert.equal(blazingHit.correct, true);
 assert.equal(wrongHit.heartsLost, 1);
 assert.equal(wrongHit.nextStreak, 0);
-assert.equal(criticalHit.critical, true);
-assert.ok(criticalHit.damage > normalHit.damage);
-assert.ok(criticalHit.points > 0);
+assert.equal(blazingHit.critical, true);
+assert.ok(blazingHit.damage > mediumHit.damage, "A faster answer must cause more boss damage");
+assert.ok(mediumHit.damage > slowHit.damage, "Speed damage must decrease smoothly as response time increases");
+assert.ok(streakHit.damage > blazingHit.damage, "Streak damage must stack on top of the speed bonus");
+assert.ok(blazingHit.points > 0);
 
 for (const source of ["quiz", "gap-fill"]) {
   const rounds = boss.buildBossBattleRounds(items, source, () => .37);

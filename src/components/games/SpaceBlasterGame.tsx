@@ -8,6 +8,7 @@ import { playArcadeTone } from "@/lib/arcade-audio";
 import { getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
+import { SpaceBlasterRocket } from "./SpaceBlasterRocket";
 
 export function SpaceBlasterGame({ activity, onComplete }: GameProps) {
   const { settings } = useClassroomSettings();
@@ -127,10 +128,7 @@ export function SpaceBlasterGame({ activity, onComplete }: GameProps) {
 
         {firedLane !== null && <span className={`space-laser ${feedback ?? ""}`} style={{ left: shipLeft }} aria-hidden="true" />}
         <div className="space-ship" style={{ left: shipLeft }} aria-label={`Ship aimed at ${round.options[lane]}`}>
-          <span className="ship-cockpit" />
-          <span className="ship-wing left" />
-          <span className="ship-wing right" />
-          <span className="ship-flame" />
+          <SpaceBlasterRocket firing={firedLane !== null} feedback={feedback} reducedMotion={settings.reducedMotion} />
         </div>
 
         <div className="space-feedback" aria-live="polite">
