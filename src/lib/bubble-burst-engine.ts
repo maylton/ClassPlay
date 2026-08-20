@@ -1,16 +1,14 @@
-import { gapOptions, quizOptions, sentenceGapAnswer, shuffle, speedBonus } from "./game-engine";
-import type { ActivityItem, ActivityKind } from "./types";
+import {
+  buildQuizGapArcadeRounds,
+  chooseQuizGapArcadeSource,
+  type QuizGapArcadeRound,
+  type QuizGapArcadeSource,
+} from "./derived-arcade-engine";
+import { speedBonus } from "./game-engine";
+import type { ActivityItem } from "./types";
 
-export type BubbleBurstQuestionSource = "gap-fill" | "quiz";
-
-export type BubbleBurstRound = {
-  itemId: string;
-  source: BubbleBurstQuestionSource;
-  prompt: string;
-  correctAnswer: string;
-  options: string[];
-  hint?: string;
-};
+export type BubbleBurstQuestionSource = QuizGapArcadeSource;
+export type BubbleBurstRound = QuizGapArcadeRound;
 
 export type BubbleBurstHit = {
   points: number;
@@ -29,17 +27,7 @@ export type BubbleBurstPosition = {
 export const BUBBLE_BURST_ROUND_MS = 15000;
 const PERFECT_WINDOW_MS = 2200;
 
-export function chooseBubbleBurstSource(
-  kind: ActivityKind,
-  quizCount: number,
-  gapCount: number,
-): BubbleBurstQuestionSource | null {
-  if (quizCount < 3 && gapCount < 3) return null;
-  if (kind === "grammar" && gapCount >= 3) return "gap-fill";
-  if (kind === "vocabulary" && quizCount >= 3) return "quiz";
-  if (quizCount >= gapCount && quizCount >= 3) return "quiz";
-  return gapCount >= 3 ? "gap-fill" : "quiz";
-}
+export const chooseBubbleBurstSource = chooseQuizGapArcadeSource;
 
 export function resolveBubbleBurstHit(responseMs: number, streak: number): BubbleBurstHit {
   const perfect = responseMs <= PERFECT_WINDOW_MS;
@@ -53,28 +41,7 @@ export function buildBubbleBurstRounds(
   source: BubbleBurstQuestionSource,
   random: () => number = Math.random,
 ): BubbleBurstRound[] {
-  return shuffle(items, random).map((item) => {
-    if (source === "gap-fill") {
-      const correctAnswer = sentenceGapAnswer(item);
-      return {
-        itemId: item.id,
-        source,
-        prompt: item.gapSentence ?? item.example ?? item.prompt,
-        correctAnswer,
-        options: gapOptions(item, items, random),
-        hint: item.hint,
-      };
-    }
-
-    return {
-      itemId: item.id,
-      source,
-      prompt: item.prompt,
-      correctAnswer: item.answer.trim(),
-      options: quizOptions(item, items, random),
-      hint: item.hint,
-    };
-  }).filter((round) => Boolean(round.correctAnswer) && round.options.includes(round.correctAnswer));
+  return buildQuizGapArcadeRounds(items, source, 4, random);
 }
 
 const BUBBLE_ANCHORS = [

@@ -9,6 +9,7 @@ const rlsFix = read("supabase/migrations/0009_fix_classroom_rls_recursion.sql");
 const studentAccount = read("src/lib/repositories/student-account-repository.ts");
 const secureRepository = read("src/lib/repositories/assignment-attempt-repository.ts");
 const stage = read("src/components/games/GameStage.tsx");
+const registry = read("src/components/games/game-registry.ts");
 const join = read("src/components/classes/JoinClassClient.tsx");
 const classes = read("src/components/classes/ClassesClient.tsx");
 const teacher = read("src/components/classes/ClassDetailClient.tsx");
@@ -38,10 +39,12 @@ assert.match(studentAccount, /rpc\("join_classroom_account"/, "v0.5 students mus
 assert.doesNotMatch(studentAccount, /signInAnonymously/, "the active v0.5 student account flow must not use anonymous auth");
 assert.match(secureRepository, /rpc\("submit_assignment_attempt"/, "assignment results must use the secure RPC client");
 
-assert.match(stage, /GAME_COMPONENTS:\s*Record<GameType,\s*ComponentType<GameProps>>/, "GameStage must use a complete typed game registry");
-for (const mode of ["flashcards", "memory", "matching", "sentence-builder", "gap-fill", "quiz", "space-blaster", "word-maze"]) {
+assert.match(stage, /import \{ GAME_COMPONENTS \} from "\.\/game-registry"/, "GameStage must consume the shared game registry");
+assert.match(stage, /GAME_COMPONENTS\[mode\]/, "GameStage must resolve renderers through the shared registry");
+assert.match(registry, /export const GAME_COMPONENTS:\s*Record<GameType,\s*ComponentType<GameProps>>/, "shared registry must be complete and typed");
+for (const mode of ["flashcards", "memory", "matching", "sentence-builder", "gap-fill", "quiz", "space-blaster", "word-maze", "boss-battle", "bubble-burst", "grammar-runner", "phrase-forge"]) {
   const key = mode.includes("-") ? `"${mode}"` : `(?:${mode}|"${mode}")`;
-  assert.match(stage, new RegExp(`${key}\\s*:`), `GameStage must register ${mode}`);
+  assert.match(registry, new RegExp(`${key}\\s*:`), `shared registry must register ${mode}`);
 }
 
 assert.match(join, /Class key/, "student join UI must ask for the class key when joining a class");

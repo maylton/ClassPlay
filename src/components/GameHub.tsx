@@ -10,24 +10,15 @@ import {
   saveActivity,
   unpublishActivityFromPractice,
 } from "@/lib/repositories/activity-repository";
-import { compatibleVariants, enableCompatibleMode, getPlayableItemsForMode } from "@/lib/activity-intelligence";
-import { GAME_MODE_CATALOG } from "@/lib/game-catalog";
+import { compatibleVariants, enableCompatibleMode } from "@/lib/activity-intelligence";
+import { getDerivedArcadeReadiness } from "@/lib/derived-arcade";
+import { GAME_MODE_CATALOG, isArcadeMode } from "@/lib/game-catalog";
 import type { ActivitySet, GameType } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
+import { GAME_COMPONENTS } from "./games/game-registry";
 import { PracticeLeaderboard } from "./leaderboard/PracticeLeaderboard";
 import { SettingsPanel } from "./settings/SettingsPanel";
-import { BossBattleGame } from "./games/BossBattleGame";
-import { BubbleBurstGame } from "./games/BubbleBurstGame";
-import { FlashcardsGame } from "./games/FlashcardsGame";
-import { MemoryGame } from "./games/MemoryGame";
-import { MatchingGame } from "./games/MatchingGame";
-import { SentenceBuilderGame } from "./games/SentenceBuilderGame";
-import { GapFillGame } from "./games/GapFillGame";
-import { QuizGame } from "./games/QuizGame";
-import { SpaceBlasterGame } from "./games/SpaceBlasterGame";
-import { WordMazeGame } from "./games/WordMazeGame";
 
-const ARCADE_MODES: readonly GameType[] = ["space-blaster", "word-maze", "boss-battle", "bubble-burst"];
 type PracticeCompletion = { game: GameType; score: number; correct: number; total: number };
 
 export function GameHub({ activityId, practice = false }: { activityId: string; practice?: boolean }) {
@@ -53,18 +44,10 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
   }, [activityId, practice]);
 
   const variants = useMemo(() => !practice && activity ? compatibleVariants(activity) : [], [activity, practice]);
-  const arcadeQuestionPools = useMemo(() => {
-    if (!activity) return { quiz: 0, gap: 0 };
-    return {
-      quiz: getPlayableItemsForMode(activity.items, "quiz").length,
-      gap: getPlayableItemsForMode(activity.items, "gap-fill").length,
-    };
-  }, [activity]);
-  const liveQuestionPools = practice ? { quiz: 0, gap: 0 } : arcadeQuestionPools;
+  const derivedArcade = useMemo(() => activity ? getDerivedArcadeReadiness(activity) : { quiz: 0, gap: 0, sentenceBuilder: 0, modes: [] as GameType[] }, [activity]);
+  const liveQuestionPools = practice ? { quiz: 0, gap: 0 } : derivedArcade;
   const liveReady = liveQuestionPools.quiz >= 2 || liveQuestionPools.gap >= 2;
   const wildcardReady = liveQuestionPools.quiz >= 12 || liveQuestionPools.gap >= 12;
-  const bossReady = arcadeQuestionPools.quiz >= 3 || arcadeQuestionPools.gap >= 3;
-  const bubbleReady = arcadeQuestionPools.quiz >= 3 || arcadeQuestionPools.gap >= 3;
 
   if (error && !activity) {
     return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Could not open activity</h1><p>{error}</p><Link className="button button-primary" href={practice ? "/" : "/dashboard"}>{practice ? "ClassPlay home" : "Back to library"}</Link></main>;
@@ -140,27 +123,17 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
   }
 
   if (mode) {
+    const GameComponent = GAME_COMPONENTS[mode];
     const common = { activity, onComplete: (score: number, correct: number, total: number) => complete(mode, score, correct, total) };
     const gameKey = `${mode}-${runKey}`;
     return (
-      <main className={`play-screen ${ARCADE_MODES.includes(mode) ? "arcade-play-screen" : ""} ${practice ? "student-practice-play" : ""}`}>
+      <main className={`play-screen ${isArcadeMode(mode) ? "arcade-play-screen" : ""} ${practice ? "student-practice-play" : ""}`}>
         <header className="play-header">
           {practice ? <Link className="play-brand" href="/"><b>C</b><span>ClassPlay</span></Link> : <button className="play-brand" onClick={() => setMode(null)}><b>C</b><span>ClassPlay</span></button>}
           <div className="play-title"><small>{practice ? "Student practice" : activity.topic}</small><strong>{activity.title}</strong></div>
           <div className="play-header-actions"><SettingsPanel compact /><button className="button button-soft button-small" onClick={() => { setPracticeCompletion(null); setMode(null); }}><AppIcon name="arrow-left" /> Game modes</button></div>
         </header>
-        <section className="play-canvas">
-          {mode === "flashcards" && <FlashcardsGame key={gameKey} {...common} />}
-          {mode === "memory" && <MemoryGame key={gameKey} {...common} />}
-          {mode === "matching" && <MatchingGame key={gameKey} {...common} />}
-          {mode === "sentence-builder" && <SentenceBuilderGame key={gameKey} {...common} />}
-          {mode === "gap-fill" && <GapFillGame key={gameKey} {...common} />}
-          {mode === "quiz" && <QuizGame key={gameKey} {...common} />}
-          {mode === "space-blaster" && <SpaceBlasterGame key={gameKey} {...common} />}
-          {mode === "word-maze" && <WordMazeGame key={gameKey} {...common} />}
-          {mode === "boss-battle" && <BossBattleGame key={gameKey} {...common} />}
-          {mode === "bubble-burst" && <BubbleBurstGame key={gameKey} {...common} />}
-        </section>
+        <section className="play-canvas"><GameComponent key={gameKey} {...common} /></section>
         {practice && practiceCompletion && (
           <PracticeLeaderboard
             activityId={activity.id}
@@ -176,14 +149,13 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
     );
   }
 
-  const enabledCoreGames = activity.enabledGames.filter((game) => !ARCADE_MODES.includes(game));
-  const enabledArcadeGames = activity.enabledGames.filter((game) => ARCADE_MODES.includes(game));
+  const enabledCoreGames = activity.enabledGames.filter((game) => !isArcadeMode(game));
+  const enabledArcadeGames = activity.enabledGames.filter(isArcadeMode);
   const availableArcadeGames: GameType[] = [...enabledArcadeGames];
-  if (bossReady && !availableArcadeGames.includes("boss-battle")) availableArcadeGames.push("boss-battle");
-  if (bubbleReady && !availableArcadeGames.includes("bubble-burst")) availableArcadeGames.push("bubble-burst");
-  const bossAddsMode = bossReady && !activity.enabledGames.includes("boss-battle");
-  const bubbleAddsMode = bubbleReady && !activity.enabledGames.includes("bubble-burst");
-  const derivedModeCount = (bossAddsMode ? 1 : 0) + (bubbleAddsMode ? 1 : 0);
+  for (const game of derivedArcade.modes) {
+    if (!availableArcadeGames.includes(game)) availableArcadeGames.push(game);
+  }
+  const derivedModeCount = derivedArcade.modes.filter((game) => !activity.enabledGames.includes(game)).length;
   const teacherModeCount = activity.enabledGames.length + derivedModeCount + (liveReady ? 1 : 0) + (wildcardReady ? 1 : 0);
   const practiceModeCount = activity.enabledGames.length + derivedModeCount;
 
@@ -245,7 +217,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
           </div>
           {variants.length > 0 ? <div className="compatible-variant-grid">{variants.map((variant) => {
             const info = GAME_MODE_CATALOG[variant.mode];
-            const arcade = ARCADE_MODES.includes(variant.mode);
+            const arcade = isArcadeMode(variant.mode);
             return <article className={`compatible-variant-card ${info.colorClass} ${arcade ? "arcade-variant" : ""}`} key={variant.mode}><span className="variant-icon"><AppIcon name={info.icon} /></span><div><small>{arcade ? "ARCADE READY" : "READY TO GENERATE"}</small><strong>{info.name}</strong><p>{variant.reason}</p>{variant.generated.length > 0 && <span className="generated-note"><AppIcon name="lightning-charge" /> Generates {variant.generated.join(" + ")}</span>}</div><button className="button button-dark button-small" disabled={addingMode === variant.mode} onClick={() => void addVariant(variant.mode)}>{addingMode === variant.mode ? "Adding…" : <>Add mode <AppIcon name="plus-lg" /></>}</button></article>;
           })}</div> : <Link href={`/edit/${activity.id}`} className="button button-soft">Edit content to unlock variants <AppIcon name="arrow-right" /></Link>}
         </section>

@@ -1,23 +1,14 @@
-import { gapOptions, quizOptions, sentenceGapAnswer, shuffle, speedBonus } from "./game-engine";
+import {
+  buildQuizGapArcadeRounds,
+  chooseQuizGapArcadeSource,
+  type QuizGapArcadeRound,
+  type QuizGapArcadeSource,
+} from "./derived-arcade-engine";
+import { speedBonus } from "./game-engine";
 import type { ActivityItem, ActivityKind } from "./types";
 
-export type BossBattleQuestionSource = "gap-fill" | "quiz";
-export type BossBattleBossId = "grammar-golem" | "vocabulary-dragon" | "final-exam-bot";
-
-export type BossBattleRound = {
-  itemId: string;
-  source: BossBattleQuestionSource;
-  prompt: string;
-  correctAnswer: string;
-  options: string[];
-  hint?: string;
-};
-
-export type BossBattleBoss = {
-  id: BossBattleBossId;
-  name: string;
-  subtitle: string;
-};
+export type BossBattleQuestionSource = QuizGapArcadeSource;
+export type BossBattleRound = QuizGapArcadeRound;
 
 export type BossBattleHit = {
   correct: boolean;
@@ -36,19 +27,21 @@ const SPEED_ZERO_BONUS_AT_MS = 12000;
 const CRITICAL_DAMAGE = 50;
 const CRITICAL_WINDOW_MS = 1800;
 
-export function bossForKind(kind: ActivityKind): BossBattleBoss {
-  if (kind === "grammar") return { id: "grammar-golem", name: "Grammar Golem", subtitle: "Break its rules before it breaks your streak." };
-  if (kind === "vocabulary") return { id: "vocabulary-dragon", name: "Vocabulary Dragon", subtitle: "Every word you know weakens the beast." };
-  return { id: "final-exam-bot", name: "Final Exam Bot", subtitle: "One last challenge. No panic allowed." };
+export function bossBattleSubtitle(kind: ActivityKind) {
+  if (kind === "grammar") return "Break its rules before it breaks your streak.";
+  if (kind === "vocabulary") return "Every word you know weakens the beast.";
+  return "One last challenge. No panic allowed.";
 }
 
-export function chooseBossBattleSource(kind: ActivityKind, quizCount: number, gapCount: number): BossBattleQuestionSource | null {
-  if (quizCount < 3 && gapCount < 3) return null;
-  if (kind === "grammar" && gapCount >= 3) return "gap-fill";
-  if (kind === "vocabulary" && quizCount >= 3) return "quiz";
-  if (gapCount >= quizCount && gapCount >= 3) return "gap-fill";
-  return quizCount >= 3 ? "quiz" : "gap-fill";
+/**
+ * Backward-compatible profile helper for the existing Boss Battle component.
+ * Ignis is now the single visual boss; only the pedagogical subtitle varies.
+ */
+export function bossForKind(kind: ActivityKind) {
+  return { name: "Ignis" as const, subtitle: bossBattleSubtitle(kind) };
 }
+
+export const chooseBossBattleSource = chooseQuizGapArcadeSource;
 
 export function bossMaxHp(roundCount: number) {
   return Math.max(600, roundCount * 150);
@@ -75,25 +68,5 @@ export function buildBossBattleRounds(
   source: BossBattleQuestionSource,
   random: () => number = Math.random,
 ): BossBattleRound[] {
-  return shuffle(items, random).map((item) => {
-    if (source === "gap-fill") {
-      const correctAnswer = sentenceGapAnswer(item);
-      return {
-        itemId: item.id,
-        source,
-        prompt: item.gapSentence ?? item.example ?? item.prompt,
-        correctAnswer,
-        options: gapOptions(item, items, random),
-        hint: item.hint,
-      };
-    }
-    return {
-      itemId: item.id,
-      source,
-      prompt: item.prompt,
-      correctAnswer: item.answer.trim(),
-      options: quizOptions(item, items, random),
-      hint: item.hint,
-    };
-  }).filter((round) => Boolean(round.correctAnswer) && round.options.includes(round.correctAnswer));
+  return buildQuizGapArcadeRounds(items, source, 4, random);
 }

@@ -11,6 +11,8 @@ import "./space-blaster-rocket.css";
 import "./boss-battle.css";
 import "./ignis-boss.css";
 import "./bubble-burst.css";
+import "./grammar-runner.css";
+import "./phrase-forge.css";
 import "./word-maze.css";
 import "./dynamite.css";
 import "./dynamite-fuse.css";
