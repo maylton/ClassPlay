@@ -1,18 +1,29 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import type { ActivitySet, GameType } from "@/lib/types";
 import { FlashcardsGame } from "./FlashcardsGame";
-import { MemoryGame } from "./MemoryGame";
-import { MatchingGame } from "./MatchingGame";
-import { SentenceBuilderGame } from "./SentenceBuilderGame";
 import { GapFillGame } from "./GapFillGame";
+import type { GameProps } from "./GameTypes";
+import { MatchingGame } from "./MatchingGame";
+import { MemoryGame } from "./MemoryGame";
 import { QuizGame } from "./QuizGame";
+import { SentenceBuilderGame } from "./SentenceBuilderGame";
 import { SpaceBlasterGame } from "./SpaceBlasterGame";
 import { WordMazeGame } from "./WordMazeGame";
 
 const REPLAY_EVENT = "classplay:game-replay";
+const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
+  flashcards: FlashcardsGame,
+  memory: MemoryGame,
+  matching: MatchingGame,
+  "sentence-builder": SentenceBuilderGame,
+  "gap-fill": GapFillGame,
+  quiz: QuizGame,
+  "space-blaster": SpaceBlasterGame,
+  "word-maze": WordMazeGame,
+};
 
 function formatElapsed(milliseconds: number) {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
@@ -66,25 +77,11 @@ export function GameStage({
     onComplete(score, correct, total);
   }
 
-  const props = { activity, onComplete: handleComplete };
-  const key = `${mode}-${runKey ?? 0}`;
-
-  let game;
-  if (mode === "flashcards") game = <FlashcardsGame key={key} {...props} />;
-  else if (mode === "memory") game = <MemoryGame key={key} {...props} />;
-  else if (mode === "matching") game = <MatchingGame key={key} {...props} />;
-  else if (mode === "sentence-builder") game = <SentenceBuilderGame key={key} {...props} />;
-  else if (mode === "gap-fill") game = <GapFillGame key={key} {...props} />;
-  else if (mode === "quiz") game = <QuizGame key={key} {...props} />;
-  else if (mode === "space-blaster") game = <SpaceBlasterGame key={key} {...props} />;
-  else game = <WordMazeGame key={key} {...props} />;
-
+  const GameComponent = GAME_COMPONENTS[mode];
   return (
     <div className="timed-game-shell">
-      <div style={{ display: "flex", justifyContent: "flex-end", margin: "0 auto .55rem", maxWidth: 1100, padding: "0 .2rem" }}>
-        <span className="storage-pill"><AppIcon name="clock" /> Time {formatElapsed(elapsedMs)}</span>
-      </div>
-      {game}
+      <div className="game-session-timer"><span className="storage-pill"><AppIcon name="clock" /> Time {formatElapsed(elapsedMs)}</span></div>
+      <GameComponent key={`${mode}-${runKey ?? 0}`} activity={activity} onComplete={handleComplete} />
     </div>
   );
 }
