@@ -9,6 +9,7 @@ import type {
   WildcardEffect,
   WildcardEffectType,
   WildcardGridIntensity,
+  WildcardGridQuestionSource,
   WildcardGridSize,
   WildcardGridState,
   WildcardGridTeamRef,
@@ -17,6 +18,7 @@ import type {
 export const LIVE_GAME_MODES: readonly LiveGameMode[] = ["gap-fill", "quiz", "space-blaster", "dynamite", "wildcard-grid"];
 
 export type HostLiveQuestion = LiveQuestion & { correctAnswer: string };
+type ResolvedWildcardGridSource = Exclude<WildcardGridQuestionSource, "smart">;
 
 export const WILDCARD_EFFECTS: Record<WildcardEffectType, WildcardEffect> = {
   jackpot: { type: "jackpot", title: "Jackpot", description: "+50 points. Sometimes the tile really likes you.", tone: "positive" },
@@ -41,33 +43,70 @@ export function dynamiteSourceMode(activity: ActivitySet): "quiz" | "gap-fill" {
   return "gap-fill";
 }
 
-export function wildcardGridSourceMode(activity: ActivitySet): "quiz" | "gap-fill" {
-  const quizItems = getPlayableItemsForMode(activity.items, "quiz");
-  const gapItems = getPlayableItemsForMode(activity.items, "gap-fill");
-  if (activity.kind === "grammar" && gapItems.length >= 12) return "gap-fill";
-  if (quizItems.length >= 12) return "quiz";
-  return gapItems.length >= quizItems.length ? "gap-fill" : "quiz";
+function promptAnswerItems(activity: ActivitySet) {
+  return activity.items.filter((item) => item.prompt.trim().length > 0 && item.answer.trim().length > 0);
 }
 
-export function liveModeItems(activity: ActivitySet, gameMode: LiveGameMode) {
+export function wildcardGridSourceMode(
+  activity: ActivitySet,
+  requested: WildcardGridQuestionSource = "smart",
+): ResolvedWildcardGridSource {
+  if (requested !== "smart") return requested;
+  const quizItems = getPlayableItemsForMode(activity.items, "quiz");
+  const gapItems = getPlayableItemsForMode(activity.items, "gap-fill");
+  const pairItems = promptAnswerItems(activity);
+  if (activity.kind === "grammar" && gapItems.length >= 12) return "gap-fill";
+  if (quizItems.length >= 12) return "quiz";
+  if (pairItems.length >= 12) return "prompt-answer";
+  return ([
+    ["gap-fill", gapItems.length],
+    ["quiz", quizItems.length],
+    ["prompt-answer", pairItems.length],
+  ] as const).sort((a, b) => b[1] - a[1])[0][0];
+}
+
+export function wildcardGridItems(activity: ActivitySet, source: WildcardGridQuestionSource = "smart") {
+  const resolved = wildcardGridSourceMode(activity, source);
+  if (resolved === "gap-fill") return getPlayableItemsForMode(activity.items, "gap-fill");
+  if (resolved === "quiz") return getPlayableItemsForMode(activity.items, "quiz");
+  return promptAnswerItems(activity);
+}
+
+export function liveModeItems(
+  activity: ActivitySet,
+  gameMode: LiveGameMode,
+  wildcardSource: WildcardGridQuestionSource = "smart",
+) {
   if (gameMode === "dynamite") return getPlayableItemsForMode(activity.items, dynamiteSourceMode(activity));
-  if (gameMode === "wildcard-grid") return getPlayableItemsForMode(activity.items, wildcardGridSourceMode(activity));
+  if (gameMode === "wildcard-grid") return wildcardGridItems(activity, wildcardSource);
   return getPlayableItemsForMode(activity.items, gameMode);
 }
 
-export function liveModeQuestionCount(activity: ActivitySet, gameMode: LiveGameMode) {
-  return liveModeItems(activity, gameMode).length;
+export function liveModeQuestionCount(
+  activity: ActivitySet,
+  gameMode: LiveGameMode,
+  wildcardSource: WildcardGridQuestionSource = "smart",
+) {
+  return liveModeItems(activity, gameMode, wildcardSource).length;
 }
 
-export function buildLiveQuestion(activity: ActivitySet, index: number, gameMode: LiveGameMode = "quiz"): HostLiveQuestion {
+export function buildLiveQuestion(
+  activity: ActivitySet,
+  index: number,
+  gameMode: LiveGameMode = "quiz",
+  wildcardSource: WildcardGridQuestionSource = "smart",
+): HostLiveQuestion {
+  const resolvedWildcardSource = gameMode === "wildcard-grid" ? wildcardGridSourceMode(activity, wildcardSource) : null;
   const sourceMode = gameMode === "dynamite"
     ? dynamiteSourceMode(activity)
     : gameMode === "wildcard-grid"
-      ? wildcardGridSourceMode(activity)
+      ? resolvedWildcardSource!
       : gameMode;
-  const items = gameMode === "dynamite" || gameMode === "wildcard-grid"
+  const items = gameMode === "dynamite"
     ? getPlayableItemsForMode(activity.items, sourceMode)
-    : liveModeItems(activity, gameMode);
+    : gameMode === "wildcard-grid"
+      ? wildcardGridItems(activity, wildcardSource)
+      : liveModeItems(activity, gameMode);
   const item = items[index];
   if (!item) throw new Error("Live question index is outside the selected game mode.");
   const usesGap = sourceMode === "gap-fill" || sourceMode === "space-blaster";
@@ -78,7 +117,11 @@ export function buildLiveQuestion(activity: ActivitySet, index: number, gameMode
     index,
     total: items.length,
     gameMode,
-    sourceMode: gameMode === "dynamite" || gameMode === "wildcard-grid" ? (sourceMode as "quiz" | "gap-fill") : undefined,
+    sourceMode: gameMode === "dynamite"
+      ? sourceMode as "quiz" | "gap-fill"
+      : gameMode === "wildcard-grid"
+        ? resolvedWildcardSource ?? undefined
+        : undefined,
     prompt: usesGap ? item.gapSentence! : item.prompt,
     hint: item.hint,
     imageUrl: item.imageUrl,
