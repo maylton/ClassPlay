@@ -88,7 +88,8 @@ for (const source of ["quiz", "gap-fill"]) {
 const catalog = await readFile(new URL("../src/lib/game-catalog.ts", import.meta.url), "utf8");
 assert.match(catalog, /"boss-battle"/);
 assert.match(catalog, /"bubble-burst"/);
-assert.match(catalog, /derived Arcade experiences/);
+const authorableOrder = catalog.slice(catalog.indexOf("export const GAME_MODE_ORDER"));
+assert.doesNotMatch(authorableOrder, /boss-battle|bubble-burst/, "Derived Arcade modes must stay out of the authorable mode order");
 
 const gameStage = await readFile(new URL("../src/components/games/GameStage.tsx", import.meta.url), "utf8");
 assert.match(gameStage, /"boss-battle": BossBattleGame/);
