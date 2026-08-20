@@ -50,11 +50,12 @@ export function StudentJoinClient({ initialCode = "" }: { initialCode?: string }
     if (!credentialSnapshot) return null;
     try {
       const saved = JSON.parse(credentialSnapshot) as Credentials;
-      return !initialCode || saved.roomCode === normalizeRoomCode(initialCode) ? saved : null;
+      const currentCode = normalizeRoomCode(code);
+      return !currentCode || saved.roomCode === currentCode ? saved : null;
     } catch {
       return null;
     }
-  }, [credentialSnapshot, initialCode]);
+  }, [code, credentialSnapshot]);
   const [joinResult, setJoinResult] = useState<JoinRoomResult | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -69,16 +70,18 @@ export function StudentJoinClient({ initialCode = "" }: { initialCode?: string }
     try {
       const result = await joinLiveRoom(cleanCode, validation.nickname);
       const saved: Credentials = { sessionId: result.sessionId, playerId: result.playerId, playerToken: result.playerToken, roomCode: cleanCode, activityTitle: result.activityTitle, nickname: validation.nickname, teamId: result.teamId, teamName: result.teamName, teamColor: result.teamColor };
-      writeCredentials(saved);
+      // Update the join snapshot before publishing credentials so the newly mounted
+      // live room never receives state from the previous session.
       setJoinResult(result);
+      writeCredentials(saved);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not join this room.");
     } finally { setBusy(false); }
   }
 
   function leave() {
-    writeCredentials(null);
     setJoinResult(null); setError("");
+    writeCredentials(null);
   }
 
   if (!isSupabaseConfigured) {
