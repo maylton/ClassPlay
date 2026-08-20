@@ -15,6 +15,9 @@ import {
   resolveBossBattleHit,
 } from "@/lib/boss-battle-engine";
 import type { GameProps } from "./GameTypes";
+import { IgnisBoss } from "./IgnisBoss";
+
+const BOSS_NAME = "Ignis";
 
 export function BossBattleGame({ activity, onComplete }: GameProps) {
   const { settings } = useClassroomSettings();
@@ -29,7 +32,7 @@ export function BossBattleGame({ activity, onComplete }: GameProps) {
     const sourceItems = source === "gap-fill" ? gapItems : quizItems;
     return buildBossBattleRounds(sourceItems, source);
   }, [gapItems, quizItems, source]);
-  const boss = useMemo(() => bossForKind(activity.kind), [activity.kind]);
+  const bossProfile = useMemo(() => bossForKind(activity.kind), [activity.kind]);
   const maxHp = useMemo(() => bossMaxHp(rounds.length), [rounds.length]);
 
   const [roundIndex, setRoundIndex] = useState(0);
@@ -125,7 +128,7 @@ export function BossBattleGame({ activity, onComplete }: GameProps) {
       <div className={`boss-result ${outcome}`}>
         <span className="boss-result-icon"><AppIcon name={outcome === "victory" ? "trophy-fill" : "heartbreak-fill"} /></span>
         <small>{outcome === "victory" ? "BOSS DEFEATED" : "RUN ENDED"}</small>
-        <h2>{outcome === "victory" ? `${boss.name} is down!` : `${boss.name} survives this round.`}</h2>
+        <h2>{outcome === "victory" ? `${BOSS_NAME} is down!` : `${BOSS_NAME} survives this round.`}</h2>
         <p>{outcome === "victory" ? "Your streak broke through the final phase." : "Build the streak again and finish the fight."}</p>
         <div className="boss-result-stats"><div><b>{score}</b><span>Score</span></div><div><b>{correctCount}/{rounds.length}</b><span>Correct</span></div><div><b>{Math.max(0, hearts)}</b><span>Hearts</span></div></div>
         <button className="button button-primary button-large" onClick={replay}><AppIcon name="arrow-repeat" /> Fight again</button>
@@ -141,9 +144,9 @@ export function BossBattleGame({ activity, onComplete }: GameProps) {
         <div><small>STREAK</small><strong>{streak ? `×${streak}` : "—"}</strong></div>
       </div>
 
-      <section className="boss-arena" aria-label={`Battle against ${boss.name}`}>
+      <section className="boss-arena" aria-label={`Battle against ${BOSS_NAME}`}>
         <div className="boss-status">
-          <div><small>{enraged ? "ENRAGED" : "BOSS"}</small><h2>{boss.name}</h2><p>{boss.subtitle}</p></div>
+          <div><small>{enraged ? "IGNIS ENRAGED" : "BOSS"}</small><h2>{BOSS_NAME}</h2><p>{bossProfile.subtitle}</p></div>
           <div className="boss-hearts" aria-label={`${hearts} hearts remaining`}>
             {Array.from({ length: BOSS_BATTLE_STARTING_HEARTS }, (_, index) => <AppIcon key={index} name={index < hearts ? "heart-fill" : "heart"} />)}
           </div>
@@ -154,12 +157,7 @@ export function BossBattleGame({ activity, onComplete }: GameProps) {
           <div className="boss-hp-track"><span style={{ width: `${hpPercent}%` }} /></div>
         </div>
 
-        <div className={`boss-character ${boss.id} ${feedback === "hit" || feedback === "critical" ? "taking-hit" : ""}`} aria-hidden="true">
-          <span className="boss-aura" />
-          <span className="boss-body"><i className="boss-eye left" /><i className="boss-eye right" /><i className="boss-mouth" /></span>
-          <span className="boss-arm left" /><span className="boss-arm right" />
-          {damageFlash > 0 && <b className={`boss-damage ${feedback === "critical" ? "critical" : ""}`}>−{damageFlash}</b>}
-        </div>
+        <IgnisBoss feedback={feedback} enraged={enraged} damage={damageFlash} reducedMotion={settings.reducedMotion} />
 
         <div className="boss-question-card">
           <div className="boss-question-meta"><span>{source === "gap-fill" ? "FILL THE GAP" : "QUIZ ATTACK"}</span>{round.hint && <small>Hint: {round.hint}</small>}</div>

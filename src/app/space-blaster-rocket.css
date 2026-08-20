@@ -1,0 +1,54 @@
+/* Space Blaster rocket — adapted from the teacher-provided animated canvas mockup. */
+.space-blaster .space-ship {
+  bottom: 28px;
+  width: 88px;
+  height: 126px;
+  display: grid;
+  place-items: center;
+}
+
+.classplay-rocket {
+  width: 88px;
+  height: 126px;
+  transform-origin: 50% 80%;
+  filter: drop-shadow(0 12px 12px rgba(0,0,0,.38));
+}
+
+.classplay-rocket svg { width: 100%; height: 100%; overflow: visible; }
+.rocket-hover-shell { transform-origin: 50px 92px; animation: rocket-hover 1.55s ease-in-out infinite; }
+.rocket-body { fill:#f3f5f7; stroke:#34384e; stroke-width:3.5; }
+.rocket-nose, .rocket-stripe, .rocket-fin { fill:#d92b32; stroke:#741e29; stroke-width:2.5; stroke-linejoin:round; }
+.rocket-cockpit-ring { fill:#9da5b5; stroke:#34384e; stroke-width:2; }
+.rocket-cockpit { fill:#4da6ff; stroke:#d9f0ff; stroke-width:1.5; filter:drop-shadow(0 0 8px rgba(77,166,255,.65)); }
+.rocket-cockpit-glow { fill:rgba(255,255,255,.78); }
+.rocket-nozzle { fill:#454956; stroke:#252936; stroke-width:2; }
+.rocket-panel { fill:none; stroke:#b8bdc8; stroke-width:2; stroke-linecap:round; }
+.rocket-rivet { fill:#7e8492; }
+.rocket-flame { transform-box:fill-box; transform-origin:center top; }
+.rocket-flame-outer { fill:#ff8800; animation:rocket-flame-outer .24s ease-in-out infinite alternate; filter:drop-shadow(0 0 9px rgba(255,136,0,.72)); }
+.rocket-flame-inner { fill:#ffee00; animation:rocket-flame-inner .18s ease-in-out infinite alternate-reverse; filter:drop-shadow(0 0 6px rgba(255,238,0,.72)); }
+.classplay-rocket.is-firing .rocket-flame-outer { animation-duration:.11s; }
+.classplay-rocket.is-firing .rocket-flame-inner { animation-duration:.085s; }
+.classplay-rocket.is-correct { animation:rocket-celebrate .55s cubic-bezier(.2,.9,.25,1); }
+.classplay-rocket.is-wrong { animation:rocket-miss .42s ease-out; }
+.space-blaster .space-laser { bottom:128px; height:270px; }
+
+@keyframes rocket-hover {
+  0%,100% { transform:translateY(1px) rotate(-.6deg); }
+  50% { transform:translateY(-5px) rotate(.6deg); }
+}
+@keyframes rocket-flame-outer { from{transform:scaleY(.72) scaleX(.9)} to{transform:scaleY(1.18) scaleX(1.08)} }
+@keyframes rocket-flame-inner { from{transform:scaleY(.78)} to{transform:scaleY(1.25)} }
+@keyframes rocket-celebrate { 0%,100%{transform:translateY(0) scale(1)} 42%{transform:translateY(-12px) scale(1.08) rotate(3deg)} 68%{transform:translateY(-5px) scale(.98) rotate(-2deg)} }
+@keyframes rocket-miss { 0%,100%{transform:translateX(0) rotate(0)} 25%{transform:translateX(-8px) rotate(-6deg)} 55%{transform:translateX(7px) rotate(5deg)} 80%{transform:translateX(-3px) rotate(-2deg)} }
+
+@media (max-width:700px) {
+  .space-blaster .space-ship { width:72px; height:104px; bottom:34px; }
+  .classplay-rocket { width:72px; height:104px; }
+  .space-blaster .space-laser { bottom:115px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .classplay-rocket, .classplay-rocket *, .rocket-hover-shell { animation:none !important; transition:none !important; }
+}
+.classplay-rocket.reduced-motion, .classplay-rocket.reduced-motion * { animation:none !important; transition:none !important; }
