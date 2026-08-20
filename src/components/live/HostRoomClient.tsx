@@ -1,7 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import Link from "next/link";
 import type { RealtimeChannel } from "@supabase/supabase-js";
+import { AppIcon } from "@/components/AppIcon";
 import { useLiveCountdown } from "@/hooks/useLiveCountdown";
 import {
   advanceDynamiteQuestion,
@@ -359,7 +361,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
     await refresh();
   }
 
-  if (error && !session) return <main className="not-found"><h1>Live room unavailable</h1><p>{error}</p></main>;
+  if (error && !session) return <main className="not-found"><span><AppIcon name="exclamation-triangle" /></span><h1>Live room unavailable</h1><p>{error}</p><Link href="/dashboard" className="button button-primary">Back to library</Link></main>;
   if (!session || !activity) return <main className="loading-screen">Opening live classroom…</main>;
 
   if (session.state === "final_results" || session.state === "closed") {
