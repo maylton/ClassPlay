@@ -114,9 +114,10 @@ assert.match(catalog, /"word-hunt"[\s\S]*"typing-rush"/);
 assert.match(readiness, /"word-hunt": questionReady/);
 assert.match(readiness, /"typing-rush": questionReady/);
 assert.match(wordHuntGame, /Choose your hunt level/);
-assert.match(wordHuntGame, /difficulty-easy/);
-assert.match(wordHuntGame, /difficulty-medium/);
-assert.match(wordHuntGame, /difficulty-challenge/);
+for (const difficulty of ["easy", "medium", "challenge"]) {
+  assert.match(wordHuntGame, new RegExp(`id: "${difficulty}"`), `Word Hunt picker must expose ${difficulty}.`);
+}
+assert.match(wordHuntGame, /difficulty-\$\{option\.id\}/, "Difficulty cards must receive their level-specific style hook.");
 assert.match(migration, /'word-hunt', 'typing-rush'/);
 
 console.log("Word Hunt and Typing Rush engine + integration tests passed.");
