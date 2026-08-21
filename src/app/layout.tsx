@@ -19,6 +19,7 @@ import "./tower-stack-polish.css";
 import "./word-hunt.css";
 import "./word-hunt-difficulty.css";
 import "./typing-rush.css";
+import "./echo-chain.css";
 import "./word-maze.css";
 import "./dynamite.css";
 import "./dynamite-fuse.css";

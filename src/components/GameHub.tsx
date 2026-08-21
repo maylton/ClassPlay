@@ -43,6 +43,10 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
     return () => { active = false; };
   }, [activityId, practice]);
 
+  useEffect(() => {
+    if (mode) window.scrollTo({ top: 0, behavior: "auto" });
+  }, [mode]);
+
   const variants = useMemo(() => !practice && activity ? compatibleVariants(activity) : [], [activity, practice]);
   const derivedArcade = useMemo(() => activity ? getDerivedArcadeReadiness(activity) : { quiz: 0, gap: 0, sentenceBuilder: 0, modes: [] as GameType[] }, [activity]);
   const liveQuestionPools = practice ? { quiz: 0, gap: 0 } : derivedArcade;

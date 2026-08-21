@@ -27,6 +27,7 @@ export const GAME_MODE_CATALOG = {
   "tower-stack": { icon: "building", name: "Tower Stack", shortName: "Tower", colorClass: "tower", pickerDescription: "Earn blocks, time the drop and build higher", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Answer correctly to earn blocks, then time each drop to build the tallest tower you can." },
   "word-hunt": { icon: "search", name: "Word Hunt", shortName: "Hunt", colorClass: "green", pickerDescription: "Scan the grid and trace the hidden answer", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Follow each clue, scan the letter grid and uncover hidden English words before your combo fades." },
   "typing-rush": { icon: "keyboard", name: "Typing Rush", shortName: "Typing", colorClass: "blue", pickerDescription: "Type the answer before the meter runs out", editorDescription: "Arcade mode generated from Quiz or Gap Fill content", landingDescription: "Produce the answer yourself, race the timer and build a fast accurate typing streak." },
+  "echo-chain": { icon: "headphones", name: "Echo Chain", shortName: "Listening", colorClass: "echo", pickerDescription: "Listen, remember and rebuild the audio chain", editorDescription: "Listening mode generated from existing language pairs and examples", landingDescription: "Hear language from the activity, hold it in memory and tap the matching tiles back in order." },
 } satisfies Record<GameType, GameModePresentation>;
 
 /** Authorable source modes persisted in activity_games. */
@@ -49,6 +50,7 @@ export const DERIVED_ARCADE_MODE_ORDER = [
   "tower-stack",
   "word-hunt",
   "typing-rush",
+  "echo-chain",
 ] as const satisfies readonly GameType[];
 
 export type DerivedArcadeMode = (typeof DERIVED_ARCADE_MODE_ORDER)[number];

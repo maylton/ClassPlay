@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import type { GameType } from "@/lib/types";
 import { BossBattleGame } from "./BossBattleGame";
 import { BubbleBurstGame } from "./BubbleBurstGame";
+import { EchoChainGame } from "./EchoChainGame";
 import { FlashcardsGame } from "./FlashcardsGame";
 import { GapFillGame } from "./GapFillGame";
 import type { GameProps } from "./GameTypes";
@@ -36,4 +37,5 @@ export const GAME_COMPONENTS: Record<GameType, ComponentType<GameProps>> = {
   "tower-stack": TowerStackGame,
   "word-hunt": WordHuntGame,
   "typing-rush": TypingRushGame,
+  "echo-chain": EchoChainGame,
 };
