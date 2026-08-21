@@ -10,14 +10,22 @@ import {
   buildWordHuntBoard,
   chooseWordHuntSource,
   resolveWordHuntFind,
+  WORD_HUNT_DIFFICULTIES,
   wordHuntPathBetween,
   wordHuntSelectionMatches,
   type WordHuntCell,
+  type WordHuntDifficulty,
 } from "@/lib/word-hunt-engine";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
 
 type HuntFeedback = "found" | "wrong" | "hint" | null;
+
+const DIFFICULTY_OPTIONS: { id: WordHuntDifficulty; icon: "grid-3x3-gap-fill" | "compass" | "fire"; kicker: string }[] = [
+  { id: "easy", icon: "grid-3x3-gap-fill", kicker: "START HERE" },
+  { id: "medium", icon: "compass", kicker: "STEP IT UP" },
+  { id: "challenge", icon: "fire", kicker: "FULL HUNT" },
+];
 
 function cellKey(cell: WordHuntCell) {
   return `${cell.row}-${cell.col}`;
@@ -28,11 +36,12 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
   const quizItems = useMemo(() => getPlayableItemsForMode(activity.items, "quiz"), [activity.items]);
   const gapItems = useMemo(() => getPlayableItemsForMode(activity.items, "gap-fill"), [activity.items]);
   const source = useMemo(() => chooseWordHuntSource(activity.kind, quizItems.length, gapItems.length), [activity.kind, gapItems.length, quizItems.length]);
+  const [difficulty, setDifficulty] = useState<WordHuntDifficulty | null>(null);
   const [boardKey, setBoardKey] = useState(0);
   const board = useMemo(() => {
-    if (!source) return null;
-    return buildWordHuntBoard(source === "gap-fill" ? gapItems : quizItems, source);
-  }, [gapItems, quizItems, source]);
+    if (!source || !difficulty) return null;
+    return buildWordHuntBoard(source === "gap-fill" ? gapItems : quizItems, source, difficulty);
+  }, [difficulty, gapItems, quizItems, source]);
 
   const [targetIndex, setTargetIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -46,7 +55,7 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
   const [finished, setFinished] = useState(false);
 
   const target = board?.targets[targetIndex];
-  const timerKey = `${boardKey}-${target?.itemId ?? "empty"}`;
+  const timerKey = `${boardKey}-${difficulty ?? "choose"}-${target?.itemId ?? "empty"}`;
   const { stop } = useQuestionTimer(timerKey);
   const selectedKeys = useMemo(() => new Set(selection.map(cellKey)), [selection]);
   const foundKeys = useMemo(() => {
@@ -59,6 +68,7 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
     return keys;
   }, [board, foundIds]);
   const hintedKey = hinted && target ? cellKey(target.path[0] ?? { row: -1, col: -1 }) : "";
+  const difficultyConfig = difficulty ? WORD_HUNT_DIFFICULTIES[difficulty] : null;
 
   const advance = useCallback((nextScore: number, nextFound: string[]) => {
     if (!board) return;
@@ -76,7 +86,7 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
   }, [board, onComplete, targetIndex]);
 
   const submitPath = useCallback((path: WordHuntCell[]) => {
-    if (!target || !board || locked || path.length < 2) return;
+    if (!target || !board || !difficulty || locked || path.length < 2) return;
     setSelection(path);
     if (!wordHuntSelectionMatches(path, target.path)) {
       setStreak(0);
@@ -92,7 +102,7 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
 
     setLocked(true);
     const responseMs = stop();
-    const result = resolveWordHuntFind(responseMs, streak, hinted);
+    const result = resolveWordHuntFind(responseMs, streak, hinted, difficulty);
     const nextScore = score + result.points;
     const nextFound = [...foundIds, target.itemId];
     setScore(nextScore);
@@ -101,7 +111,7 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
     setFeedback("found");
     playArcadeTone(settings.soundEnabled, "correct");
     window.setTimeout(() => advance(nextScore, nextFound), settings.reducedMotion ? 240 : 720);
-  }, [advance, board, foundIds, hinted, locked, score, settings.reducedMotion, settings.soundEnabled, stop, streak, target]);
+  }, [advance, board, difficulty, foundIds, hinted, locked, score, settings.reducedMotion, settings.soundEnabled, stop, streak, target]);
 
   function selectCell(cell: WordHuntCell) {
     if (!board || !target || locked) return;
@@ -129,7 +139,7 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
     window.setTimeout(() => setFeedback(null), settings.reducedMotion ? 180 : 700);
   }
 
-  function replay() {
+  function resetRoundState() {
     setBoardKey((current) => current + 1);
     setTargetIndex(0);
     setScore(0);
@@ -143,20 +153,62 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
     setFinished(false);
   }
 
-  if (!source || !board || !board.targets.length) {
+  function chooseDifficulty(nextDifficulty: WordHuntDifficulty) {
+    resetRoundState();
+    setDifficulty(nextDifficulty);
+  }
+
+  function replay() {
+    resetRoundState();
+    setDifficulty(null);
+  }
+
+  if (!source) {
     return <div className="empty-game"><span><AppIcon name="search" /></span><h2>Word Hunt needs shorter word-ready answers.</h2><p>Add at least three usable Quiz or Gap Fill answers with 3–12 letters after spaces and punctuation are removed.</p></div>;
+  }
+
+  if (!difficulty) {
+    return (
+      <div className={`arcade-stage word-hunt hunt-difficulty-screen ${settings.reducedMotion ? "reduced-motion" : ""}`}>
+        <section className="hunt-difficulty-hero">
+          <span className="hunt-eyebrow"><AppIcon name="search" /> WORD HUNT</span>
+          <h1>Choose your hunt level</h1>
+          <p>The clues stay the same. Your level decides which directions the hidden words can use.</p>
+        </section>
+        <div className="hunt-difficulty-grid">
+          {DIFFICULTY_OPTIONS.map((option) => {
+            const config = WORD_HUNT_DIFFICULTIES[option.id];
+            return (
+              <button type="button" className={`hunt-difficulty-card difficulty-${option.id}`} onClick={() => chooseDifficulty(option.id)} key={option.id}>
+                <span className="hunt-difficulty-icon"><AppIcon name={option.icon} /></span>
+                <small>{option.kicker}</small>
+                <h2>{config.label}</h2>
+                <strong>{config.description}</strong>
+                <p>{config.help}</p>
+                <div className="hunt-difficulty-score"><span>Score</span><b>×{config.scoreMultiplier.toFixed(2)}</b></div>
+                <span className="hunt-difficulty-play">Play {config.label} <AppIcon name="arrow-right" /></span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  if (!board || !board.targets.length) {
+    return <div className="empty-game"><span><AppIcon name="search" /></span><h2>This Word Hunt grid could not be generated.</h2><p>Try another difficulty or add more 3–12 letter answers to this activity.</p><button className="button button-primary" type="button" onClick={() => setDifficulty(null)}>Choose another level</button></div>;
   }
 
   if (finished) {
     return (
       <div className="hunt-finish-shell">
-        <div className="hunt-final-banner"><span><AppIcon name="search" /></span><div><small>CASE CLOSED</small><strong>{foundIds.length} words found</strong><p>Best hunt streak ×{streak || 1}</p></div></div>
+        <div className="hunt-final-banner"><span><AppIcon name="search" /></span><div><small>CASE CLOSED · {difficultyConfig?.shortLabel}</small><strong>{foundIds.length} words found</strong><p>Best hunt streak ×{streak || 1}</p></div></div>
         <CompletionCard score={score} correct={foundIds.length} total={board.targets.length} onReplay={replay} />
       </div>
     );
   }
 
-  if (!target) return null;
+  if (!target || !difficultyConfig) return null;
 
   return (
     <div className={`arcade-stage word-hunt ${settings.reducedMotion ? "reduced-motion" : ""}`}>
@@ -169,7 +221,10 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
 
       <div className="hunt-layout">
         <section className="hunt-clue-panel">
-          <span className="hunt-eyebrow"><AppIcon name="compass" /> CURRENT CLUE</span>
+          <div className="hunt-clue-topline">
+            <span className="hunt-eyebrow"><AppIcon name="compass" /> CURRENT CLUE</span>
+            <span className={`hunt-level-badge level-${difficulty}`}>{difficultyConfig.label}</span>
+          </div>
           <h2>{target.prompt}</h2>
           {target.hint && <p className="hunt-source-hint">Hint: {target.hint}</p>}
           <div className="hunt-answer-shape" aria-label={`${target.target.length} letters`}>
@@ -195,11 +250,11 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
               return <button key={key} type="button" className={classes} onClick={() => selectCell(cell)} disabled={locked}><span>{letter}</span></button>;
             }))}
           </div>
-          <div className="hunt-board-footer"><span><AppIcon name="grid-3x3-gap-fill" /> {board.size}×{board.size}</span><span><AppIcon name="lightning-charge-fill" /> Faster finds = bigger score</span></div>
+          <div className="hunt-board-footer"><span><AppIcon name="grid-3x3-gap-fill" /> {board.size}×{board.size} · {difficultyConfig.label}</span><span><AppIcon name="lightning-charge-fill" /> Faster finds = bigger score</span></div>
         </section>
       </div>
 
-      <p className="arcade-key-help">Words can run horizontally, vertically or diagonally — forward or backward. Tap one end, then the other.</p>
+      <p className="arcade-key-help">{difficultyConfig.help} Tap one end of the word, then the other.</p>
     </div>
   );
 }
