@@ -13,7 +13,7 @@
     "test:leaderboard": "node scripts/test-leaderboard.mjs",
     "test:classes": "node scripts/test-classes.mjs",
     "test:community-auth": "node scripts/test-community-auth.mjs",
-    "test:live": "node scripts/test-live-engine.mjs",
+    "test:live": "node scripts/test-live-engine.mjs && node scripts/test-live-rejoin.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
