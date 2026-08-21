@@ -16,6 +16,8 @@ import "./bubble-burst.css";
 import "./phrase-forge.css";
 import "./tower-stack.css";
 import "./tower-stack-polish.css";
+import "./word-hunt.css";
+import "./typing-rush.css";
 import "./word-maze.css";
 import "./dynamite.css";
 import "./dynamite-fuse.css";
