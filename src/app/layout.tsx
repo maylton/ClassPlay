@@ -17,6 +17,7 @@ import "./phrase-forge.css";
 import "./tower-stack.css";
 import "./tower-stack-polish.css";
 import "./word-hunt.css";
+import "./word-hunt-difficulty.css";
 import "./typing-rush.css";
 import "./word-maze.css";
 import "./dynamite.css";
