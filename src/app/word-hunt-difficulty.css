@@ -1,0 +1,195 @@
+.hunt-difficulty-screen {
+  display: grid;
+  align-content: center;
+  gap: clamp(1.2rem, 3vw, 2rem);
+  min-height: min(760px, calc(100vh - 120px));
+}
+
+.hunt-difficulty-hero {
+  width: min(760px, 100%);
+  margin: 0 auto;
+  text-align: center;
+}
+
+.hunt-difficulty-hero .hunt-eyebrow {
+  margin-inline: auto;
+}
+
+.hunt-difficulty-hero h1 {
+  margin: .9rem 0 .55rem;
+  color: white;
+  font-size: clamp(2rem, 5vw, 3.8rem);
+  line-height: .96;
+  letter-spacing: -.055em;
+}
+
+.hunt-difficulty-hero p {
+  width: min(620px, 100%);
+  margin: 0 auto;
+  color: #a8c8c1;
+  font-size: clamp(.85rem, 1.7vw, 1rem);
+  line-height: 1.55;
+}
+
+.hunt-difficulty-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  width: min(1040px, 100%);
+  margin: 0 auto;
+}
+
+.hunt-difficulty-card {
+  position: relative;
+  min-width: 0;
+  min-height: 330px;
+  padding: 1.4rem;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 25px;
+  background: linear-gradient(155deg, rgba(255,255,255,.095), rgba(255,255,255,.035));
+  color: white;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  box-shadow: 0 22px 60px rgba(0,0,0,.16);
+  transition: transform .18s ease, border-color .18s ease, background .18s ease, box-shadow .18s ease;
+}
+
+.hunt-difficulty-card::after {
+  content: "";
+  position: absolute;
+  width: 170px;
+  height: 170px;
+  right: -60px;
+  top: -65px;
+  border-radius: 50%;
+  filter: blur(4px);
+  opacity: .16;
+  background: currentColor;
+  pointer-events: none;
+}
+
+.hunt-difficulty-card:hover {
+  transform: translateY(-5px);
+  border-color: rgba(223,244,122,.38);
+  background: linear-gradient(155deg, rgba(255,255,255,.13), rgba(255,255,255,.045));
+  box-shadow: 0 28px 70px rgba(0,0,0,.23);
+}
+
+.hunt-difficulty-card.difficulty-easy { color: #9ff0cf; }
+.hunt-difficulty-card.difficulty-medium { color: #f1d27e; }
+.hunt-difficulty-card.difficulty-challenge { color: #ff9f7e; }
+
+.hunt-difficulty-icon {
+  width: 3.25rem;
+  height: 3.25rem;
+  display: grid;
+  place-items: center;
+  margin-bottom: 1rem;
+  border-radius: 17px;
+  background: color-mix(in srgb, currentColor 18%, transparent);
+  font-size: 1.45rem;
+}
+
+.hunt-difficulty-card > small {
+  display: block;
+  color: currentColor;
+  font-size: .61rem;
+  font-weight: 950;
+  letter-spacing: .14em;
+}
+
+.hunt-difficulty-card h2 {
+  margin: .25rem 0 .18rem;
+  color: white;
+  font-size: clamp(1.55rem, 2.7vw, 2.15rem);
+  letter-spacing: -.04em;
+}
+
+.hunt-difficulty-card > strong {
+  display: block;
+  color: #d9eeea;
+  font-size: .83rem;
+}
+
+.hunt-difficulty-card > p {
+  margin: .75rem 0 1.15rem;
+  color: #91b5b0;
+  font-size: .74rem;
+  line-height: 1.55;
+}
+
+.hunt-difficulty-score {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  padding: .65rem .72rem;
+  border-radius: 13px;
+  background: rgba(2,24,25,.36);
+  color: #8eb0ac;
+  font-size: .67rem;
+  font-weight: 850;
+}
+
+.hunt-difficulty-score b {
+  color: white;
+  font-size: .78rem;
+}
+
+.hunt-difficulty-play {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .7rem;
+  margin-top: 1rem;
+  color: currentColor;
+  font-size: .76rem;
+  font-weight: 950;
+}
+
+.hunt-clue-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
+.hunt-level-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: .38rem .6rem;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 999px;
+  background: rgba(255,255,255,.07);
+  font-size: .6rem;
+  font-weight: 950;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.hunt-level-badge.level-easy { color: #aaf3d6; border-color: rgba(159,240,207,.25); }
+.hunt-level-badge.level-medium { color: #f6dda0; border-color: rgba(241,210,126,.25); }
+.hunt-level-badge.level-challenge { color: #ffb199; border-color: rgba(255,159,126,.28); }
+
+.word-hunt.reduced-motion .hunt-difficulty-card {
+  transition: none !important;
+}
+
+.word-hunt.reduced-motion .hunt-difficulty-card:hover {
+  transform: none;
+}
+
+@media (max-width: 820px) {
+  .hunt-difficulty-screen { min-height: auto; }
+  .hunt-difficulty-grid { grid-template-columns: 1fr; width: min(600px, 100%); }
+  .hunt-difficulty-card { min-height: 0; }
+}
+
+@media (max-width: 560px) {
+  .hunt-difficulty-screen { padding: 1rem; }
+  .hunt-difficulty-card { padding: 1.1rem; border-radius: 20px; }
+  .hunt-clue-topline { align-items: flex-start; }
+}
