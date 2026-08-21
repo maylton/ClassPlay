@@ -78,6 +78,7 @@ assert.match(catalog, /"echo-chain"/);
 assert.match(readiness, /"echo-chain": echoReady/);
 assert.match(component, /Listen\. Hold the chain\. Tap it back\./);
 assert.match(component, /prepareEnglishVoice/);
+assert.doesNotMatch(component, /AUDIO CHECK|Test audio|voice\?\.name/, "student setup must not expose technical voice details");
 assert.match(tts, /ENHANCED_VOICE/);
 assert.match(tts, /speakEnglishSequence/);
 assert.match(migration, /practice_scores\.game_type = 'echo-chain'/);

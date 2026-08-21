@@ -17,9 +17,7 @@ import {
 import {
   cancelEnglishSpeech,
   prepareEnglishVoice,
-  speakEnglish,
   speakEnglishSequence,
-  type EnglishVoiceProfile,
 } from "@/lib/tts";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
@@ -38,7 +36,6 @@ export function EchoChainGame({ activity, onComplete }: GameProps) {
   const { settings } = useClassroomSettings();
   const readyItems = useMemo(() => buildEchoChainItems(activity.items), [activity.items]);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("loading");
-  const [voice, setVoice] = useState<EnglishVoiceProfile | null>(null);
   const [voiceError, setVoiceError] = useState("");
   const [difficulty, setDifficulty] = useState<EchoChainDifficulty | null>(null);
   const game = useMemo(() => difficulty ? buildEchoChainGame(activity.items, difficulty) : null, [activity.items, difficulty]);
@@ -69,7 +66,6 @@ export function EchoChainGame({ activity, onComplete }: GameProps) {
     setVoiceStatus("loading");
     const profile = await prepareEnglishVoice(1800);
     if (request !== voiceRequestRef.current) return;
-    setVoice(profile);
     setVoiceStatus(profile ? "ready" : "unavailable");
   }, []);
 
@@ -78,7 +74,6 @@ export function EchoChainGame({ activity, onComplete }: GameProps) {
     voiceRequestRef.current = request;
     void prepareEnglishVoice(1800).then((profile) => {
       if (request !== voiceRequestRef.current) return;
-      setVoice(profile);
       setVoiceStatus(profile ? "ready" : "unavailable");
     });
     return () => { voiceRequestRef.current += 1; };
@@ -203,11 +198,6 @@ export function EchoChainGame({ activity, onComplete }: GameProps) {
     setDifficulty(null);
   }
 
-  function testAudio() {
-    const sample = readyItems[0]?.spokenText;
-    if (sample) speakEnglish(sample);
-  }
-
   if (readyItems.length < ECHO_CHAIN_MIN_ITEMS) {
     return <div className="empty-game"><span><AppIcon name="headphones" /></span><h2>Echo Chain needs more listening-ready content.</h2><p>Add at least {ECHO_CHAIN_MIN_ITEMS} items with a clear prompt, distinct answer and, ideally, a complete English example sentence.</p></div>;
   }
@@ -219,17 +209,15 @@ export function EchoChainGame({ activity, onComplete }: GameProps) {
           <span className="echo-eyebrow"><AppIcon name="headphones" /> ECHO CHAIN</span>
           <h1>Listen. Hold the chain. Tap it back.</h1>
           <p>The words stay hidden while they play. Rebuild each audio sequence from the persistent language grid.</p>
-          <div className={`echo-voice-check status-${voiceStatus}`}>
-            <span><AppIcon name={voiceStatus === "ready" ? "volume-up-fill" : voiceStatus === "loading" ? "hourglass-split" : "volume-mute-fill"} /></span>
-            <div>
-              <small>AUDIO CHECK</small>
-              <strong>{voiceStatus === "loading" ? "Finding the best English voice…" : voiceStatus === "ready" ? `${voice?.name} · ${voice?.lang}` : "No English voice is available"}</strong>
-              <p>{voiceStatus === "ready" ? `${voice?.quality === "enhanced" ? "Enhanced" : "Best available"} voice selected automatically. Audio comes from this activity's own language.` : voiceStatus === "unavailable" ? "Install or enable an English system voice before playing this listening mode." : "The game will unlock as soon as the device voice list is ready."}</p>
+          {voiceStatus === "unavailable" ? (
+            <div className="echo-audio-notice" role="alert">
+              <span><AppIcon name="volume-mute-fill" /></span>
+              <p>Audio is not available on this device. Enable an English voice and try again.</p>
+              <button type="button" onClick={() => void checkVoice()}><AppIcon name="arrow-repeat" /> Try again</button>
             </div>
-            {voiceStatus === "ready" ? <button type="button" onClick={testAudio}><AppIcon name="play-fill" /> Test audio</button> : voiceStatus === "unavailable" ? <button type="button" onClick={() => void checkVoice()}><AppIcon name="arrow-repeat" /> Check again</button> : null}
-          </div>
+          ) : null}
         </section>
-        <div className="echo-difficulty-grid">
+        <div className="echo-difficulty-grid" aria-busy={voiceStatus === "loading"}>
           {DIFFICULTY_OPTIONS.map((option) => {
             const config = ECHO_CHAIN_DIFFICULTIES[option.id];
             return (
