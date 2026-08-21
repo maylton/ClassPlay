@@ -1,4 +1,5 @@
 import { getPlayableItemsForMode } from "./activity-intelligence";
+import { buildEchoChainItems, ECHO_CHAIN_MIN_ITEMS } from "./echo-chain-engine";
 import { DERIVED_ARCADE_MODE_ORDER } from "./game-catalog";
 import type { ActivitySet, GameType } from "./types";
 
@@ -15,6 +16,7 @@ export function getDerivedArcadeReadiness(activity: Pick<ActivitySet, "items">):
   const sentenceBuilder = getPlayableItemsForMode(activity.items, "sentence-builder").length;
   const questionReady = quiz >= 3 || gap >= 3;
   const phraseReady = sentenceBuilder >= 2;
+  const echoReady = buildEchoChainItems(activity.items).length >= ECHO_CHAIN_MIN_ITEMS;
   const readiness: Record<(typeof DERIVED_ARCADE_MODE_ORDER)[number], boolean> = {
     "boss-battle": questionReady,
     "bubble-burst": questionReady,
@@ -22,6 +24,7 @@ export function getDerivedArcadeReadiness(activity: Pick<ActivitySet, "items">):
     "tower-stack": questionReady,
     "word-hunt": questionReady,
     "typing-rush": questionReady,
+    "echo-chain": echoReady,
   };
   return {
     quiz,
