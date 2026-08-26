@@ -1,0 +1,132 @@
+/* Memory pair editor — explicit text ↔ text / image ↔ text choice. */
+
+.pair-media-field {
+  padding: .85rem;
+  border: 2px solid var(--studio-border);
+  border-radius: 16px;
+  background: #faf9ff;
+}
+
+.pair-media-toggle {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .55rem;
+}
+
+.pair-media-choice {
+  position: relative;
+  min-height: 72px;
+  padding: .72rem .8rem;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: .65rem;
+  border: 2px solid #d9d5ef;
+  border-radius: 14px;
+  background: #fff;
+  color: var(--studio-ink);
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+}
+
+.pair-media-choice > i,
+.pair-media-choice > svg {
+  grid-row: 1 / 3;
+}
+
+.pair-media-choice b {
+  align-self: end;
+  font-size: .82rem;
+}
+
+.pair-media-choice small {
+  align-self: start;
+  color: var(--studio-muted);
+  font-size: .66rem;
+}
+
+.pair-media-choice.active {
+  border-color: var(--studio-violet);
+  background: var(--studio-lilac-2);
+  box-shadow: inset 0 0 0 1px var(--studio-violet);
+}
+
+.pair-media-choice.busy {
+  opacity: .65;
+  cursor: wait;
+}
+
+.pair-media-choice input,
+.pair-media-actions .upload-button input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.pair-media-preview {
+  display: grid;
+  grid-template-columns: minmax(170px, 230px) 1fr;
+  gap: 1rem;
+  align-items: center;
+  margin-top: .75rem;
+  padding: .75rem;
+  border: 1px solid #d8d3ef;
+  border-radius: 14px;
+  background: #fff;
+}
+
+.pair-media-preview-frame {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  display: grid;
+  place-items: center;
+  border: 1px solid #ddd9ef;
+  border-radius: 12px;
+  background: #f3f2f8;
+}
+
+.pair-media-preview-frame img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+}
+
+.pair-media-preview-copy strong {
+  display: block;
+  font-size: .84rem;
+}
+
+.pair-media-preview-copy p {
+  margin: .3rem 0 .65rem;
+  color: var(--studio-muted);
+  font-size: .7rem;
+  line-height: 1.45;
+}
+
+.pair-media-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .45rem;
+}
+
+.pair-media-actions .upload-button {
+  position: relative;
+  overflow: hidden;
+}
+
+@media (max-width: 720px) {
+  .pair-media-preview {
+    grid-template-columns: 1fr;
+  }
+
+  .pair-media-preview-frame {
+    max-height: 220px;
+  }
+}
