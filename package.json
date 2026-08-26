@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint .",
     "test:engine": "node scripts/test-engine.mjs",
-    "test:smart": "node scripts/test-smart-builder.mjs",
+    "test:smart": "node scripts/test-smart-builder.mjs && node scripts/test-memory-image-editor.mjs",
     "test:arcade": "node scripts/test-arcade.mjs && node scripts/test-arcade-expansion.mjs && node scripts/test-v010-arcade.mjs && node scripts/test-tower-stack.mjs && node scripts/test-word-hunt-typing-rush.mjs && node scripts/test-echo-chain.mjs && node scripts/test-game-architecture.mjs",
     "test:leaderboard": "node scripts/test-leaderboard.mjs",
     "test:classes": "node scripts/test-classes.mjs",
