@@ -5,6 +5,7 @@ import "./features.css";
 import "./studio.css";
 import "./smart-builder.css";
 import "./memory-game.css";
+import "./memory-editor.css";
 import "./sentence-builder.css";
 import "./arcade.css";
 import "./space-blaster-rocket.css";

@@ -26,6 +26,11 @@ function emptyItem(index: number): ActivityItem {
   return { id: createId(`item-${index}`), prompt: "", answer: "", hint: "", imageUrl: "", example: "", gapSentence: "", distractors: [], sentenceParts: [] };
 }
 
+function isGeneratedImagePrompt(value?: string) {
+  const prompt = (value ?? "").trim().toLocaleLowerCase();
+  return prompt === "picture" || prompt === "image" || /^picture\s+\d+$/.test(prompt) || /^image\s+\d+$/.test(prompt);
+}
+
 export function ActivityEditor({ activityId }: { activityId?: string }) {
   const router = useRouter();
   const [draftId, setDraftId] = useState(activityId ?? createId("activity"));
@@ -136,20 +141,29 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   async function uploadImage(index: number, file?: File) {
     if (!file) return;
     const item = items[index];
-    setUploadingItem(item.id); setError("");
+    setUploadingItem(item.id);
+    setError("");
     try {
       const ref = await uploadActivityImage(file, draftId, item.id);
       if (item.imageUrl) await removeActivityImage(item.imageUrl);
-      updateItem(index, { imageUrl: ref });
+      updateItem(index, {
+        imageUrl: ref,
+        prompt: item.prompt.trim() || "Picture",
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not upload image.");
-    } finally { setUploadingItem(null); }
+    } finally {
+      setUploadingItem(null);
+    }
   }
 
   async function removeImage(index: number) {
-    const ref = items[index].imageUrl;
-    await removeActivityImage(ref);
-    updateItem(index, { imageUrl: "" });
+    const item = items[index];
+    await removeActivityImage(item.imageUrl);
+    updateItem(index, {
+      imageUrl: "",
+      prompt: isGeneratedImagePrompt(item.prompt) ? "" : item.prompt,
+    });
   }
 
   async function submit() {
@@ -172,6 +186,7 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   const contentFirst = enabledGames.length === 0;
   const promptLabel = contentFirst ? "Prompt / clue" : needs.gap ? needs.pair ? "Prompt / target expression" : "Target word / expression" : "Prompt / English";
   const showExample = contentFirst || needs.sentence || enabledGames.includes("flashcards");
+  const canChoosePairMedia = (contentFirst || enabledGames.includes("memory") || enabledGames.includes("flashcards")) && !needs.gap && !needs.builder;
 
   return (
     <main className="editor-main smart-editor">
@@ -246,18 +261,30 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
               const gapPreview = deriveGapSentence(item);
               const chunksPreview = deriveSentenceParts(item);
               const advanced = advancedItems.has(item.id);
+              const visualPair = Boolean(item.imageUrl);
+              const useVisualFirstSide = canChoosePairMedia && visualPair;
               return (
                 <article className="item-editor smart-item-editor" key={item.id}>
                   <div className="item-number">{index + 1}</div>
                   <div className="item-editor-grid">
-                    {(contentFirst || needs.pair || needs.gap) && <label className="field"><span>{promptLabel}</span><input value={item.prompt} onChange={(event) => updateItem(index, { prompt: event.target.value })} placeholder={contentFirst ? "e.g. A place where you borrow books" : needs.gap ? "wakes up" : "wake up"} />{needs.gap && <small className="field-help">For Gap Fill, use the word or expression that appears in the full sentence.</small>}</label>}
-                    {(contentFirst || needs.pair) && <label className="field"><span>{contentFirst ? "Answer / target" : "Answer / Meaning"}</span><input value={item.answer} onChange={(event) => updateItem(index, { answer: event.target.value })} placeholder={contentFirst ? "e.g. library" : "acordar"} /></label>}
+                    {canChoosePairMedia && <div className="field field-wide pair-media-field">
+                      <span>First side</span>
+                      <div className="pair-media-toggle" role="group" aria-label={`Choose text or image for item ${index + 1}`}>
+                        <button type="button" className={`pair-media-choice ${!useVisualFirstSide ? "active" : ""}`} onClick={() => { if (visualPair) void removeImage(index); }}><AppIcon name="fonts" /><b>Text</b><small>Text ↔ text</small></button>
+                        <label className={`pair-media-choice ${useVisualFirstSide ? "active" : ""} ${uploadingItem === item.id ? "busy" : ""}`}><AppIcon name="image" /><b>Image</b><small>{useVisualFirstSide ? "Replace image" : "Image ↔ text"}</small><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploadingItem === item.id} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void uploadImage(index, file); }} /></label>
+                      </div>
+                      {useVisualFirstSide ? <div className="pair-media-preview">
+                        <div className="pair-media-preview-frame"><ActivityImage refValue={item.imageUrl} alt={item.answer || item.prompt || `Item ${index + 1}`} /></div>
+                        <div className="pair-media-preview-copy"><strong>{uploadingItem === item.id ? "Uploading image…" : "This is what students will see."}</strong><p>The image becomes the first Memory card automatically. The matching word or text stays editable beside it.</p><div className="pair-media-actions"><label className="button button-soft button-small upload-button">Replace image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploadingItem === item.id} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void uploadImage(index, file); }} /></label><button type="button" className="button button-soft button-small" onClick={() => void removeImage(index)} disabled={uploadingItem === item.id}><AppIcon name="trash3" /> Remove</button></div></div>
+                      </div> : <small className="field-help">Choose <b>Text</b> for text ↔ text, or upload an <b>Image</b> for image ↔ text. PNG, JPG, WebP or GIF up to 5 MB.</small>}
+                    </div>}
+
+                    {(contentFirst || needs.pair || needs.gap) && !useVisualFirstSide && <label className="field"><span>{promptLabel}</span><input value={isGeneratedImagePrompt(item.prompt) ? "" : item.prompt} onChange={(event) => updateItem(index, { prompt: event.target.value })} placeholder={contentFirst ? "e.g. A place where you borrow books" : needs.gap ? "wakes up" : "wake up"} />{needs.gap && <small className="field-help">For Gap Fill, use the word or expression that appears in the full sentence.</small>}</label>}
+                    {(contentFirst || needs.pair) && <label className="field"><span>{useVisualFirstSide ? "Matching text / word" : contentFirst ? "Answer / target" : "Answer / Meaning"}</span><input value={item.answer} onChange={(event) => updateItem(index, { answer: event.target.value })} placeholder={useVisualFirstSide ? "e.g. sofa" : contentFirst ? "e.g. library" : "acordar"} /></label>}
 
                     {showExample && <label className="field field-wide"><span>{needs.sentence ? "Full sentence" : "Full sentence / example (optional)"}</span><input value={item.example ?? ""} onChange={(event) => updateItem(index, { example: event.target.value })} placeholder="She wakes up at 6:30 every day." />{needs.sentence && <small className="field-help">This sentence can power Gap Fill, Sentence Builder and smart Matching transformations.</small>}</label>}
 
                     {needs.hint && <label className="field"><span>Hint (optional)</span><input value={item.hint ?? ""} onChange={(event) => updateItem(index, { hint: event.target.value })} placeholder="Short clue" /></label>}
-
-                    {needs.image && <div className="field item-image-field"><span>Image (optional)</span><div className="image-upload-row">{item.imageUrl ? <div className="image-preview"><ActivityImage refValue={item.imageUrl} alt={item.prompt || `Item ${index + 1}`} /><button onClick={() => void removeImage(index)} aria-label="Remove image"><AppIcon name="x-lg" /></button></div> : <span className="image-placeholder"><AppIcon name="image" /></span>}<label className="button button-soft button-small upload-button">{uploadingItem === item.id ? "Uploading…" : item.imageUrl ? "Replace" : "Upload image"}<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploadingItem === item.id} onChange={(event) => void uploadImage(index, event.target.files?.[0])} /></label></div><small>Used by Flashcards · PNG, JPG, WebP or GIF</small></div>}
                   </div>
 
                   {(needs.gap || needs.builder) && <div className="generated-variants">

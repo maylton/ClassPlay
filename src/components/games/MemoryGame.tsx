@@ -2,6 +2,7 @@
 
 import { useMemo, useState, type CSSProperties } from "react";
 import { AppIcon } from "@/components/AppIcon";
+import { ActivityImage } from "@/components/media/ActivityImage";
 import { getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import { shuffle } from "@/lib/game-engine";
 import {
@@ -107,5 +108,5 @@ export function MemoryGame({ activity, onComplete }: GameProps) {
     ? `${pairCount} random pairs from ${playableItems.length}`
     : `${pairCount} pairs`;
 
-  return <div className="game-stage"><div className="game-progress-label"><span>Find all matching pairs · {boardDescription}</span><span>{moves} moves · {matched.length}/{pairCount} pairs</span></div><div className="memory-grid memory-grid-adaptive" style={gridStyle}>{cards.map((card) => { const visible = open.includes(card.key) || matched.includes(card.pairId); return <button key={card.key} onClick={() => choose(card)} className={`memory-card ${visible ? "revealed" : ""} ${matched.includes(card.pairId) ? "matched" : ""}`}><span className="memory-back">C</span><span className={`memory-front ${card.imageUrl ? "memory-front-image" : ""}`}>{card.imageUrl ? <img className="memory-card-image" src={card.imageUrl} alt="Vocabulary picture" draggable={false} /> : <b>{card.text}</b>}</span></button>; })}</div></div>;
+  return <div className="game-stage"><div className="game-progress-label"><span>Find all matching pairs · {boardDescription}</span><span>{moves} moves · {matched.length}/{pairCount} pairs</span></div><div className="memory-grid memory-grid-adaptive" style={gridStyle}>{cards.map((card) => { const visible = open.includes(card.key) || matched.includes(card.pairId); return <button key={card.key} onClick={() => choose(card)} className={`memory-card ${visible ? "revealed" : ""} ${matched.includes(card.pairId) ? "matched" : ""}`}><span className="memory-back">C</span><span className={`memory-front ${card.imageUrl ? "memory-front-image" : ""}`}>{card.imageUrl ? <ActivityImage refValue={card.imageUrl} alt={card.text || "Vocabulary picture"} className="memory-card-image" /> : <b>{card.text}</b>}</span></button>; })}</div></div>;
 }
