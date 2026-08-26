@@ -18,6 +18,8 @@ import { removeActivityImage, uploadActivityImage } from "@/lib/media";
 import { loadActivity, saveActivity } from "@/lib/repositories/activity-repository";
 import type { ActivityItem, ActivityKind, ActivitySet, GameType } from "@/lib/types";
 
+type PairMediaMode = "text" | "image";
+
 function createId(prefix: string) {
   return typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
@@ -49,6 +51,7 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   const [dirty, setDirty] = useState(false);
   const [uploadingItem, setUploadingItem] = useState<string | null>(null);
   const [advancedItems, setAdvancedItems] = useState<Set<string>>(() => new Set());
+  const [pairMediaModes, setPairMediaModes] = useState<Record<string, PairMediaMode>>({});
   const loadedRef = useRef(false);
 
   useEffect(() => {
@@ -64,6 +67,7 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
       setKind(activity.kind);
       setEnabledGames(activity.enabledGames);
       setItems(activity.items);
+      setPairMediaModes({});
       setCreatedAt(activity.createdAt);
       loadedRef.current = true;
     }).catch((cause) => setError(cause instanceof Error ? cause.message : "Could not load activity.")).finally(() => setLoading(false));
@@ -73,6 +77,16 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   const compatibility = useMemo(() => analyzeGameModes(items, enabledGames), [items, enabledGames]);
   const availableVariants = compatibility.filter((entry) => entry.status === "recommended" || entry.status === "compatible");
   const recommendedVariants = compatibility.filter((entry) => entry.status === "recommended");
+
+  const itemsForSave = useMemo(() => items.map((item) => {
+    const mode = pairMediaModes[item.id] ?? (item.imageUrl ? "image" : "text");
+    if (mode !== "text" || !item.imageUrl) return item;
+    return {
+      ...item,
+      imageUrl: "",
+      prompt: isGeneratedImagePrompt(item.prompt) ? "" : item.prompt,
+    };
+  }), [items, pairMediaModes]);
 
   const activityDraft = useMemo<ActivitySet>(() => prepareActivityForSave({
     id: draftId,
@@ -84,11 +98,11 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
     grade,
     kind,
     visibility: "private",
-    items,
+    items: itemsForSave,
     enabledGames,
     createdAt,
     updatedAt: new Date().toISOString(),
-  }), [draftId, title, description, topic, level, grade, kind, items, enabledGames, createdAt]);
+  }), [draftId, title, description, topic, level, grade, kind, itemsForSave, enabledGames, createdAt]);
 
   const modeErrors = useMemo(() => validateEnabledModes(activityDraft.items, enabledGames), [activityDraft.items, enabledGames]);
 
@@ -100,6 +114,7 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
       void saveActivity(activityDraft).then((saved) => {
         setDraftId(saved.id);
         setItems(saved.items);
+        setPairMediaModes({});
         setEnabledGames(saved.enabledGames);
         setSaveState("saved");
         setDirty(false);
@@ -115,6 +130,10 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
 
   function updateItem(index: number, patch: Partial<ActivityItem>) {
     changed(() => setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item)));
+  }
+
+  function setPairMediaMode(itemId: string, mode: PairMediaMode) {
+    changed(() => setPairMediaModes((current) => ({ ...current, [itemId]: mode })));
   }
 
   function toggleGame(game: GameType) {
@@ -146,9 +165,13 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
     try {
       const ref = await uploadActivityImage(file, draftId, item.id);
       if (item.imageUrl) await removeActivityImage(item.imageUrl);
-      updateItem(index, {
-        imageUrl: ref,
-        prompt: item.prompt.trim() || "Picture",
+      changed(() => {
+        setItems((current) => current.map((candidate, itemIndex) => itemIndex === index ? {
+          ...candidate,
+          imageUrl: ref,
+          prompt: candidate.prompt.trim() || "Picture",
+        } : candidate));
+        setPairMediaModes((current) => ({ ...current, [item.id]: "image" }));
       });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not upload image.");
@@ -160,9 +183,13 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   async function removeImage(index: number) {
     const item = items[index];
     await removeActivityImage(item.imageUrl);
-    updateItem(index, {
-      imageUrl: "",
-      prompt: isGeneratedImagePrompt(item.prompt) ? "" : item.prompt,
+    changed(() => {
+      setItems((current) => current.map((candidate, itemIndex) => itemIndex === index ? {
+        ...candidate,
+        imageUrl: "",
+        prompt: isGeneratedImagePrompt(candidate.prompt) ? "" : candidate.prompt,
+      } : candidate));
+      setPairMediaModes((current) => ({ ...current, [item.id]: "text" }));
     });
   }
 
@@ -173,7 +200,7 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
     setSaveState("saving"); setError("");
     try {
       const saved = await saveActivity(activityDraft);
-      setDraftId(saved.id); setItems(saved.items); setEnabledGames(saved.enabledGames); setSaveState("saved"); setDirty(false);
+      setDraftId(saved.id); setItems(saved.items); setPairMediaModes({}); setEnabledGames(saved.enabledGames); setSaveState("saved"); setDirty(false);
       router.push(`/play/${saved.id}`);
     } catch (cause) {
       setSaveState("error");
@@ -262,7 +289,8 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
               const chunksPreview = deriveSentenceParts(item);
               const advanced = advancedItems.has(item.id);
               const visualPair = Boolean(item.imageUrl);
-              const useVisualFirstSide = canChoosePairMedia && visualPair;
+              const pairMediaMode = pairMediaModes[item.id] ?? (visualPair ? "image" : "text");
+              const useVisualFirstSide = canChoosePairMedia && pairMediaMode === "image" && visualPair;
               return (
                 <article className="item-editor smart-item-editor" key={item.id}>
                   <div className="item-number">{index + 1}</div>
@@ -270,13 +298,13 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
                     {canChoosePairMedia && <div className="field field-wide pair-media-field">
                       <span>First side</span>
                       <div className="pair-media-toggle" role="group" aria-label={`Choose text or image for item ${index + 1}`}>
-                        <button type="button" className={`pair-media-choice ${!useVisualFirstSide ? "active" : ""}`} onClick={() => { if (visualPair) void removeImage(index); }}><AppIcon name="fonts" /><b>Text</b><small>Text ↔ text</small></button>
-                        <label className={`pair-media-choice ${useVisualFirstSide ? "active" : ""} ${uploadingItem === item.id ? "busy" : ""}`}><AppIcon name="image" /><b>Image</b><small>{useVisualFirstSide ? "Replace image" : "Image ↔ text"}</small><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploadingItem === item.id} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void uploadImage(index, file); }} /></label>
+                        <button type="button" className={`pair-media-choice ${pairMediaMode === "text" ? "active" : ""}`} onClick={() => setPairMediaMode(item.id, "text")}><AppIcon name="fonts" /><b>Text</b><small>Text ↔ text</small></button>
+                        {visualPair ? <button type="button" className={`pair-media-choice ${pairMediaMode === "image" ? "active" : ""}`} onClick={() => setPairMediaMode(item.id, "image")}><AppIcon name="image" /><b>Image</b><small>{pairMediaMode === "text" ? "Use saved image" : "Image ↔ text"}</small></button> : <label className={`pair-media-choice ${uploadingItem === item.id ? "busy" : ""}`}><AppIcon name="image" /><b>Image</b><small>Image ↔ text</small><input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploadingItem === item.id} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void uploadImage(index, file); }} /></label>}
                       </div>
                       {useVisualFirstSide ? <div className="pair-media-preview">
                         <div className="pair-media-preview-frame"><ActivityImage refValue={item.imageUrl} alt={item.answer || item.prompt || `Item ${index + 1}`} /></div>
                         <div className="pair-media-preview-copy"><strong>{uploadingItem === item.id ? "Uploading image…" : "This is what students will see."}</strong><p>The image becomes the first Memory card automatically. The matching word or text stays editable beside it.</p><div className="pair-media-actions"><label className="button button-soft button-small upload-button">Replace image<input type="file" accept="image/png,image/jpeg,image/webp,image/gif" disabled={uploadingItem === item.id} onChange={(event) => { const file = event.target.files?.[0]; event.target.value = ""; void uploadImage(index, file); }} /></label><button type="button" className="button button-soft button-small" onClick={() => void removeImage(index)} disabled={uploadingItem === item.id}><AppIcon name="trash3" /> Remove</button></div></div>
-                      </div> : <small className="field-help">Choose <b>Text</b> for text ↔ text, or upload an <b>Image</b> for image ↔ text. PNG, JPG, WebP or GIF up to 5 MB.</small>}
+                      </div> : visualPair ? <small className="field-help">Your saved image is still available. Choose <b>Image</b> to restore it before saving, or save in <b>Text</b> mode to remove it from the deck.</small> : <small className="field-help">Choose <b>Text</b> for text ↔ text, or upload an <b>Image</b> for image ↔ text. PNG, JPG, WebP or GIF up to 5 MB.</small>}
                     </div>}
 
                     {(contentFirst || needs.pair || needs.gap) && !useVisualFirstSide && <label className="field"><span>{promptLabel}</span><input value={isGeneratedImagePrompt(item.prompt) ? "" : item.prompt} onChange={(event) => updateItem(index, { prompt: event.target.value })} placeholder={contentFirst ? "e.g. A place where you borrow books" : needs.gap ? "wakes up" : "wake up"} />{needs.gap && <small className="field-help">For Gap Fill, use the word or expression that appears in the full sentence.</small>}</label>}
