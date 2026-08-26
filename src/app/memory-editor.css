@@ -91,7 +91,8 @@
   background: #f3f2f8;
 }
 
-.pair-media-preview-frame img {
+.pair-media-preview-frame img,
+.pair-media-preview-frame > svg[role="img"] {
   width: 100%;
   height: 100%;
   display: block;
