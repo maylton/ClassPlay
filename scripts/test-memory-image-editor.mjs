@@ -3,6 +3,8 @@ import { readFile } from "node:fs/promises";
 
 const editor = await readFile(new URL("../src/components/ActivityEditor.tsx", import.meta.url), "utf8");
 const memory = await readFile(new URL("../src/components/games/MemoryGame.tsx", import.meta.url), "utf8");
+const activityImage = await readFile(new URL("../src/components/media/ActivityImage.tsx", import.meta.url), "utf8");
+const memoryEditorCss = await readFile(new URL("../src/app/memory-editor.css", import.meta.url), "utf8");
 const layout = await readFile(new URL("../src/app/layout.tsx", import.meta.url), "utf8");
 
 assert.match(editor, /First side/);
@@ -29,6 +31,12 @@ assert.match(memory, /import \{ ActivityImage \}/);
 assert.match(memory, /ActivityImage refValue=\{card\.imageUrl\}/);
 assert.doesNotMatch(memory, /<img className="memory-card-image" src=\{card\.imageUrl\}/);
 
+assert.match(activityImage, /SPRITE_PREFIX = "sprite:"/);
+assert.match(activityImage, /parseSpriteRef/);
+assert.match(activityImage, /viewBox=\{`\$\{sprite\.column\} \$\{sprite\.row\} 1 1`\}/);
+assert.match(activityImage, /preserveAspectRatio="xMidYMid slice"/);
+assert.match(activityImage, /<image href=\{sprite\.src\}/);
+assert.match(memoryEditorCss, /svg\[role="img"\]/);
 assert.match(layout, /\.\/memory-editor\.css/);
 
 console.log("ClassPlay Memory image editor contract tests passed.");
