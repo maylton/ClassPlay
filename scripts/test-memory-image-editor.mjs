@@ -13,8 +13,17 @@ assert.match(editor, /Replace image/);
 assert.match(editor, /Remove/);
 assert.match(editor, /uploadActivityImage/);
 assert.match(editor, /ActivityImage refValue=\{item\.imageUrl\}/);
-assert.match(editor, /prompt: item\.prompt\.trim\(\) \|\| "Picture"/);
+assert.match(editor, /prompt: candidate\.prompt\.trim\(\) \|\| "Picture"/);
 assert.match(editor, /isGeneratedImagePrompt/);
+
+assert.match(editor, /pairMediaModes/);
+assert.match(editor, /itemsForSave/);
+assert.match(editor, /setPairMediaMode\(item\.id, "text"\)/);
+assert.match(editor, /setPairMediaMode\(item\.id, "image"\)/);
+assert.match(editor, /Use saved image/);
+assert.match(editor, /Your saved image is still available\./);
+assert.doesNotMatch(editor, /onClick=\{\(\) => \{ if \(visualPair\) void removeImage\(index\); \}\}/);
+assert.match(editor, /imageUrl: ""/);
 
 assert.match(memory, /import \{ ActivityImage \}/);
 assert.match(memory, /ActivityImage refValue=\{card\.imageUrl\}/);
