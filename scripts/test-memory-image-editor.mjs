@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 
 const editor = await readFile(new URL("../src/components/ActivityEditor.tsx", import.meta.url), "utf8");
 const memory = await readFile(new URL("../src/components/games/MemoryGame.tsx", import.meta.url), "utf8");
+const memoryCss = await readFile(new URL("../src/app/memory-game.css", import.meta.url), "utf8");
 const layout = await readFile(new URL("../src/app/layout.tsx", import.meta.url), "utf8");
 
 assert.match(editor, /First side/);
@@ -29,6 +30,19 @@ assert.match(memory, /import \{ ActivityImage \}/);
 assert.match(memory, /ActivityImage refValue=\{card\.imageUrl\}/);
 assert.doesNotMatch(memory, /<img className="memory-card-image" src=\{card\.imageUrl\}/);
 
+assert.match(memory, /useState<CardBackStyle>\("numbers"\)/);
+assert.match(memory, /Card back style/);
+assert.match(memory, /> Numbers<\/button>/);
+assert.match(memory, /> ClassPlay<\/button>/);
+assert.match(memory, /index \+ 1/);
+assert.match(memory, /new ResizeObserver\(fitCardsToViewport\)/);
+assert.match(memory, /window\.innerHeight - rect\.top - 16/);
+assert.match(memory, /Math\.min\(heightPerCard, widthPerCard \* 0\.76\)/);
+assert.match(memoryCss, /--memory-card-height/);
+assert.match(memoryCss, /width: min\(1480px, 100%\)/);
+assert.match(memoryCss, /play-canvas:has\(\.memory-game-stage\)/);
+assert.doesNotMatch(memoryCss, /min-height: max\(92px/);
+
 assert.match(layout, /\.\/memory-editor\.css/);
 
-console.log("ClassPlay Memory image editor contract tests passed.");
+console.log("ClassPlay Memory editor and projector board contract tests passed.");
