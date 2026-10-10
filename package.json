@@ -14,6 +14,7 @@
     "test:classes": "node scripts/test-classes.mjs",
     "test:community-auth": "node scripts/test-community-auth.mjs",
     "test:live": "node scripts/test-live-engine.mjs && node scripts/test-live-rejoin.mjs && node scripts/test-dynamite-anti-guess.mjs",
+    "test:remediation": "node scripts/test-remediation-phase1.mjs",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

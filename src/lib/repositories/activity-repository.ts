@@ -73,9 +73,12 @@ export async function listActivities(): Promise<ActivitySet[]> {
   const context = await cloudContext();
   if (!context) return getLocalActivities();
 
+  // RLS also exposes other teachers' unlisted practice activities and assigned
+  // activities, so the library must scope itself to the signed-in owner.
   const { data, error } = await context.supabase
     .from("activity_sets")
     .select(SELECT_GRAPH)
+    .eq("owner_id", context.user.id)
     .order("updated_at", { ascending: false });
   if (error) throw error;
 

@@ -32,8 +32,19 @@ function wordCount(value?: string) {
   return clean(value).split(/\s+/).filter(Boolean).length;
 }
 
+const GAP_MARKER = "_____";
+
 function hasBlank(value?: string) {
   return /_{2,}/.test(clean(value));
+}
+
+/**
+ * Teachers type blanks as `__`, `___` or `______`. Every engine and the
+ * leaderboard policy agree on the canonical five-underscore marker, so any run
+ * of two or more underscores is rewritten to it.
+ */
+export function normalizeGapMarker(value?: string) {
+  return clean(value).replace(/_{2,}/g, GAP_MARKER);
 }
 
 function looksLikeSentence(value?: string) {
@@ -77,12 +88,12 @@ function findTarget(item: ActivityItem, sentence: string): EnglishPhraseMatch | 
 }
 
 export function deriveGapSentence(item: ActivityItem) {
-  const existing = clean(item.gapSentence);
-  if (existing.includes("_____")) return existing;
+  const existing = normalizeGapMarker(item.gapSentence);
+  if (hasBlank(existing)) return existing;
   const sentence = canonicalSentence(item);
   if (!sentence) return "";
   const target = findTarget(item, sentence);
-  return target ? `${sentence.slice(0, target.start)}_____${sentence.slice(target.end)}` : "";
+  return target ? `${sentence.slice(0, target.start)}${GAP_MARKER}${sentence.slice(target.end)}` : "";
 }
 
 function chunkWords(value: string) {
@@ -227,7 +238,7 @@ function pairModeFit(item: ActivityItem, mode: GameType): Fit {
 function sentenceModeFit(item: ActivityItem, mode: GameType): Fit {
   if (mode === "sentence-builder") return wordCount(canonicalSentence(item)) >= 3 ? 2 : 0;
   const gap = deriveGapSentence(item);
-  if (!gap.includes("_____")) return 0;
+  if (!hasBlank(gap)) return 0;
   if (mode === "gap-fill") return 2;
   const targetWords = Math.min(wordCount(item.prompt), wordCount(item.answer));
   if (targetWords > 10) return 0;
@@ -248,7 +259,9 @@ export function materializeItemsForMode(items: ActivityItem[], mode: GameType, d
   if (!derive) return items;
   if (mode === "matching") return items.map(deriveMatchingItem);
   if (TARGET_SENTENCE_MODES.includes(mode)) {
-    return items.map((item) => item.gapSentence?.includes("_____") ? item : { ...item, gapSentence: deriveGapSentence(item) || item.gapSentence });
+    return items.map((item) => hasBlank(item.gapSentence)
+      ? { ...item, gapSentence: normalizeGapMarker(item.gapSentence) }
+      : { ...item, gapSentence: deriveGapSentence(item) || item.gapSentence });
   }
   if (mode === "sentence-builder") {
     return items.map((item) => (item.sentenceParts?.length ?? 0) > 1 ? item : { ...item, sentenceParts: deriveSentenceParts(item) });
@@ -276,7 +289,7 @@ export function normalizeItemsForModes(items: ActivityItem[], modes: readonly Ga
       answer,
       example: clean(item.example),
       hint: clean(item.hint),
-      gapSentence: clean(item.gapSentence),
+      gapSentence: normalizeGapMarker(item.gapSentence),
       distractors: (item.distractors ?? []).map(clean).filter(Boolean),
       sentenceParts: (item.sentenceParts ?? []).map(clean).filter(Boolean),
     };
@@ -291,7 +304,7 @@ export function getPlayableItemsForMode(items: ActivityItem[], mode: GameType) {
   }
 
   if (TARGET_SENTENCE_MODES.includes(mode)) {
-    return prepared.filter((item) => clean(item.gapSentence).includes("_____") && Boolean(clean(item.prompt) || clean(item.answer)) && fitForItem(item, mode) > 0);
+    return prepared.filter((item) => hasBlank(item.gapSentence) && Boolean(clean(item.prompt) || clean(item.answer)) && fitForItem(item, mode) > 0);
   }
 
   const pairs = prepared.filter((item) => hasPair(item) && fitForItem(item, mode) > 0);
