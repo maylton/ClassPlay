@@ -869,3 +869,39 @@
   .class-card,
   .student-class-card { transition: none; }
 }
+
+/* Removed students and late submissions (remediation phase 2) */
+.class-removed-members {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: #fbfaff;
+  color: #777187;
+}
+
+.class-removed-members summary {
+  cursor: pointer;
+  font-size: .8rem;
+  font-weight: 800;
+}
+
+.class-removed-members p {
+  margin: 8px 0 10px;
+  font-size: .75rem;
+}
+
+.class-member-row.removed > span {
+  background: #b9b4c6;
+}
+
+.class-member-row .class-readmit-button {
+  color: #6a5ae0;
+  font-size: 1.05rem;
+}
+
+.assignment-late-count {
+  margin-top: 3px;
+  color: #b4572a;
+  font-size: .72rem;
+  font-weight: 800;
+}

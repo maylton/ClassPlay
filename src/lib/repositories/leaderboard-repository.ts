@@ -53,6 +53,32 @@ export async function loadPracticeLeaderboard(
   return (data ?? []).map((row) => mapEntry(row as unknown as Record<string, unknown>));
 }
 
+/** Newest entries across every game, for the activity owner's moderation panel. */
+export async function loadRecentPracticeScores(activityId: string, limit = 50): Promise<PracticeLeaderboardEntry[]> {
+  const supabase = getBrowserSupabaseClient();
+  if (!supabase) return [];
+
+  const { data, error } = await supabase
+    .from("practice_scores")
+    .select("id, activity_set_id, game_type, player_name, score, correct, total, created_at")
+    .eq("activity_set_id", activityId)
+    .order("created_at", { ascending: false })
+    .limit(Math.max(1, Math.min(200, limit)));
+
+  if (error) throw error;
+  return (data ?? []).map((row) => mapEntry(row as unknown as Record<string, unknown>));
+}
+
+/** Only the activity owner may delete (RLS); a non-owner delete removes nothing. */
+export async function deletePracticeScore(id: string) {
+  const supabase = getBrowserSupabaseClient();
+  if (!supabase) throw new Error("This ClassPlay installation is not connected to the cloud leaderboard.");
+
+  const { data, error } = await supabase.from("practice_scores").delete().eq("id", id).select("id");
+  if (error) throw error;
+  if (!data?.length) throw new Error("This score could not be removed.");
+}
+
 export async function submitPracticeScore(input: {
   activityId: string;
   game: GameType;

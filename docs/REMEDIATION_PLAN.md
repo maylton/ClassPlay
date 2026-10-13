@@ -26,7 +26,10 @@ Mudanças pequenas, sem alterar a arquitetura. Migration: `0023_phase1_integrity
 
 - [x] `npm run test:remediation` (novo script `scripts/test-remediation-phase1.mjs`)
 - [x] `typecheck`, `lint`, `build` e todas as suítes existentes passando
-- [ ] Aplicar `0023_phase1_integrity_fixes.sql` no Supabase local, depois em produção (com backup)
+- [x] Comportamento do banco testado em Postgres real (`npm run test:db`). Contra as migrations antigas, o
+      teste reproduz os bugs: o erro no Dynamite **adiantava** o relógio em vez de atrasar, e espaços
+      repetidos não eram unificados.
+- [ ] Aplicar `0023_phase1_integrity_fixes.sql` no Supabase (com backup)
 - [ ] Conferir os critérios de aceite abaixo manualmente
 
 | # | Problema | Correção | Arquivos |
@@ -34,7 +37,7 @@ Mudanças pequenas, sem alterar a arquitetura. Migration: `0023_phase1_integrity
 | 1.1 | **Redirecionamento aberto** no login: `?next=//site-malicioso.com` passava na checagem `startsWith("/")`. | Helper `safeNextPath()` que resolve o caminho contra uma origem fixa e só aceita caminhos da própria origem. | `src/lib/safe-redirect.ts`, `src/app/auth/page.tsx`, `src/app/auth/callback/route.ts` |
 | 1.2 | **Biblioteca mostrava atividades de outros professores**: `listActivities()` não filtrava por dono e a RLS libera toda atividade `unlisted`. | Filtrar por `owner_id = user.id`. | `src/lib/repositories/activity-repository.ts` |
 | 1.3 | **Aluno removido voltava à turma** só usando o código (o upsert fazia `active = true`). | A RPC recusa a entrada de quem foi desativado pelo professor. | migration 0023 |
-| 1.4 | **Penalidade do Dynamite anulada**: o trigger `set_round_started_at` sobrescrevia `round_started_at` sempre que `current_question` mudava. | O trigger só reinicia o relógio quando a pergunta/turno muda **e** o campo não foi definido explicitamente no `UPDATE`. | migration 0023 |
+| 1.4 | **Penalidade do Dynamite anulada**: o trigger `set_round_started_at` sobrescrevia `round_started_at` sempre que `current_question` mudava. | O trigger só reinicia o relógio quando a identidade da pergunta muda (`itemId`, `index`, `dynamiteTurnId`, `wildcardTileNumber`); atualizações dentro do turno mantêm o relógio que gravaram. | migration 0023 |
 | 1.5 | **Marcador de lacuna inconsistente** (2, 3 ou 5 underscores conforme o módulo): a lacuna digitada pelo professor era ignorada ou o item sumia do Gap Fill. | Qualquer sequência de 2+ `_` é aceita e normalizada para `_____` ao salvar e ao gerar o jogo. | `src/lib/activity-intelligence.ts` |
 | 1.6 | **`classplay_normalize` não juntava espaços** (`'\\s+'` procurava o texto literal `\s`) e não tratava o apóstrofo curvo `’` do iOS. | Regex corrigida e apóstrofos normalizados. | migration 0023 |
 
@@ -45,33 +48,71 @@ Mudanças pequenas, sem alterar a arquitetura. Migration: `0023_phase1_integrity
 - No Dynamite, após um erro, `round_started_at` no banco fica 3s no passado (não volta para `now()`).
 - `She ___ to school.` (3 underscores) aparece como item jogável no Gap Fill.
 
-**Atenção:** quem precisar readmitir um aluno removido deve, por enquanto, reativá-lo pelo painel do
-Supabase (`class_members.active = true`). Um botão “Readmitir” entra na Fase 2.
+**Readmitir aluno:** resolvido na Fase 2 (item 2.3).
 
 ---
 
-## Fase 2 — Moderação e integridade dos dados `[ ]`
+## Fases 2 e 3 — Moderação, integridade e modo ao vivo confiável `[~]`
 
-| # | Problema | Correção proposta |
-|---|----------|-------------------|
-| 2.1 | Ranking de prática aceita `INSERT` direto, com qualquer nota e qualquer nome; professor não consegue apagar. | Revogar `insert` direto; criar RPC `submit_practice_score` com limite por IP/sessão, teto plausível por modo (itens × pontuação máxima), filtro de nomes. Política de `DELETE` para o dono da atividade + botão “remover” no ranking. |
-| 2.2 | Nota de tarefa é declarada pelo navegador; `due_at` não é verificado. | Na RPC: `p_total ≤ itens jogáveis`, teto de pontuação por modo, coluna `submitted_late`. Na tela do professor: marcar entregas atrasadas. |
-| 2.3 | Readmitir aluno removido. | Botão “Readmitir” na lista de alunos (`ClassDetailClient`). |
-| 2.4 | Salas criadas com atividade de outro dono; contas de aluno conseguem criar salas. | `with check` em `game_sessions`: atividade do próprio host e `not private.is_student_account()`. |
-| 2.5 | Entrada em sala sem limites. | Limite de jogadores por sala (ex.: 60), filtro de apelidos (lista de palavras pt/en/es), “banir” além de “remover”. |
-| 2.6 | Miniatura do dashboard nunca aparece (CSS recebe `storage:…`). | Resolver com `resolveActivityImageUrl` antes de usar no `background-image`. |
+Branch `agent/remediation-phase-2-3` (empilhada sobre a Fase 1). Migration:
+`0024_phase2_3_moderation_and_live_sync.sql`.
 
----
+**Status:** código implementado e testado; falta aplicar a migration.
 
-## Fase 3 — Modo ao vivo confiável `[ ]`
+- [x] `typecheck`, `lint`, `build` e todas as suítes passando
+- [x] `npm run test:remediation` (inclui `scripts/test-remediation-phase2-3.mjs`)
+- [x] `npm run test:db`: regras novas testadas em Postgres real
+- [ ] Aplicar `0023` (se ainda não aplicada) e depois `0024` no Supabase, com backup
+- [ ] Teste manual numa sala ao vivo com 2–3 celulares (ver critérios abaixo)
 
-| # | Problema | Correção proposta |
-|---|----------|-------------------|
-| 3.1 | Canal Realtime público: qualquer aluno pode enviar `question`, `reveal`, `final`, `state` para todos. | O aluno passa a tratar todo broadcast como “algo mudou” e busca o estado oficial via `resume_classplay_player` (estender a RPC para devolver o placar final e o estado do Dynamite). Payloads de broadcast deixam de ser confiáveis. |
-| 3.2 | Inundação de `answer-submitted` derruba o host (4 consultas por evento). | Debounce/throttle do `refresh` no host (ex.: no máximo 1 a cada 500 ms). |
-| 3.3 | (Opcional) Canais privados. | Supabase Realtime Authorization com políticas em `realtime.messages`: só o host publica. |
+**Ordem de implantação:** aplicar a migration **antes** de publicar o código. Se o código chegar primeiro,
+quase tudo continua funcionando, mas o ranking final no celular do aluno fica vazio até a migration entrar.
 
-**Critério de aceite:** um broadcast forjado pelo console de um aluno não altera a tela de nenhum outro aluno.
+### Fase 2 — o que mudou
+
+| # | Problema | O que foi feito | Onde |
+|---|----------|-----------------|------|
+| 2.1 | Ranking de prática aceitava qualquer nota e qualquer nome; o professor não conseguia apagar. | Trigger no banco: filtro de nomes, teto plausível (`correct ≤ nº de itens`, `score ≤ 3000 × acertos`, `total ≤ 1000`) e limites de inundação (60 notas/min por atividade; 5 notas em 5 min por nome e jogo). Professor dono pode apagar entradas pelo botão **Moderate scores**, ao lado do link de prática. | migration 0024, `LeaderboardModerationPanel.tsx`, `GameHub.tsx`, `leaderboard-repository.ts` |
+| 2.2 | Nota de tarefa sem verificação; prazo ignorado. | Mesmos tetos na RPC `submit_assignment_attempt`. Entrega após `due_at` é aceita, mas marcada com `submitted_late`. O professor vê “N late” na tarefa e o aluno vê o aviso no resultado. | migration 0024, `ClassDetailClient.tsx`, `AssignmentPlayerClient.tsx` |
+| 2.3 | Não havia como readmitir aluno removido. | Lista recolhível “N removed students” com botão **Readmit**. | `ClassDetailClient.tsx`, `classroom-repository.ts` |
+| 2.4 | Salas criadas com atividade de outro professor; contas de aluno podiam hospedar. | Políticas restritivas em `game_sessions` (insert e update): a atividade tem de ser do host, e conta de aluno ou anônima não hospeda. | migration 0024 |
+| 2.5 | Entrada em sala sem limites. | Limite de 100 jogadores, filtro de apelidos, e um apelido removido pelo professor não volta à mesma sala. Também vale para o username de contas de aluno. | migration 0024 |
+| 2.6 | Miniatura do dashboard nunca aparecia. | A referência `storage:` é convertida em URL assinada antes de ir para o CSS. | `DashboardClient.tsx` |
+
+**Lista de palavras bloqueadas:** fica na tabela `private.blocked_terms` (pt/en/es). Dá para incluir termos
+pelo SQL Editor sem nova migration: `insert into private.blocked_terms(term) values ('palavra');`
+(apenas letras minúsculas sem acento). Use `match_anywhere = true` só para termos que nunca aparecem
+dentro de nomes comuns.
+
+**Limitações conhecidas**
+- O “banimento” é por apelido; um aluno pode entrar com outro nome. Para bloquear de vez, use
+  **Lock room** depois que todos entrarem.
+- Limite por IP não é possível dentro do Postgres; se virar problema, precisa de uma Edge Function.
+- Os tetos de pontuação são generosos de propósito (nenhum jogo passa de ~1.500 pontos por acerto).
+  Eles barram notas absurdas, não trapaças pequenas; para isso, a pontuação teria de ser calculada no
+  servidor.
+
+### Fase 3 — o que mudou
+
+| # | Problema | O que foi feito | Onde |
+|---|----------|-----------------|------|
+| 3.1 | Qualquer aluno podia mandar `question`, `reveal`, `final` etc. para os outros celulares. | O celular trata todo evento do professor como um **aviso** e relê o estado oficial pela RPC `resume_classplay_player`, que agora também devolve o ranking final. Nada do conteúdo do broadcast é usado. | `StudentJoinClient.tsx`, `live-sync.ts`, migration 0024 |
+| 3.2 | Inundação de eventos fazia o host refazer 4 consultas por evento. | Atualizações em segundo plano agrupadas: no máximo uma a cada 400 ms no host e 300 ms no aluno, nunca simultâneas. | `HostRoomClient.tsx`, `live-sync.ts` |
+| 3.x | A explosão do Dynamite era anunciada antes de ser salva. | O host salva a eliminação e só depois avisa. | `HostRoomClient.tsx` |
+| 3.3 | (Opcional) Canais privados. | **Não feito.** Com 3.1, um broadcast forjado só provoca releituras (limitadas). Fica como melhoria futura. | — |
+
+**Efeito colateral esperado:** cada pergunta chega ao celular ~0,1–0,3 s mais tarde, o tempo de uma
+consulta ao banco.
+
+**Critérios de aceite**
+- Um broadcast forjado pelo console de um aluno (ex.: `final` ou `reveal` falso) não muda a tela de nenhum
+  outro aluno.
+- Quiz, Gap Fill, Space Blaster, Dynamite (incluindo o “BOOM!”) e Wildcard Grid funcionam normalmente
+  com 2–3 celulares, inclusive o ranking final.
+- Professor remove “Pedro” no lobby; “Pedro” não consegue entrar de novo na mesma sala.
+- Nome ofensivo é recusado no ranking de prática e na entrada da sala.
+- Professor apaga uma entrada do ranking pelo **Moderate scores**.
+- Entrega depois do prazo aparece como “late”.
 
 ---
 
@@ -102,11 +143,13 @@ Supabase (`class_members.active = true`). Um botão “Readmitir” entra na Fas
 
 ---
 
-## Fase 6 — Testes de verdade `[ ]`
+## Fase 6 — Testes de verdade `[~]`
 
 Os testes atuais conferem trechos de texto no código (regex). Eles passaram mesmo com o bug do item 1.4.
 
-- [ ] Testes de banco com pgTAP no Supabase local: RLS (professor A × B, aluno, anônimo), RPCs ao vivo, Dynamite.
+- [x] Base criada: `scripts/db/` sobe um Postgres embutido (PGlite, sem Docker), aplica todas as
+      migrations do zero e testa RLS e RPCs com os papéis `anon`/`authenticated` (`npm run test:db`, no CI).
+- [ ] Ampliar a cobertura de banco: RLS completa (professor A × B, aluno, anônimo) e as demais RPCs ao vivo.
 - [ ] Testes de comportamento para os motores (já existe a infraestrutura com `ts.transpileModule`).
 - [ ] Job de CI que sobe o Supabase local e aplica todas as migrations do zero.
 

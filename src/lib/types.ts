@@ -245,6 +245,9 @@ export interface ResumeRoomResult {
   player: LivePlayer;
   team?: Pick<Team, "id" | "name" | "color"> | null;
   revealedAnswer?: string | null;
+  /** Authoritative final ranking (only filled once the room reaches final_results). */
+  leaderboard?: { id: string; name: string; score: number }[];
+  leaderboardKind?: "individual" | "team";
 }
 
 export interface LiveAnswerResult {

@@ -8,10 +8,11 @@ import { ActivityImage } from "@/components/media/ActivityImage";
 import { useLiveCountdown } from "@/hooks/useLiveCountdown";
 import { LIVE_MODE_CATALOG } from "@/lib/live/live-catalog";
 import { normalizeRoomCode, validateNickname } from "@/lib/live/live-engine";
+import { createCoalescedTask, liveQuestionKey, newlyEliminated } from "@/lib/live/live-sync";
 import { broadcastRoomEvent, joinLiveRoom, openLiveChannel, resumeLiveRoom, submitDynamiteAttempt, submitLiveAnswer } from "@/lib/live/room-service";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import { speakEnglish } from "@/lib/tts";
-import type { ClassroomSettings, JoinRoomResult, LiveAnswerResult, LiveQuestion, ResumeRoomResult, SessionState, WildcardGridState } from "@/lib/types";
+import type { ClassroomSettings, JoinRoomResult, LiveAnswerResult, LiveQuestion, ResumeRoomResult, SessionState } from "@/lib/types";
 import { StudentDynamiteStage } from "./StudentDynamiteStage";
 import { StudentLiveSpaceBlaster } from "./StudentLiveSpaceBlaster";
 import { StudentWildcardGridStage } from "./StudentWildcardGridStage";
@@ -22,6 +23,10 @@ type FinalLeaderboardEntry = { id: string; name: string; score: number };
 type WinnerRef = { id: string; name: string };
 
 const CREDENTIAL_EVENT = "classplay:player-credentials";
+// Host events are only hints: any participant can broadcast on the room
+// channel, so the phone always re-reads the authoritative state instead.
+const HOST_HINT_EVENTS = ["question", "wildcard-grid", "dynamite-explosion", "reveal", "final", "settings", "state"] as const;
+const SNAPSHOT_MIN_INTERVAL_MS = 300;
 
 function subscribeCredentials(callback: () => void) {
   window.addEventListener("storage", callback);
@@ -135,64 +140,62 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
   });
   const remaining = forcedTimeUp ? 0 : countdownRemaining;
 
+  const questionKeyRef = useRef("");
+  const eliminatedRef = useRef<string[] | null>(null);
+
+  const applySnapshot = useCallback((snapshot: ResumeRoomResult) => {
+    const nextQuestion = snapshot.currentQuestion ?? null;
+    const nextKey = liveQuestionKey(nextQuestion);
+    const questionChanged = nextKey !== questionKeyRef.current;
+    if (questionChanged) {
+      questionKeyRef.current = nextKey;
+      setSelected(null); setAnswerResult(null);
+      setDynamiteWrongOptions([]); setDynamitePassed(false); setDynamiteExplosionName(null); setForcedTimeUp(false); setError("");
+      if (nextQuestion && snapshot.settings.readAloud && snapshot.settings.soundEnabled && nextQuestion.activePlayerId === credentials.playerId) speakEnglish(nextQuestion.prompt);
+    }
+
+    const dynamite = snapshot.settings.dynamiteState ?? null;
+    const eliminated = newlyEliminated(eliminatedRef.current, dynamite?.eliminatedIds);
+    eliminatedRef.current = dynamite?.eliminatedIds ? [...dynamite.eliminatedIds] : null;
+    // The boom card replaces the answer card, so never carry it into a new turn.
+    if (eliminated.length && !questionChanged) {
+      const out = dynamite?.order.find((player) => player.id === eliminated[eliminated.length - 1]);
+      setDynamiteExplosionName(out?.name ?? "Player");
+    }
+    if (dynamite?.winnerId) {
+      const winner = dynamite.order.find((player) => player.id === dynamite.winnerId);
+      if (winner) setDynamiteWinner(winner);
+    }
+
+    setState(snapshot.state); setQuestion(nextQuestion); setSettings(snapshot.settings); setScore(snapshot.player.score);
+    setCorrectAnswer(snapshot.revealedAnswer ?? null);
+    setTeamId(snapshot.player.teamId ?? credentials.teamId ?? null);
+    setTeamName(snapshot.team?.name ?? credentials.teamName ?? null); setTeamColor(snapshot.team?.color ?? credentials.teamColor ?? null);
+    setFinalLeaderboard((snapshot.leaderboard ?? []).slice(0, 10));
+    setFinalLeaderboardKind(snapshot.leaderboardKind === "team" ? "team" : "individual");
+  }, [credentials.playerId, credentials.teamColor, credentials.teamId, credentials.teamName]);
+
   const hydrate = useCallback(async () => {
     try {
-      const snapshot: ResumeRoomResult = await resumeLiveRoom(credentials.playerId, credentials.playerToken);
-      setState(snapshot.state); setQuestion(snapshot.currentQuestion ?? null); setSettings(snapshot.settings); setScore(snapshot.player.score);
-      setCorrectAnswer(snapshot.revealedAnswer ?? null);
-      setTeamId(snapshot.player.teamId ?? credentials.teamId ?? null);
-      setTeamName(snapshot.team?.name ?? credentials.teamName ?? null); setTeamColor(snapshot.team?.color ?? credentials.teamColor ?? null);
-      if (snapshot.settings.dynamiteState?.winnerId) {
-        const winner = snapshot.settings.dynamiteState.order.find((player) => player.id === snapshot.settings.dynamiteState?.winnerId);
-        if (winner) setDynamiteWinner(winner);
-      }
+      applySnapshot(await resumeLiveRoom(credentials.playerId, credentials.playerToken));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not restore your room.");
     }
-  }, [credentials.playerId, credentials.playerToken, credentials.teamColor, credentials.teamId, credentials.teamName]);
+  }, [applySnapshot, credentials.playerId, credentials.playerToken]);
 
   useEffect(() => {
+    const sync = createCoalescedTask(hydrate, SNAPSHOT_MIN_INTERVAL_MS);
     const channel = openLiveChannel(credentials.sessionId, `player-${credentials.playerId}`);
     channelRef.current = channel;
-    channel
-      .on("broadcast", { event: "question" }, ({ payload }) => {
-        const next = payload.question as LiveQuestion;
-        setQuestion(next); setState("playing"); setSelected(null); setAnswerResult(null); setCorrectAnswer(null); setFinalLeaderboard([]);
-        setDynamiteWrongOptions([]); setDynamitePassed(false); setDynamiteExplosionName(null); setForcedTimeUp(false); setError("");
-        if ((payload.settings as ClassroomSettings | undefined)?.readAloud && (payload.settings as ClassroomSettings).soundEnabled && next.activePlayerId === credentials.playerId) speakEnglish(next.prompt);
-        if (payload.settings) setSettings(payload.settings as ClassroomSettings);
-      })
-      .on("broadcast", { event: "wildcard-grid" }, ({ payload }) => {
-        setQuestion((payload.question as LiveQuestion | null | undefined) ?? null);
-        if (payload.settings) setSettings(payload.settings as ClassroomSettings);
-        setState((payload.state as SessionState | undefined) ?? "playing");
-        setSelected(null); setAnswerResult(null); setCorrectAnswer(null); setError("");
-      })
-      .on("broadcast", { event: "dynamite-explosion" }, ({ payload }) => { setDynamiteExplosionName(String(payload.playerName ?? "Player")); })
-      .on("broadcast", { event: "reveal" }, ({ payload }) => { setCorrectAnswer(String(payload.correctAnswer ?? "")); setState("round_results"); })
-      .on("broadcast", { event: "final" }, ({ payload }) => {
-        const raw: unknown[] = Array.isArray(payload.leaderboard) ? payload.leaderboard : [];
-        const leaderboard = raw.slice(0, 10).map((entry, index) => {
-          const row = entry as Record<string, unknown>;
-          return { id: String(row.id ?? index), name: String(row.name ?? "Player"), score: Number(row.score ?? 0) };
-        });
-        const winner = payload.dynamiteWinner as WinnerRef | null | undefined;
-        if (winner?.id) setDynamiteWinner({ id: String(winner.id), name: String(winner.name) });
-        if (payload.wildcardGridState) setSettings((current) => current ? { ...current, wildcardGridState: payload.wildcardGridState as WildcardGridState } : current);
-        setFinalLeaderboard(leaderboard);
-        setFinalLeaderboardKind(payload.leaderboardKind === "team" ? "team" : "individual");
-        setState("final_results");
-      })
-      .on("broadcast", { event: "settings" }, ({ payload }) => payload.settings && setSettings(payload.settings as ClassroomSettings))
-      .on("broadcast", { event: "state" }, ({ payload }) => payload.state && setState(payload.state as SessionState))
-      .subscribe(async (status) => {
-        setConnection(status === "SUBSCRIBED" ? "Live" : status.toLowerCase());
-        if (status === "SUBSCRIBED") {
-          await channel.track({ role: "student", playerId: credentials.playerId, nickname: credentials.nickname, onlineAt: new Date().toISOString() });
-          await hydrate();
-        }
-      });
-    return () => { void channel.untrack(); void channel.unsubscribe(); channelRef.current = null; };
+    for (const event of HOST_HINT_EVENTS) channel.on("broadcast", { event }, () => sync.trigger());
+    channel.subscribe(async (status) => {
+      setConnection(status === "SUBSCRIBED" ? "Live" : status.toLowerCase());
+      if (status === "SUBSCRIBED") {
+        await channel.track({ role: "student", playerId: credentials.playerId, nickname: credentials.nickname, onlineAt: new Date().toISOString() });
+        sync.trigger();
+      }
+    });
+    return () => { sync.stop(); void channel.untrack(); void channel.unsubscribe(); channelRef.current = null; };
   }, [credentials.nickname, credentials.playerId, credentials.sessionId, hydrate]);
 
   async function answer(option: string) {

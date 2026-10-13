@@ -11,6 +11,7 @@ import {
   removeActivity,
 } from "@/lib/repositories/activity-repository";
 import { GAME_MODE_CATALOG } from "@/lib/game-catalog";
+import { resolveActivityImageUrl } from "@/lib/media";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { ActivitySet, TeacherProfile } from "@/lib/types";
@@ -56,6 +57,20 @@ export function DashboardClient() {
   }, []);
 
   const totalGames = useMemo(() => activities.reduce((sum, activity) => sum + activity.enabledGames.length, 0), [activities]);
+  const [previews, setPreviews] = useState<Record<string, string>>({});
+
+  // Cloud images are stored as private `storage:` refs; CSS needs a signed URL.
+  useEffect(() => {
+    let active = true;
+    void Promise.all(activities.map(async (activity) => {
+      const ref = activity.items.find((item) => item.imageUrl)?.imageUrl;
+      const url = ref ? await resolveActivityImageUrl(ref) : null;
+      return [activity.id, url] as const;
+    })).then((entries) => {
+      if (active) setPreviews(Object.fromEntries(entries.filter((entry): entry is readonly [string, string] => Boolean(entry[1]))));
+    });
+    return () => { active = false; };
+  }, [activities]);
 
   async function handleDuplicate(id: string) {
     try { await cloneActivity(id); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not duplicate activity."); }
@@ -136,7 +151,7 @@ export function DashboardClient() {
         </div>
         <div className="activity-grid studio-activity-grid">
           {activities.map((activity) => {
-            const previewImage = activity.items.find((item) => item.imageUrl)?.imageUrl;
+            const previewImage = previews[activity.id];
 
             return (
               <article className="activity-card" key={activity.id}>

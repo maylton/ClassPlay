@@ -51,6 +51,7 @@ export interface AssignmentAttemptRecord {
   correct: number;
   total: number;
   completedAt: string;
+  submittedLate: boolean;
 }
 
 export interface TeacherClassDetail {
@@ -140,6 +141,7 @@ function mapAttempt(row: Record<string, unknown>): AssignmentAttemptRecord {
     correct: Number(row.correct ?? 0),
     total: Number(row.total ?? 0),
     completedAt: String(row.completed_at),
+    submittedLate: row.submitted_late === true,
   };
 }
 
@@ -201,7 +203,7 @@ export async function loadTeacherClassroom(classroomId: string): Promise<Teacher
   const [classResult, membersResult, assignmentsResult, activities] = await Promise.all([
     supabase.from("classrooms").select("id,name,school_year,join_code,join_enabled,created_at").eq("id", classroomId).single(),
     supabase.from("class_members").select("id,classroom_id,user_id,display_name,active,joined_at").eq("classroom_id", classroomId).order("display_name"),
-    supabase.from("assignments").select("id,classroom_id,activity_set_id,title,instructions,game_type,due_at,attempts_limit,published,created_at,activity_sets(title,topic),assignment_attempts(id,assignment_id,member_id,game_type,score,correct,total,completed_at)").eq("classroom_id", classroomId).order("created_at", { ascending: false }),
+    supabase.from("assignments").select("id,classroom_id,activity_set_id,title,instructions,game_type,due_at,attempts_limit,published,created_at,activity_sets(title,topic),assignment_attempts(*)").eq("classroom_id", classroomId).order("created_at", { ascending: false }),
     listActivities(),
   ]);
   if (classResult.error) throw classResult.error;
@@ -229,6 +231,14 @@ export async function removeClassMember(memberId: string) {
   await permanentTeacher();
   const supabase = clientOrThrow();
   const { error } = await supabase.from("class_members").update({ active: false }).eq("id", memberId);
+  if (error) throw error;
+}
+
+/** Removed students cannot rejoin with the class key; only the teacher can readmit them. */
+export async function readmitClassMember(memberId: string) {
+  await permanentTeacher();
+  const supabase = clientOrThrow();
+  const { error } = await supabase.from("class_members").update({ active: true }).eq("id", memberId);
   if (error) throw error;
 }
 
@@ -348,7 +358,7 @@ export async function loadStudentClass(classroomId: string) {
   if (classError) throw classError;
   const { data: assignmentsData, error: assignmentsError } = await supabase
     .from("assignments")
-    .select("id,classroom_id,activity_set_id,title,instructions,game_type,due_at,attempts_limit,published,created_at,activity_sets(title,topic),assignment_attempts(id,assignment_id,member_id,game_type,score,correct,total,completed_at)")
+    .select("id,classroom_id,activity_set_id,title,instructions,game_type,due_at,attempts_limit,published,created_at,activity_sets(title,topic),assignment_attempts(*)")
     .eq("classroom_id", classroomId)
     .eq("published", true)
     .order("due_at", { ascending: true, nullsFirst: false });
@@ -386,7 +396,7 @@ export async function loadStudentAssignment(assignmentId: string): Promise<Stude
 
   const { data: attemptsData, error: attemptsError } = await supabase
     .from("assignment_attempts")
-    .select("id,assignment_id,member_id,game_type,score,correct,total,completed_at")
+    .select("*")
     .eq("assignment_id", assignmentId)
     .eq("member_id", memberData.id)
     .order("completed_at", { ascending: false });
