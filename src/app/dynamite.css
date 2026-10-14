@@ -77,21 +77,21 @@
 .dynamite-host-screen {
   min-height: 100vh;
   background:
-    radial-gradient(circle at 50% 28%, rgba(255, 215, 117, .24), transparent 34%),
-    linear-gradient(145deg, #1a3327 0%, #224434 46%, #131d18 100%);
-  color: white;
+    radial-gradient(circle at 50% 28%, rgba(255, 203, 71, .16), transparent 34%),
+    var(--cp-paper);
+  color: var(--cp-ink);
 }
 
 .dynamite-header {
-  background: rgba(15, 29, 22, .76);
-  border-bottom: 1px solid rgba(255, 255, 255, .1);
+  background: rgba(255, 255, 255, .92);
+  border-bottom: 1px solid var(--cp-line);
   backdrop-filter: blur(16px);
 }
 
 .dynamite-header .play-brand,
 .dynamite-header .host-round-meta,
 .dynamite-header .text-danger {
-  color: white;
+  color: var(--cp-ink);
 }
 
 .dynamite-host-layout {
@@ -108,9 +108,9 @@
   position: relative;
   min-height: 720px;
   border-radius: 32px;
-  background: rgba(255, 255, 255, .07);
-  border: 1px solid rgba(255, 255, 255, .1);
-  box-shadow: 0 30px 80px rgba(0, 0, 0, .28);
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-line);
+  box-shadow: var(--cp-shadow);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -123,7 +123,7 @@
   content: "";
   position: absolute;
   inset: -30%;
-  background: repeating-radial-gradient(circle at 50% 50%, rgba(255,255,255,.04) 0 1px, transparent 1px 46px);
+  background: repeating-radial-gradient(circle at 50% 50%, rgba(20,32,25,.04) 0 1px, transparent 1px 46px);
   pointer-events: none;
 }
 
@@ -152,7 +152,7 @@
   gap: 8px;
   align-items: flex-end;
   justify-content: center;
-  filter: drop-shadow(0 20px 24px rgba(0,0,0,.3));
+  filter: drop-shadow(0 14px 16px rgba(20,32,25,.18));
 }
 
 .dynamite-sticks i {
@@ -227,7 +227,7 @@
   width: min(520px, 78%);
   height: 10px;
   border-radius: 999px;
-  background: rgba(255,255,255,.12);
+  background: var(--cp-line);
   overflow: hidden;
 }
 
@@ -246,12 +246,12 @@
   text-align: center;
   padding: 1.2rem 1.5rem;
   border-radius: 22px;
-  background: rgba(10, 17, 14, .32);
-  border: 1px solid rgba(255,255,255,.08);
+  background: var(--cp-paper);
+  border: 1px solid var(--cp-line);
 }
 
 .dynamite-host-question small {
-  color: #f7c76f;
+  color: var(--cp-green);
   font-weight: 900;
   letter-spacing: .12em;
 }
@@ -262,7 +262,7 @@
 }
 
 .dynamite-host-question p {
-  color: rgba(255,255,255,.72);
+  color: var(--cp-muted);
 }
 
 .dynamite-next-call {
@@ -271,17 +271,18 @@
   display: flex;
   gap: .55rem;
   align-items: baseline;
-  color: rgba(255,255,255,.65);
+  color: var(--cp-muted);
 }
 
 .dynamite-next-call strong {
-  color: #98ddbc;
+  color: var(--cp-green-ink);
 }
 
 .dynamite-queue-panel {
-  border-radius: 28px;
-  background: rgba(255,255,255,.94);
-  color: #26362e;
+  border-radius: 24px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-line);
+  color: var(--cp-ink);
   padding: 1.15rem;
   overflow: hidden;
   align-self: stretch;
@@ -389,7 +390,7 @@
 }
 
 .dynamite-final-screen {
-  background: radial-gradient(circle at 50% 20%, #4d8369, #172920 70%);
+  background: var(--cp-paper);
 }
 
 .dynamite-winner-card {
@@ -402,20 +403,21 @@
   display: grid;
   place-items: center;
   border-radius: 30px;
-  background: #98ddbc;
-  color: #284839;
+  background: var(--cp-green-soft);
+  color: var(--cp-green-ink);
   font-size: 2.7rem;
   margin: 0 auto 1.2rem;
   transform: rotate(-7deg);
 }
 
 .dynamite-student-screen {
-  background: linear-gradient(160deg, #1a3226, #112019);
+  background: var(--cp-paper);
 }
 
 .dynamite-student-screen .student-live-header {
-  background: rgba(15, 29, 22, .88);
-  color: white;
+  background: rgba(255, 255, 255, .92);
+  border-bottom: 1px solid var(--cp-line);
+  color: var(--cp-ink);
 }
 
 .dynamite-student-layout {
@@ -429,12 +431,13 @@
 .dynamite-answer-card,
 .dynamite-waiting-card,
 .dynamite-phone-boom {
-  border-radius: 26px;
-  background: white;
-  color: #27352e;
+  border-radius: 22px;
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-line);
+  color: var(--cp-ink);
   padding: 1.25rem;
   text-align: center;
-  box-shadow: 0 18px 50px rgba(0,0,0,.2);
+  box-shadow: var(--cp-shadow);
 }
 
 .dynamite-answer-card h1,
@@ -448,16 +451,16 @@
   height: 112px;
   margin: 0 auto 1rem;
   border-radius: 35px;
-  background: linear-gradient(145deg, #273c32, #17251e);
+  background: var(--cp-green);
   color: white;
   display: grid;
   place-items: center;
   align-content: center;
-  box-shadow: 0 14px 32px rgba(23, 46, 35, .24);
+  box-shadow: 0 4px 0 var(--cp-green-ink);
 }
 
 .dynamite-phone-timer span {
-  color: #ffb04f;
+  color: var(--cp-sun);
 }
 
 .dynamite-phone-timer strong {
@@ -597,7 +600,7 @@
 }
 
 .dynamite-student-final {
-  background: radial-gradient(circle at 50% 18%, #4d8369, #172920 72%);
+  background: var(--cp-paper);
 }
 
 @keyframes dynamite-name-pulse {

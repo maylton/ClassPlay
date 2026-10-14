@@ -699,12 +699,54 @@ input[type="checkbox"] { accent-color: var(--cp-green); }
   color: var(--cp-ink) !important;
 }
 
-/* Arcade games keep their dark game world, but the app bar stays the same everywhere. */
+/* The app bar stays the same everywhere, arcade games included. */
 .arcade-play-screen .play-header,
 .play-screen.arcade-play-screen .play-header {
   background: rgba(255, 255, 255, .92) !important;
   border-bottom: 1px solid var(--cp-line) !important;
 }
+
+/* Live room setup: soft cards instead of the old hard offset shadows. */
+.live-setup-main,
+.cloud-setup-screen { background: var(--cp-paper) !important; }
+.cloud-setup-card,
+.live-activity-preview,
+.live-options-card {
+  border: 1px solid var(--cp-line) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--cp-shadow) !important;
+}
+.cloud-setup-card h1 { font-size: clamp(2rem, 4.5vw, 3.2rem) !important; line-height: 1.05 !important; letter-spacing: -.02em !important; }
+.live-activity-preview { background: var(--cp-green) !important; border-color: var(--cp-green) !important; }
+.live-activity-preview > span,
+.live-activity-preview p,
+.live-activity-preview > div small { color: rgba(255, 255, 255, .78) !important; }
+.mode-segmented button { border-radius: 14px !important; }
+.mode-segmented button.active {
+  background: var(--cp-green-soft) !important;
+  border-color: var(--cp-green) !important;
+  box-shadow: none !important;
+}
+
+/* Live room host / projector: same light canvas and white cards as the rest. */
+.host-room { background: var(--cp-paper) !important; color: var(--cp-ink) !important; }
+.live-host-header {
+  background: rgba(255, 255, 255, .92) !important;
+  color: var(--cp-ink) !important;
+  border-bottom: 1px solid var(--cp-line) !important;
+}
+.live-host-header .play-brand span { color: var(--cp-ink) !important; }
+.live-host-header > div > span { color: var(--cp-muted) !important; }
+.join-panel,
+.lobby-players-panel,
+.host-question-panel,
+.live-score-panel {
+  border: 1px solid var(--cp-line) !important;
+  border-radius: 22px !important;
+  box-shadow: var(--cp-shadow) !important;
+}
+.room-code-display span,
+.live-presence { color: var(--cp-green) !important; }
 
 .play-header .play-title small,
 .play-header .play-title strong { color: var(--cp-ink) !important; }
