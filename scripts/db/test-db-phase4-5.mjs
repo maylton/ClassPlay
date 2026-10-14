@@ -1,6 +1,20 @@
 import assert from "node:assert/strict";
+import { randomBytes } from "node:crypto";
+import fs from "node:fs";
 import { as, createDb } from "./harness.mjs";
 import { expectError, join, seedSession, seedTeacherWithActivity, uuid } from "./fixtures.mjs";
+
+// Regression: production holds decks imported from local mode whose images are
+// inline data: URLs of several KB. 0025 must apply on top of such rows (a btree
+// index on image_url failed there with "index row size exceeds maximum").
+{
+  const legacy = await createDb({ upTo: 24 });
+  const deck = await seedTeacherWithActivity(legacy, { items: 1 });
+  // Random bytes: real image data does not compress, so it cannot shrink below the index limit.
+  const inlineImage = `data:image/png;base64,${randomBytes(7000).toString("base64")}`;
+  await legacy.query(`update public.activity_items set image_url = $2 where id = $1`, [deck.itemIds[0], inlineImage]);
+  await legacy.exec(fs.readFileSync(new URL("../../supabase/migrations/0025_phase4_5_privacy_and_languages.sql", import.meta.url), "utf8"));
+}
 
 const db = await createDb();
 const anon = (sql, params) => as(db, { role: "anon" }, (tx) => tx.query(sql, params));

@@ -240,8 +240,10 @@ where a.visibility = 'unlisted';
 -- An uploaded image may be read by anyone who can see an activity that uses it:
 -- practice links, Community listings, assigned students, and teachers who copied
 -- a Community activity into their own library.
+-- Hash index: image_url may hold large inline data: URLs (decks imported from
+-- local mode), which exceed the btree row-size limit. Only equality is needed.
 create index if not exists activity_items_image_url_idx
-  on public.activity_items(image_url) where image_url is not null;
+  on public.activity_items using hash (image_url) where image_url is not null;
 
 create or replace function private.can_view_activity_media(p_object_name text)
 returns boolean
