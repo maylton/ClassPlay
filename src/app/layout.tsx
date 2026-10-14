@@ -31,6 +31,7 @@ import "./student-auth.css";
 import "./community.css";
 import "./community-actions.css";
 import "./public-entry.css";
+import "./account.css";
 
 export const metadata: Metadata = {
   title: "ClassPlay — Playful English practice",

@@ -21,8 +21,11 @@ export function AuthStatus() {
   if (!isSupabaseConfigured) return <span className="cloud-status local">Local mode</span>;
   if (!email) return <Link href="/auth" className="cloud-status">Sign in</Link>;
   return (
-    <button className="cloud-status connected" onClick={async () => { await getBrowserSupabaseClient()?.auth.signOut(); router.push("/"); router.refresh(); }} title={email}>
-      ● Cloud · Sign out
-    </button>
+    <>
+      <Link href="/account" className="cloud-status" title="Download or delete your data">Account</Link>
+      <button className="cloud-status connected" onClick={async () => { await getBrowserSupabaseClient()?.auth.signOut(); router.push("/"); router.refresh(); }} title={email}>
+        ● Cloud · Sign out
+      </button>
+    </>
   );
 }
