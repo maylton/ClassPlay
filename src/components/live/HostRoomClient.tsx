@@ -17,6 +17,7 @@ import {
   teamScore,
   type HostLiveQuestion,
 } from "@/lib/live/live-engine";
+import { createCoalescedTask } from "@/lib/live/live-sync";
 import {
   broadcastRoomEvent,
   finalizeLiveSession,
@@ -36,6 +37,7 @@ import { WildcardGridFinalHost } from "./WildcardGridFinalHost";
 import { WildcardGridHostStage } from "./WildcardGridHostStage";
 
 const subscribeToBrowserLocation = () => () => {};
+const HOST_REFRESH_MIN_INTERVAL_MS = 400;
 const sleep = (milliseconds: number) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
 
 export function HostRoomClient({ sessionId }: { sessionId: string }) {
@@ -75,7 +77,10 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
 
   useEffect(() => {
     const initialRefresh = window.setTimeout(() => void refresh(), 0);
-    const stopDb = subscribeHostChanges(sessionId, () => void refresh());
+    // Answers, joins and student broadcasts arrive in bursts (and broadcasts can
+    // be forged), so background refreshes are coalesced instead of run per event.
+    const backgroundRefresh = createCoalescedTask(refresh, HOST_REFRESH_MIN_INTERVAL_MS);
+    const stopDb = subscribeHostChanges(sessionId, () => backgroundRefresh.trigger());
     const channel = openLiveChannel(sessionId, `host-${sessionId}`);
     channelRef.current = channel;
     channel
@@ -83,12 +88,13 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
         const state = channel.presenceState();
         setPresenceCount(Object.values(state).flat().length);
       })
-      .on("broadcast", { event: "answer-submitted" }, () => void refresh())
+      .on("broadcast", { event: "answer-submitted" }, () => backgroundRefresh.trigger())
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") await channel.track({ role: "host", onlineAt: new Date().toISOString() });
       });
     return () => {
       window.clearTimeout(initialRefresh);
+      backgroundRefresh.stop();
       stopDb();
       void channel.untrack();
       void channel.unsubscribe();
@@ -263,11 +269,14 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       const explodedPlayer = dynamiteState.order.find((player) => player.id === dynamiteState.currentPlayerId);
       const eliminated = eliminateDynamitePlayer(dynamiteState, dynamiteState.currentPlayerId);
       setDynamiteExplosion(explodedPlayer?.name ?? "Player");
-      await send("dynamite-explosion", { playerId: dynamiteState.currentPlayerId, playerName: explodedPlayer?.name ?? "Player" });
+      // Persist the elimination before announcing it: phones re-read the room
+      // from the database when the hint arrives.
+      const explosionHint = { playerId: dynamiteState.currentPlayerId, playerName: explodedPlayer?.name ?? "Player" };
       if (eliminated.winnerId) {
         const winner = eliminated.order.find((player) => player.id === eliminated.winnerId);
         const finalSettings = { ...session.settings, dynamiteState: eliminated };
         await updateHostSession(session.id, { settings: finalSettings });
+        await send("dynamite-explosion", explosionHint);
         await sleep(900);
         await finalizeLiveSession(session.id);
         await send("final", { state: "final_results", leaderboardKind: "individual", leaderboard: [], dynamiteWinner: winner ?? null, dynamiteOrder: eliminated.order, eliminatedIds: eliminated.eliminatedIds });
@@ -278,6 +287,7 @@ export function HostRoomClient({ sessionId }: { sessionId: string }) {
       const advanced = advanceDynamiteQuestion(turnAdvanced, liveQuestionTotal);
       const interimSettings = { ...session.settings, dynamiteState: advanced.state };
       await updateHostSession(session.id, { settings: interimSettings });
+      await send("dynamite-explosion", explosionHint);
       await refresh();
       await sleep(900);
       setDynamiteExplosion(null);

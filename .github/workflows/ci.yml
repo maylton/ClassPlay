@@ -44,6 +44,12 @@ jobs:
       - name: Live engine and security contract tests
         run: npm run test:live
 
+      - name: Remediation plan regression tests
+        run: npm run test:remediation
+
+      - name: Database behaviour tests (migrations, RLS, RPCs on embedded Postgres)
+        run: npm run test:db
+
       - name: Type check
         run: npm run typecheck
 

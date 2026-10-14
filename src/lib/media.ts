@@ -46,6 +46,24 @@ export async function resolveActivityImageUrl(ref?: string): Promise<string | nu
   return data.signedUrl;
 }
 
+/**
+ * Copies another owner's stored image into `ownerId`'s folder, so a copied deck
+ * keeps its pictures even if the original author later replaces them. On any
+ * failure the original reference is kept; it stays readable through the
+ * shared-media storage policy while the copy references it.
+ */
+export async function copyActivityImage(ref: string, ownerId: string, activityId: string, itemId: string): Promise<string> {
+  if (!isStoredMediaRef(ref)) return ref;
+  const path = ref.slice(STORAGE_PREFIX.length);
+  if (path.startsWith(`${ownerId}/`)) return ref;
+  const supabase = getBrowserSupabaseClient();
+  if (!supabase) return ref;
+  const extension = path.split(".").pop()?.toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const target = `${ownerId}/${activityId}/${itemId}/${crypto.randomUUID()}.${extension}`;
+  const { error } = await supabase.storage.from(BUCKET).copy(path, target);
+  return error ? ref : `${STORAGE_PREFIX}${target}`;
+}
+
 export async function removeActivityImage(ref?: string) {
   if (!ref || !isStoredMediaRef(ref)) return;
   const supabase = getBrowserSupabaseClient();

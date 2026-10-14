@@ -20,6 +20,7 @@ function mapAttempt(row: Record<string, unknown>): AssignmentAttemptRecord {
     correct: Number(row.correct ?? 0),
     total: Number(row.total ?? 0),
     completedAt: String(row.completed_at),
+    submittedLate: row.submitted_late === true,
   };
 }
 

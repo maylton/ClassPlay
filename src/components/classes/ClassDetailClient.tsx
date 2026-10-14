@@ -8,6 +8,7 @@ import {
   createAssignment,
   deleteAssignment,
   loadTeacherClassroom,
+  readmitClassMember,
   removeClassMember,
   setClassJoining,
   type TeacherClassDetail,
@@ -43,6 +44,7 @@ export function ClassDetailClient({ classroomId }: { classroomId: string }) {
   }, [classroomId]);
 
   const activeMembers = useMemo(() => detail?.members.filter((member) => member.active) ?? [], [detail]);
+  const removedMembers = useMemo(() => detail?.members.filter((member) => !member.active) ?? [], [detail]);
   const selectedActivity = detail?.activities.find((activity) => activity.id === selectedActivityId) ?? detail?.activities[0];
 
   async function copyJoin() {
@@ -71,6 +73,11 @@ export function ClassDetailClient({ classroomId }: { classroomId: string }) {
     if (!window.confirm(`Remove ${name} from this class?`)) return;
     try { await removeClassMember(memberId); await refresh(); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Could not remove student."); }
+  }
+
+  async function readmitMember(memberId: string) {
+    try { await readmitClassMember(memberId); await refresh(); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "Could not readmit student."); }
   }
 
   async function addAssignment(event: FormEvent<HTMLFormElement>) {
@@ -154,11 +161,12 @@ export function ClassDetailClient({ classroomId }: { classroomId: string }) {
               const completedIds = new Set(attempts.map((attempt) => attempt.memberId));
               const average = attempts.length ? Math.round(attempts.reduce((sum, attempt) => sum + attempt.score, 0) / attempts.length) : 0;
               const due = assignment.dueAt ? new Date(assignment.dueAt) : null;
+              const lateCount = new Set(attempts.filter((attempt) => attempt.submittedLate).map((attempt) => attempt.memberId)).size;
               return (
                 <article className="assignment-card" key={assignment.id}>
                   <div className="assignment-card-icon"><AppIcon name={assignment.gameType ? GAME_MODE_CATALOG[assignment.gameType].icon : "collection-play"} /></div>
                   <div className="assignment-card-copy"><small>{assignment.activityTitle ?? "Activity"}</small><h3>{assignment.title}</h3><p>{assignment.instructions || (assignment.gameType ? `${GAME_MODE_CATALOG[assignment.gameType].name} assigned` : "Students can choose any enabled game mode.")}</p><div className="assignment-meta"><span><AppIcon name="calendar3" /> {due ? due.toLocaleDateString() : "No due date"}</span><span><AppIcon name="arrow-repeat" /> {assignment.attemptsLimit ? `${assignment.attemptsLimit} attempts` : "Unlimited attempts"}</span></div></div>
-                  <div className="assignment-progress"><strong>{completedIds.size}/{activeMembers.length || 0}</strong><span>completed</span><b>{attempts.length ? `${average} avg pts` : "No scores yet"}</b></div>
+                  <div className="assignment-progress"><strong>{completedIds.size}/{activeMembers.length || 0}</strong><span>completed</span><b>{attempts.length ? `${average} avg pts` : "No scores yet"}</b>{lateCount > 0 && <small className="assignment-late-count">{lateCount} late</small>}</div>
                   <div className="assignment-actions"><Link className="button button-soft button-small" href={`/assignment/${assignment.id}`}>Preview</Link><button className="text-danger" onClick={() => void removeAssignmentItem(assignment.id)}>Delete</button></div>
                 </article>
               );
@@ -176,6 +184,15 @@ export function ClassDetailClient({ classroomId }: { classroomId: string }) {
             })}
             {!activeMembers.length && <div className="class-members-empty"><AppIcon name="person-plus" /><p>Share the join link. Student names will appear here.</p></div>}
           </div>
+          {removedMembers.length > 0 && (
+            <details className="class-removed-members">
+              <summary>{removedMembers.length} removed {removedMembers.length === 1 ? "student" : "students"}</summary>
+              <p>Removed students cannot rejoin with the class key until you readmit them.</p>
+              <div className="class-member-list">
+                {removedMembers.map((member) => <div className="class-member-row removed" key={member.id}><span>{member.displayName.slice(0, 1).toUpperCase()}</span><div><strong>{member.displayName}</strong><small>Removed</small></div><button className="class-readmit-button" aria-label={`Readmit ${member.displayName}`} title="Readmit" onClick={() => void readmitMember(member.id)}><AppIcon name="person-check" /></button></div>)}
+              </div>
+            </details>
+          )}
         </aside>
       </section>
     </main>

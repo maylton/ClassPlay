@@ -5,6 +5,7 @@ import { AppIcon } from "@/components/AppIcon";
 import { ActivityImage } from "@/components/media/ActivityImage";
 import { useClassroomSettings } from "@/hooks/useClassroomSettings";
 import { playArcadeTone } from "@/lib/arcade-audio";
+import { languageLabel } from "@/lib/languages";
 import {
   buildEchoChainGame,
   buildEchoChainItems,
@@ -34,6 +35,7 @@ const DIFFICULTY_OPTIONS: { id: EchoChainDifficulty; kicker: string; icon: strin
 
 export function EchoChainGame({ activity, onComplete }: GameProps) {
   const { settings } = useClassroomSettings();
+  const language = activity.targetLanguage;
   const readyItems = useMemo(() => buildEchoChainItems(activity.items), [activity.items]);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>("loading");
   const [voiceError, setVoiceError] = useState("");
@@ -64,20 +66,20 @@ export function EchoChainGame({ activity, onComplete }: GameProps) {
     const request = voiceRequestRef.current + 1;
     voiceRequestRef.current = request;
     setVoiceStatus("loading");
-    const profile = await prepareEnglishVoice(1800);
+    const profile = await prepareEnglishVoice(1800, language);
     if (request !== voiceRequestRef.current) return;
     setVoiceStatus(profile ? "ready" : "unavailable");
-  }, []);
+  }, [language]);
 
   useEffect(() => {
     const request = voiceRequestRef.current + 1;
     voiceRequestRef.current = request;
-    void prepareEnglishVoice(1800).then((profile) => {
+    void prepareEnglishVoice(1800, language).then((profile) => {
       if (request !== voiceRequestRef.current) return;
       setVoiceStatus(profile ? "ready" : "unavailable");
     });
     return () => { voiceRequestRef.current += 1; };
-  }, []);
+  }, [language]);
 
   useEffect(() => () => {
     playRunRef.current += 1;
@@ -180,12 +182,13 @@ export function EchoChainGame({ activity, onComplete }: GameProps) {
     const spoken = await speakEnglishSequence(expectedItems.map((item) => item!.spokenText), {
       pauseMs: settings.reducedMotion ? 260 : 460,
       rate: 0.88,
+      lang: language,
       onSegmentStart: setSpeakingIndex,
     });
     if (playRun !== playRunRef.current) return;
     setSpeakingIndex(-1);
     if (!spoken) {
-      setVoiceError("The English voice stopped unexpectedly. Check this device's audio and try again.");
+      setVoiceError(`The ${languageLabel(language)} voice stopped unexpectedly. Check this device's audio and try again.`);
       setPhase("ready");
       return;
     }
@@ -212,7 +215,7 @@ export function EchoChainGame({ activity, onComplete }: GameProps) {
           {voiceStatus === "unavailable" ? (
             <div className="echo-audio-notice" role="alert">
               <span><AppIcon name="volume-mute-fill" /></span>
-              <p>Audio is not available on this device. Enable an English voice and try again.</p>
+              <p>Audio is not available on this device. Enable a {languageLabel(language)} voice and try again.</p>
               <button type="button" onClick={() => void checkVoice()}><AppIcon name="arrow-repeat" /> Try again</button>
             </div>
           ) : null}

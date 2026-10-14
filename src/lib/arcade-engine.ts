@@ -178,6 +178,7 @@ export function buildArcadeRound(
     fallbackDistractors,
     optionCount,
     random,
+    item.acceptedAnswers,
   );
 
   return {

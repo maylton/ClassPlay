@@ -17,6 +17,7 @@ export function AssignmentPlayerClient({ assignmentId }: { assignmentId: string 
   const [completion, setCompletion] = useState<{ game: GameType; score: number; correct: number; total: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [savedLate, setSavedLate] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -43,6 +44,7 @@ export function AssignmentPlayerClient({ assignmentId }: { assignmentId: string 
       const attempt = await submitSecureAssignmentAttempt({ assignment: detail.assignment, member: detail.member, game, score, correct, total });
       setDetail({ ...detail, attempts: [attempt, ...detail.attempts] });
       setSaved(true);
+      setSavedLate(attempt.submittedLate);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Your result could not be saved.");
     } finally { setSaving(false); }
@@ -66,7 +68,7 @@ export function AssignmentPlayerClient({ assignmentId }: { assignmentId: string 
     <main className={`play-screen ${mode === "space-blaster" || mode === "word-maze" ? "arcade-play-screen" : ""} assignment-play-screen`}>
       <header className="play-header"><button className="play-brand" onClick={() => { if (!detail.assignment.gameType) setMode(null); }}><b>C</b><span>ClassPlay</span></button><div className="play-title"><small>Homework · {GAME_MODE_CATALOG[mode].name}</small><strong>{detail.assignment.title}</strong></div><div className="play-header-actions"><span className="assignment-attempt-chip"><AppIcon name="arrow-repeat" /> {attemptsLeft == null ? `${attemptsUsed} attempts` : `${attemptsLeft} left`}</span><SettingsPanel compact /><Link className="button button-soft button-small" href={`/student/classes/${detail.assignment.classroomId}`}>Class</Link></div></header>
       <section className="play-canvas"><GameStage mode={mode} activity={detail.activity} runKey={runKey} onComplete={(score, correct, total) => void complete(mode, score, correct, total)} /></section>
-      {completion && <section className="assignment-complete-overlay"><div className="assignment-complete-card"><span className="assignment-complete-icon"><AppIcon name={saved ? "check2-circle" : "cloud-arrow-up"} /></span><span className="eyebrow">Assignment complete</span><h2>{completion.score.toLocaleString()} points</h2><p>{completion.correct}/{completion.total} correct{completion.total ? ` · ${Math.round((completion.correct / completion.total) * 100)}% accuracy` : ""}</p>{saving && <div className="assignment-save-state">Saving your result…</div>}{saved && <div className="assignment-save-state success"><AppIcon name="cloud-check" /> Result saved to your class.</div>}{error && <div className="student-error">{error}</div>}<div className="assignment-complete-actions">{(attemptsLeft == null || attemptsLeft > 0) && <button className="button button-primary" onClick={replay}>Play again</button>}<Link className="button button-soft" href={`/student/classes/${detail.assignment.classroomId}`}>Back to class</Link>{!detail.assignment.gameType && (attemptsLeft == null || attemptsLeft > 0) && <button className="button button-soft" onClick={() => { setCompletion(null); setMode(null); }}>Other game</button>}</div></div></section>}
+      {completion && <section className="assignment-complete-overlay"><div className="assignment-complete-card"><span className="assignment-complete-icon"><AppIcon name={saved ? "check2-circle" : "cloud-arrow-up"} /></span><span className="eyebrow">Assignment complete</span><h2>{completion.score.toLocaleString()} points</h2><p>{completion.correct}/{completion.total} correct{completion.total ? ` · ${Math.round((completion.correct / completion.total) * 100)}% accuracy` : ""}</p>{saving && <div className="assignment-save-state">Saving your result…</div>}{saved && <div className="assignment-save-state success"><AppIcon name="cloud-check" /> {savedLate ? "Result saved — submitted after the due date." : "Result saved to your class."}</div>}{error && <div className="student-error">{error}</div>}<div className="assignment-complete-actions">{(attemptsLeft == null || attemptsLeft > 0) && <button className="button button-primary" onClick={replay}>Play again</button>}<Link className="button button-soft" href={`/student/classes/${detail.assignment.classroomId}`}>Back to class</Link>{!detail.assignment.gameType && (attemptsLeft == null || attemptsLeft > 0) && <button className="button button-soft" onClick={() => { setCompletion(null); setMode(null); }}>Other game</button>}</div></div></section>}
     </main>
   );
 }

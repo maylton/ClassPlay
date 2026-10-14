@@ -76,43 +76,57 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
-export function normalizeWordHuntTarget(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toUpperCase()
-    .replace(/[^A-Z0-9]/g, "");
+/**
+ * Uppercase letters/digits of an answer, in any script. Latin accents are
+ * dropped unless the activity requires them; combining marks of other scripts
+ * (e.g. Japanese dakuten) are recomposed with their base letter.
+ */
+export function normalizeWordHuntTarget(value: string, strictAccents = false) {
+  const base = strictAccents
+    ? value.normalize("NFC")
+    : value.normalize("NFD").replace(/[̀-ͯ]/g, "").normalize("NFC");
+  return base.toLocaleUpperCase().replace(/[^\p{L}\p{M}\p{N}]/gu, "");
+}
+
+const graphemeSegmenter = typeof Intl !== "undefined" && "Segmenter" in Intl
+  ? new Intl.Segmenter(undefined, { granularity: "grapheme" })
+  : null;
+
+/** Visible letters of a target (one grid cell each), not UTF-16 code units. */
+export function wordHuntLetters(value: string) {
+  return graphemeSegmenter ? Array.from(graphemeSegmenter.segment(value), (part) => part.segment) : Array.from(value);
 }
 
 export function chooseWordHuntSource(kind: ActivityKind, quizCount: number, gapCount: number) {
   return chooseQuizGapArcadeSource(kind, quizCount, gapCount, WORD_HUNT_MIN_ITEMS);
 }
 
-function candidateRounds(items: readonly ActivityItem[], source: QuizGapArcadeSource, random: () => number) {
+function candidateRounds(items: readonly ActivityItem[], source: QuizGapArcadeSource, random: () => number, strictAccents: boolean) {
   const seen = new Set<string>();
   return buildQuizGapArcadeRounds(items, source, 3, random)
     .map((round, order) => ({
       ...round,
       order,
-      target: normalizeWordHuntTarget(round.correctAnswer),
+      target: normalizeWordHuntTarget(round.correctAnswer, strictAccents),
     }))
+    .map((round) => ({ ...round, letters: wordHuntLetters(round.target) }))
     .filter((round) => {
-      if (round.target.length < 3 || round.target.length > WORD_HUNT_MAX_WORD_LENGTH || seen.has(round.target)) return false;
+      if (round.letters.length < 3 || round.letters.length > WORD_HUNT_MAX_WORD_LENGTH || seen.has(round.target)) return false;
       seen.add(round.target);
       return true;
     })
     .slice(0, WORD_HUNT_MAX_TARGETS);
 }
 
-function cellsForPlacement(word: string, size: number, directions: readonly WordHuntDirection[], random: () => number) {
+function cellsForPlacement(length: number, size: number, directions: readonly WordHuntDirection[], random: () => number) {
   for (let attempt = 0; attempt < 120; attempt += 1) {
     const [dr, dc] = directions[Math.floor(random() * directions.length)] ?? directions[0] ?? [0, 1];
     const row = Math.floor(random() * size);
     const col = Math.floor(random() * size);
-    const endRow = row + dr * (word.length - 1);
-    const endCol = col + dc * (word.length - 1);
+    const endRow = row + dr * (length - 1);
+    const endCol = col + dc * (length - 1);
     if (endRow < 0 || endRow >= size || endCol < 0 || endCol >= size) continue;
-    return Array.from({ length: word.length }, (_, index) => ({ row: row + dr * index, col: col + dc * index }));
+    return Array.from({ length }, (_, index) => ({ row: row + dr * index, col: col + dc * index }));
   }
   return null;
 }
@@ -122,29 +136,30 @@ export function buildWordHuntBoard(
   source: QuizGapArcadeSource,
   difficulty: WordHuntDifficulty = "challenge",
   random: () => number = Math.random,
+  { strictAccents = false }: { strictAccents?: boolean } = {},
 ): WordHuntBoard | null {
-  const candidates = candidateRounds(items, source, random);
+  const candidates = candidateRounds(items, source, random, strictAccents);
   if (candidates.length < WORD_HUNT_MIN_ITEMS) return null;
 
-  const longest = Math.max(...candidates.map((round) => round.target.length));
+  const longest = Math.max(...candidates.map((round) => round.letters.length));
   const size = clamp(Math.max(9, longest + 1), 9, 12);
   const letters = Array.from({ length: size }, () => Array<string>(size).fill(""));
   const placed: WordHuntTarget[] = [];
   const directions = WORD_HUNT_DIFFICULTIES[difficulty].directions;
 
-  for (const round of [...candidates].sort((a, b) => b.target.length - a.target.length)) {
+  for (const round of [...candidates].sort((a, b) => b.letters.length - a.letters.length)) {
     let successfulPath: WordHuntCell[] | null = null;
     for (let attempt = 0; attempt < 140 && !successfulPath; attempt += 1) {
-      const path = cellsForPlacement(round.target, size, directions, random);
+      const path = cellsForPlacement(round.letters.length, size, directions, random);
       if (!path) continue;
       const compatible = path.every((cell, index) => {
         const current = letters[cell.row]?.[cell.col] ?? "";
-        return !current || current === round.target[index];
+        return !current || current === round.letters[index];
       });
       if (compatible) successfulPath = path;
     }
     if (!successfulPath) continue;
-    successfulPath.forEach((cell, index) => { letters[cell.row][cell.col] = round.target[index] ?? ""; });
+    successfulPath.forEach((cell, index) => { letters[cell.row][cell.col] = round.letters[index] ?? ""; });
     placed.push({
       itemId: round.itemId,
       prompt: round.prompt,
@@ -156,9 +171,12 @@ export function buildWordHuntBoard(
   }
 
   if (placed.length < WORD_HUNT_MIN_ITEMS) return null;
+  // Fill with A–Z for Latin answers; otherwise with letters from the answers' own script.
+  const usedLetters = Array.from(new Set(placed.flatMap((target) => wordHuntLetters(target.target))));
+  const filler = usedLetters.every((letter) => /^[A-Z0-9]$/.test(letter)) ? ALPHABET.split("") : usedLetters;
   for (let row = 0; row < size; row += 1) {
     for (let col = 0; col < size; col += 1) {
-      if (!letters[row][col]) letters[row][col] = ALPHABET[Math.floor(random() * ALPHABET.length)] ?? "A";
+      if (!letters[row][col]) letters[row][col] = filler[Math.floor(random() * filler.length)] ?? "A";
     }
   }
 

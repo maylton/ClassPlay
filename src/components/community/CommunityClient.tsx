@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
+import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
 import { GAME_MODE_CATALOG, GAME_MODE_ORDER } from "@/lib/game-catalog";
+import { languageLabel } from "@/lib/languages";
 import { copyCommunityActivityToLibrary } from "@/lib/repositories/community-library-repository";
 import {
   emptyCommunityTeacherState,
@@ -158,15 +160,16 @@ export function CommunityClient() {
 }
 
 function CommunityCard({ activity, teacher, ownActivity, copying, onCopy }: { activity: CommunityActivity; teacher: boolean; ownActivity: boolean; copying: boolean; onCopy: () => void }) {
+  const coverUrl = useResolvedImageUrl(activity.coverImageUrl);
   return (
     <article className="community-card">
-      <div className={`community-cover ${activity.coverImageUrl ? "has-image" : ""}`} style={activity.coverImageUrl ? { backgroundImage: `linear-gradient(180deg, rgba(27,20,73,.04), rgba(27,20,73,.76)), url("${activity.coverImageUrl}")` } : undefined}>
+      <div className={`community-cover ${coverUrl ? "has-image" : ""}`} style={coverUrl ? { backgroundImage: `linear-gradient(180deg, rgba(27,20,73,.04), rgba(27,20,73,.76)), url("${coverUrl}")` } : undefined}>
         <span className="community-kind">{activity.kind}</span>
-        {!activity.coverImageUrl && <span className="community-cover-icon"><AppIcon name={activity.kind === "vocabulary" ? "type" : activity.kind === "grammar" ? "braces" : "layers"} /></span>}
+        {!coverUrl && <span className="community-cover-icon"><AppIcon name={activity.kind === "vocabulary" ? "type" : activity.kind === "grammar" ? "braces" : "layers"} /></span>}
         <div><small>{activity.topic}</small><strong>{activity.grade}</strong></div>
       </div>
       <div className="community-card-body">
-        <div className="community-card-meta"><span>{activity.level}</span><span>{activity.itemCount} items</span>{activity.aiGenerated && <span title="AI-generated content"><AppIcon name="stars" /> AI</span>}</div>
+        <div className="community-card-meta"><span>{languageLabel(activity.targetLanguage)}</span><span>{activity.level}</span><span>{activity.itemCount} items</span>{activity.aiGenerated && <span title="AI-generated content"><AppIcon name="stars" /> AI</span>}</div>
         <h3>{activity.title}</h3>
         <p>{activity.description}</p>
         <div className="community-author"><span>{activity.authorName.slice(0, 1).toUpperCase()}</span><div><small>Shared by</small><strong>{activity.authorName}</strong></div></div>

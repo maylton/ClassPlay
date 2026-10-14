@@ -40,11 +40,13 @@ export function buildChoiceOptions(
   fallbackDistractors: readonly string[] = [],
   optionCount = 4,
   random: () => number = Math.random,
+  alsoCorrect: readonly string[] = [],
 ) {
   const correct = correctAnswer.trim();
   if (!correct) return [];
   const correctKey = normalizeAnswer(correct);
-  const seen = new Set([correctKey]);
+  // Alternative correct answers must never be offered as "wrong" choices.
+  const seen = new Set([correctKey, ...alsoCorrect.map(normalizeAnswer).filter(Boolean)]);
 
   function uniqueCandidates(values: readonly string[]) {
     const result: string[] = [];
@@ -98,13 +100,13 @@ export function shouldUseCuratedQuizDistractors(item: ActivityItem) {
 export function quizOptions(item: ActivityItem, pool: readonly ActivityItem[] = [], random: () => number = Math.random) {
   const fallback = pool.filter((candidate) => candidate.id !== item.id).map((candidate) => candidate.answer);
   const curated = shouldUseCuratedQuizDistractors(item) ? (item.distractors ?? []) : [];
-  return buildChoiceOptions(item.answer, curated, fallback, 4, random);
+  return buildChoiceOptions(item.answer, curated, fallback, 4, random, item.acceptedAnswers);
 }
 
 export function gapOptions(item: ActivityItem, pool: readonly ActivityItem[] = [], random: () => number = Math.random) {
   const correct = sentenceGapAnswer(item);
   const fallback = pool.filter((candidate) => candidate.id !== item.id).map(sentenceGapAnswer);
-  return buildChoiceOptions(correct, item.distractors ?? [], fallback, 4, random);
+  return buildChoiceOptions(correct, item.distractors ?? [], fallback, 4, random, item.acceptedAnswers);
 }
 
 function singleGapParts(value?: string) {

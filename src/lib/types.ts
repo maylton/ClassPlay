@@ -48,6 +48,8 @@ export interface ActivityItem {
   distractors?: string[];
   sentenceParts?: string[];
   gapSentence?: string;
+  /** Other answers that also count as correct (and must never be offered as distractors). */
+  acceptedAnswers?: string[];
 }
 
 export interface ActivitySet {
@@ -63,6 +65,10 @@ export interface ActivitySet {
   ownerId?: string;
   sourceLocalId?: string;
   aiGenerated?: boolean;
+  /** Language being taught (BCP-47 primary tag such as "en", "es", "ja"). Defaults to English. */
+  targetLanguage?: string;
+  /** When true, typed answers must match accents exactly ("está" ≠ "esta"). */
+  strictAccents?: boolean;
   items: ActivityItem[];
   enabledGames: GameType[];
   createdAt: string;
@@ -196,6 +202,8 @@ export interface LiveQuestion {
   imageUrl?: string;
   options: string[];
   startedAt: string;
+  /** Activity language, so phones read prompts aloud with the right voice. */
+  language?: string;
   sourceMode?: "quiz" | "gap-fill" | "prompt-answer";
   dynamiteTurnId?: string;
   activePlayerId?: string;
@@ -245,6 +253,9 @@ export interface ResumeRoomResult {
   player: LivePlayer;
   team?: Pick<Team, "id" | "name" | "color"> | null;
   revealedAnswer?: string | null;
+  /** Authoritative final ranking (only filled once the room reaches final_results). */
+  leaderboard?: { id: string; name: string; score: number }[];
+  leaderboardKind?: "individual" | "team";
 }
 
 export interface LiveAnswerResult {

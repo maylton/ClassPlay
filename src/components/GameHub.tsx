@@ -16,6 +16,7 @@ import { GAME_MODE_CATALOG, isArcadeMode } from "@/lib/game-catalog";
 import type { ActivitySet, GameType } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
 import { GAME_COMPONENTS } from "./games/game-registry";
+import { LeaderboardModerationPanel } from "./leaderboard/LeaderboardModerationPanel";
 import { PracticeLeaderboard } from "./leaderboard/PracticeLeaderboard";
 import { SettingsPanel } from "./settings/SettingsPanel";
 
@@ -31,6 +32,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
   const [shareMessage, setShareMessage] = useState("");
   const [practiceCompletion, setPracticeCompletion] = useState<PracticeCompletion | null>(null);
   const [runKey, setRunKey] = useState(0);
+  const [moderating, setModerating] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -203,6 +205,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
             <div><b><AppIcon name="send" /> Student practice link</b><span>{activity.visibility === "unlisted" ? "Anyone with the link can practise and join each game's Top 10." : "Create an unlisted link students can use for independent practice."}</span>{shareMessage && <small className="practice-share-message">{shareMessage}</small>}</div>
             <div className="practice-share-actions">
               <button className="button button-primary" disabled={sharing} onClick={() => void sharePracticeLink()}>{sharing ? "Working…" : <>{activity.visibility === "unlisted" ? "Copy link" : "Create link"} <AppIcon name="link-45deg" /></>}</button>
+              {activity.visibility === "unlisted" && <button className="button button-soft" disabled={sharing} onClick={() => setModerating(true)}><AppIcon name="shield-check" /> Moderate scores</button>}
               {activity.visibility === "unlisted" && <button className="button button-soft" disabled={sharing} onClick={() => void stopSharingPractice()}>Turn off</button>}
             </div>
           </div>
@@ -226,6 +229,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
           })}</div> : <Link href={`/edit/${activity.id}`} className="button button-soft">Edit content to unlock variants <AppIcon name="arrow-right" /></Link>}
         </section>
       </section>
+      {moderating && <LeaderboardModerationPanel activityId={activity.id} onClose={() => setModerating(false)} />}
     </main>
   );
 }

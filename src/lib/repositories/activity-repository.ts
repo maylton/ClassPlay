@@ -9,6 +9,8 @@ import {
   getActivity as getLocalActivity,
   saveActivity as saveLocalActivity,
 } from "@/lib/storage";
+import { DEFAULT_LANGUAGE } from "@/lib/languages";
+import { copyActivityImage } from "@/lib/media";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import type { ActivityItem, ActivitySet, GameType } from "@/lib/types";
 
@@ -39,6 +41,7 @@ function mapCloudActivity(row: Record<string, unknown>): ActivitySet {
     gapSentence: item.gap_sentence ? String(item.gap_sentence) : undefined,
     distractors: Array.isArray(item.distractors) ? item.distractors.map(String) : [],
     sentenceParts: Array.isArray(item.sentence_parts) ? item.sentence_parts.map(String) : [],
+    acceptedAnswers: Array.isArray(item.accepted_answers) ? item.accepted_answers.map(String) : [],
   }));
 
   return {
@@ -53,6 +56,8 @@ function mapCloudActivity(row: Record<string, unknown>): ActivitySet {
     grade: String(row.grade ?? "Class"),
     kind: (row.kind ?? "mixed") as ActivitySet["kind"],
     visibility: (row.visibility ?? "private") as ActivitySet["visibility"],
+    targetLanguage: typeof row.target_language === "string" && row.target_language ? row.target_language : DEFAULT_LANGUAGE,
+    strictAccents: row.strict_accents === true,
     items,
     // Older decks may have been created before pedagogical compatibility was
     // introduced. Filter them at read time so students never see a mode that
@@ -63,19 +68,24 @@ function mapCloudActivity(row: Record<string, unknown>): ActivitySet {
   };
 }
 
-const SELECT_GRAPH = `
-  id, owner_id, source_local_id, title, description, subject, topic, cefr_level, grade, kind, visibility, created_at, updated_at,
-  activity_items ( id, sort_order, prompt, answer, hint, image_url, example, gap_sentence, distractors, sentence_parts ),
-  activity_games ( game_type, settings )
-`;
+// `*` keeps reads working whether or not the newest columns have been migrated yet.
+const SELECT_GRAPH = `*, activity_items ( * ), activity_games ( game_type, settings )`;
+
+/** PostgREST error when an RPC is missing, i.e. its migration has not been applied yet. */
+function isMissingRpc(error: { code?: string } | null) {
+  return error?.code === "PGRST202";
+}
 
 export async function listActivities(): Promise<ActivitySet[]> {
   const context = await cloudContext();
   if (!context) return getLocalActivities();
 
+  // RLS also exposes other teachers' unlisted practice activities and assigned
+  // activities, so the library must scope itself to the signed-in owner.
   const { data, error } = await context.supabase
     .from("activity_sets")
     .select(SELECT_GRAPH)
+    .eq("owner_id", context.user.id)
     .order("updated_at", { ascending: false });
   if (error) throw error;
 
@@ -95,22 +105,22 @@ export async function loadActivity(id: string): Promise<ActivitySet | undefined>
 }
 
 /**
- * Read-only loader for the student practice route. It intentionally does not
- * require a teacher session: RLS only exposes activities whose visibility is
- * unlisted, including their items and enabled game modes.
+ * Read-only loader for the student practice route. Practice links are served
+ * by an RPC that needs the exact activity ID, so unlisted decks cannot be
+ * enumerated through the API, and it never returns the owner's ID.
  */
 export async function loadPracticeActivity(id: string): Promise<ActivitySet | undefined> {
   const supabase = getBrowserSupabaseClient();
   if (!supabase || !isUuid(id)) return undefined;
 
-  const { data, error } = await supabase
-    .from("activity_sets")
-    .select(SELECT_GRAPH)
-    .eq("id", id)
-    .eq("visibility", "unlisted")
-    .maybeSingle();
+  const { data, error } = await supabase.rpc("get_practice_activity", { p_activity_id: id });
+  if (isMissingRpc(error)) {
+    const legacy = await supabase.from("activity_sets").select(SELECT_GRAPH).eq("id", id).eq("visibility", "unlisted").maybeSingle();
+    if (legacy.error) throw legacy.error;
+    return legacy.data ? mapCloudActivity(legacy.data as unknown as Record<string, unknown>) : undefined;
+  }
   if (error) throw error;
-  return data ? mapCloudActivity(data as unknown as Record<string, unknown>) : undefined;
+  return data ? mapCloudActivity(data as Record<string, unknown>) : undefined;
 }
 
 async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: string): Promise<ActivitySet> {
@@ -133,10 +143,61 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
   }
   if (!id) id = crypto.randomUUID();
 
+  const items = activity.items.map((item) => ({ ...item, id: isUuid(item.id) ? item.id : crypto.randomUUID() }));
+  const smartGames = compatibleEnabledGames(activity.items, activity.enabledGames);
+
+  // One transactional call: a failure can no longer leave a half-saved deck.
+  const { error: rpcError } = await supabase.rpc("save_activity", {
+    p_activity: {
+      id,
+      source_local_id: resolvedSourceLocalId ?? null,
+      title: activity.title,
+      description: activity.description,
+      subject: activity.subject,
+      topic: activity.topic,
+      cefr_level: activity.level,
+      grade: activity.grade,
+      kind: activity.kind,
+      visibility: activity.visibility ?? "private",
+      target_language: activity.targetLanguage ?? DEFAULT_LANGUAGE,
+      strict_accents: activity.strictAccents ?? false,
+      created_at: activity.createdAt || new Date().toISOString(),
+      items: items.map((item) => ({
+        id: item.id,
+        prompt: item.prompt,
+        answer: item.answer,
+        hint: item.hint || null,
+        image_url: item.imageUrl || null,
+        example: item.example || null,
+        gap_sentence: item.gapSentence || null,
+        distractors: item.distractors ?? [],
+        sentence_parts: item.sentenceParts ?? [],
+        accepted_answers: item.acceptedAnswers ?? [],
+      })),
+      games: smartGames,
+    },
+  });
+  if (isMissingRpc(rpcError)) await legacyPersist(supabase, user.id, id, resolvedSourceLocalId, { ...activity, items }, smartGames);
+  else if (rpcError) throw rpcError;
+
+  const saved = await loadActivity(id);
+  if (!saved) throw new Error("Activity saved but could not be reloaded.");
+  return saved;
+}
+
+/** Pre-0025 multi-request save, used only until the save_activity migration is applied. */
+async function legacyPersist(
+  supabase: NonNullable<ReturnType<typeof getBrowserSupabaseClient>>,
+  ownerId: string,
+  id: string,
+  resolvedSourceLocalId: string | undefined,
+  activity: ActivitySet,
+  smartGames: GameType[],
+) {
   const now = new Date().toISOString();
   const { error: setError } = await supabase.from("activity_sets").upsert({
     id,
-    owner_id: user.id,
+    owner_id: ownerId,
     source_local_id: resolvedSourceLocalId ?? null,
     title: activity.title,
     description: activity.description,
@@ -152,7 +213,7 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
   if (setError) throw setError;
 
   const itemPayload = activity.items.map((item, index) => ({
-    id: isUuid(item.id) ? item.id : crypto.randomUUID(),
+    id: item.id,
     activity_set_id: id,
     sort_order: index,
     prompt: item.prompt,
@@ -182,7 +243,6 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
     if (error) throw error;
   }
 
-  const smartGames = compatibleEnabledGames(activity.items, activity.enabledGames);
   const gamePayload = smartGames.map((game) => ({ activity_set_id: id, game_type: game, settings: {} }));
   if (gamePayload.length) {
     const { error } = await supabase.from("activity_games").upsert(gamePayload, { onConflict: "activity_set_id,game_type" });
@@ -200,10 +260,6 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
     const { error } = await supabase.from("activity_games").delete().eq("activity_set_id", id).in("game_type", staleGames);
     if (error) throw error;
   }
-
-  const saved = await loadActivity(id);
-  if (!saved) throw new Error("Activity saved but could not be reloaded.");
-  return saved;
 }
 
 export async function saveActivity(activity: ActivitySet): Promise<ActivitySet> {
@@ -232,17 +288,25 @@ export async function cloneActivity(id: string): Promise<ActivitySet | undefined
   const source = await loadActivity(id);
   if (!source) return undefined;
   const now = new Date().toISOString();
+  const copyId = crypto.randomUUID();
   const copy: ActivitySet = {
     ...source,
-    id: crypto.randomUUID(),
+    id: copyId,
     ownerId: context.user.id,
     sourceLocalId: undefined,
     title: `${source.title} (Copy)`,
-    items: source.items.map((item) => ({ ...item, id: crypto.randomUUID() })),
+    items: await adoptImages(source.items.map((item) => ({ ...item, id: crypto.randomUUID() })), context.user.id, copyId),
     createdAt: now,
     updatedAt: now,
   };
   return persistCloudActivity(copy);
+}
+
+/** Copies images a deck borrows from another owner into the new owner's storage folder. */
+function adoptImages(items: ActivityItem[], ownerId: string, activityId: string) {
+  return Promise.all(items.map(async (item) => item.imageUrl
+    ? { ...item, imageUrl: await copyActivityImage(item.imageUrl, ownerId, activityId, item.id) }
+    : item));
 }
 
 export interface MigrationReport {
@@ -301,11 +365,12 @@ export async function ensureCloudActivity(activity: ActivitySet): Promise<Activi
     if (existing) return existing;
   }
 
+  const copyId = crypto.randomUUID();
   return persistCloudActivity({
     ...activity,
-    id: crypto.randomUUID(),
+    id: copyId,
     sourceLocalId: sourceId,
-    items: activity.items.map((item) => ({ ...item, id: crypto.randomUUID() })),
+    items: await adoptImages(activity.items.map((item) => ({ ...item, id: crypto.randomUUID() })), context.user.id, copyId),
   }, sourceId);
 }
 

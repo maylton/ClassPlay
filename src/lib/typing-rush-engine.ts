@@ -31,27 +31,42 @@ export function buildTypingRushRounds(
   }));
 }
 
-export function normalizeTypedAnswer(value: string) {
-  return value
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
+export type TypedAnswerOptions = {
+  /** Keep accents significant ("está" ≠ "esta"). */
+  strictAccents?: boolean;
+  /** Other answers that also count as correct. */
+  acceptedAnswers?: readonly string[];
+};
+
+/**
+ * Case-, punctuation- and spacing-insensitive form of a typed answer. Works for
+ * any script: letters (\p{L}) and combining marks (\p{M}, e.g. Japanese dakuten
+ * or Devanagari vowel signs) are kept; only Latin diacritics are dropped, and
+ * only when accents are not strict.
+ */
+export function normalizeTypedAnswer(value: string, strictAccents = false) {
+  const composed = strictAccents ? value.normalize("NFC") : value.normalize("NFKD").replace(/[̀-ͯ]/g, "");
+  return composed
     .toLocaleLowerCase()
-    .replace(/[’']/g, "")
+    .replace(/[’'ʼ`]/g, "")
     .replace(/[-–—]/g, " ")
-    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
 
-export function typingRushIsCorrect(input: string, answer: string) {
-  const normalizedInput = normalizeTypedAnswer(input);
-  const normalizedAnswer = normalizeTypedAnswer(answer);
-  return Boolean(normalizedInput) && normalizedInput === normalizedAnswer;
+function answerCandidates(answer: string, options: TypedAnswerOptions) {
+  return [answer, ...(options.acceptedAnswers ?? [])].filter((candidate) => candidate.trim());
 }
 
-function levenshtein(left: string, right: string) {
-  const a = normalizeTypedAnswer(left);
-  const b = normalizeTypedAnswer(right);
+export function typingRushIsCorrect(input: string, answer: string, options: TypedAnswerOptions = {}) {
+  const normalizedInput = normalizeTypedAnswer(input, options.strictAccents);
+  return Boolean(normalizedInput) && answerCandidates(answer, options).some((candidate) => normalizeTypedAnswer(candidate, options.strictAccents) === normalizedInput);
+}
+
+function levenshtein(left: string, right: string, strictAccents = false) {
+  const a = normalizeTypedAnswer(left, strictAccents);
+  const b = normalizeTypedAnswer(right, strictAccents);
   if (!a) return b.length;
   if (!b) return a.length;
   const previous = Array.from({ length: b.length + 1 }, (_, index) => index);
@@ -70,11 +85,14 @@ function levenshtein(left: string, right: string) {
   return previous[b.length] ?? 0;
 }
 
-export function typingRushIsNearMiss(input: string, answer: string) {
-  const normalized = normalizeTypedAnswer(answer);
-  if (normalized.length < 4 || typingRushIsCorrect(input, answer)) return false;
-  const allowed = normalized.length >= 10 ? 2 : 1;
-  return levenshtein(input, answer) <= allowed;
+export function typingRushIsNearMiss(input: string, answer: string, options: TypedAnswerOptions = {}) {
+  if (typingRushIsCorrect(input, answer, options)) return false;
+  return answerCandidates(answer, options).some((candidate) => {
+    const normalized = normalizeTypedAnswer(candidate, options.strictAccents);
+    if (normalized.length < 4) return false;
+    const allowed = normalized.length >= 10 ? 2 : 1;
+    return levenshtein(input, candidate, options.strictAccents) <= allowed;
+  });
 }
 
 export function typingRushTimePercent(elapsedMs: number) {

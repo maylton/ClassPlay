@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
 import { getPlayableItemsForMode } from "@/lib/activity-intelligence";
 import { shuffle } from "@/lib/game-engine";
+import { languageLabel } from "@/lib/languages";
 import type { ActivityItem } from "@/lib/types";
 import type { GameProps } from "./GameTypes";
 import { CompletionCard } from "./CompletionCard";
@@ -89,15 +90,16 @@ export function MatchingGame({ activity, onComplete }: GameProps) {
 
     if (isLexicalActivity) {
       const definitionFirst = averageLength(playableItems, "prompt") > averageLength(playableItems, "answer");
+      const language = languageLabel(activity.targetLanguage);
       return definitionFirst
         ? {
-            instruction: "Connect each meaning or clue to the English expression",
+            instruction: `Connect each meaning or clue to the ${language} expression`,
             leftLabel: "MEANING / CLUE",
-            rightLabel: "ENGLISH",
+            rightLabel: language.toUpperCase(),
           }
         : {
-            instruction: "Connect each English expression to its meaning",
-            leftLabel: "ENGLISH",
+            instruction: `Connect each ${language} expression to its meaning`,
+            leftLabel: language.toUpperCase(),
             rightLabel: "MEANING",
           };
     }
@@ -115,7 +117,7 @@ export function MatchingGame({ activity, onComplete }: GameProps) {
       leftLabel: "CLUE",
       rightLabel: "ANSWER",
     };
-  }, [activity.kind, activity.title, activity.topic, playableItems]);
+  }, [activity.kind, activity.targetLanguage, activity.title, activity.topic, playableItems]);
 
   const [left, setLeft] = useState(() => shuffle(playableItems));
   const [right, setRight] = useState(() => shuffle(playableItems));
