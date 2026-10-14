@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { AppIcon } from "@/components/AppIcon";
+import { GameIcon } from "@/components/GameIcon";
 import { useResolvedImageUrl } from "@/hooks/useResolvedImageUrl";
 import { GAME_MODE_CATALOG, GAME_MODE_ORDER } from "@/lib/game-catalog";
 import { languageLabel } from "@/lib/languages";
@@ -107,74 +108,93 @@ export function CommunityClient() {
     } finally { setCopyingId(null); }
   }
 
+
+  const filtersActive = Boolean(search || grade || level || mode);
+
   return (
-    <main className="community-screen">
-      <header className="community-header">
-        <Link href="/" className="community-brand"><b>C</b><span>ClassPlay</span></Link>
-        <nav><Link className="active" href="/community">Community</Link><Link href="/class/join">Join class</Link><Link href="/student">Student</Link><Link href="/dashboard">Teacher workspace</Link></nav>
+    <div className="community-screen cp-community">
+      <header className="cp-landing-nav">
+        <Link className="brand" href="/" aria-label="ClassPlay home"><span className="brand-mark">C</span><span>ClassPlay</span></Link>
+        <nav aria-label="Public navigation">
+          <Link className="active" href="/community" aria-current="page">Community</Link>
+          <Link href="/class/join">Join a class</Link>
+          <Link href="/student">My classes</Link>
+          <Link className="button button-soft button-small" href="/dashboard">Teacher workspace</Link>
+        </nav>
       </header>
 
-      <section className="community-hero">
-        <div><span className="eyebrow">ClassPlay Community</span><h1>Find something.<br /><em>Start playing.</em></h1><p>Free English activities shared by teachers. Choose a set, pick a game mode, and play instantly.</p></div>
-        <div className="community-hero-art" aria-hidden="true"><span><AppIcon name="controller" /></span><b>FREE TO PLAY</b><i><AppIcon name="stars" /></i></div>
-      </section>
+      <main className="cp-page">
+        <div className="cp-page-head">
+          <div>
+            <span className="eyebrow">Community</span>
+            <h1>Free games shared by teachers</h1>
+            <p>Pick an activity, choose a game and play right away. No account needed.</p>
+          </div>
+        </div>
 
-      <section className="community-toolbar">
-        <label className="community-search"><AppIcon name="search" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search topic, activity or teacher…" /></label>
-        <select value={grade} onChange={(event) => setGrade(event.target.value)}><option value="">All grades</option>{grades.map((item) => <option value={item} key={item}>{item}</option>)}</select>
-        <select value={level} onChange={(event) => setLevel(event.target.value)}><option value="">All levels</option>{levels.map((item) => <option value={item} key={item}>{item}</option>)}</select>
-        <select value={mode} onChange={(event) => setMode(event.target.value as GameType | "")}><option value="">Any game mode</option>{GAME_MODE_ORDER.map((game) => <option value={game} key={game}>{GAME_MODE_CATALOG[game].name}</option>)}</select>
-        {(search || grade || level || mode) && <button className="community-clear" onClick={() => { setSearch(""); setGrade(""); setLevel(""); setMode(""); }}>Clear filters</button>}
-      </section>
+        <div className="cp-toolbar">
+          <label className="cp-search"><AppIcon name="search" /><input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search topic, activity or teacher" aria-label="Search activities" /></label>
+          <select className="cp-select" value={grade} onChange={(event) => setGrade(event.target.value)} aria-label="Grade"><option value="">All grades</option>{grades.map((item) => <option value={item} key={item}>{item}</option>)}</select>
+          <select className="cp-select" value={level} onChange={(event) => setLevel(event.target.value)} aria-label="Level"><option value="">All levels</option>{levels.map((item) => <option value={item} key={item}>{item}</option>)}</select>
+          <select className="cp-select" value={mode} onChange={(event) => setMode(event.target.value as GameType | "")} aria-label="Game mode"><option value="">Any game mode</option>{GAME_MODE_ORDER.map((game) => <option value={game} key={game}>{GAME_MODE_CATALOG[game].name}</option>)}</select>
+          {filtersActive && <button className="cp-link-button" onClick={() => { setSearch(""); setGrade(""); setLevel(""); setMode(""); }}>Clear filters</button>}
+        </div>
 
-      {teacherState.teacher && (
-        <section className="community-teacher-panel">
-          <div><span><AppIcon name="globe2" /></span><div><small>TEACHER TOOLS</small><strong>Share your Library with the Community.</strong><p>Publishing makes an activity discoverable here while keeping the same practice link and leaderboard.</p></div></div>
-          <button className="button button-dark" onClick={() => setManageOpen((value) => !value)}>{manageOpen ? "Close manager" : "Manage my activities"} <AppIcon name={manageOpen ? "chevron-up" : "chevron-down"} /></button>
-        </section>
-      )}
+        {teacherState.teacher && (
+          <div className="cp-banner">
+            <span className="cp-game-icon tone-mint"><AppIcon name="globe2" /></span>
+            <div><b>Share your activities here</b><p>Publishing makes an activity discoverable while keeping its practice link and leaderboard.</p></div>
+            <button className="button button-soft button-small" onClick={() => setManageOpen((value) => !value)}>{manageOpen ? "Close" : "Manage my activities"} <AppIcon name={manageOpen ? "chevron-up" : "chevron-down"} /></button>
+          </div>
+        )}
 
-      {manageOpen && teacherState.teacher && (
-        <section className="community-publish-panel">
-          <div className="community-section-title"><div><span className="eyebrow">My Library</span><h2>Choose what the Community can discover.</h2></div><span>{teacherState.library.length} activities</span></div>
-          <div className="community-publish-list">
+        {manageOpen && teacherState.teacher && (
+          <section className="cp-rows" aria-label="My Library">
             {teacherState.library.map((activity) => {
               const published = teacherState.publishedIds.has(activity.id);
-              return <article key={activity.id}><div><strong>{activity.title}</strong><span>{activity.topic} · {activity.grade} · {activity.enabledGames.length} modes</span></div>{published ? <button className="button button-soft button-small" disabled={workingId === activity.id} onClick={() => void remove(activity.id)}>{workingId === activity.id ? "Working…" : "Remove from Community"}</button> : <button className="button button-primary button-small" disabled={workingId === activity.id} onClick={() => void publish(activity.id)}>{workingId === activity.id ? "Publishing…" : <>Publish <AppIcon name="globe2" /></>}</button>}</article>;
+              return (
+                <div className="cp-row" key={activity.id}>
+                  <div><b>{activity.title}</b><small>{activity.topic} · {activity.grade} · {activity.enabledGames.length} modes</small></div>
+                  {published
+                    ? <button className="button button-soft button-small" disabled={workingId === activity.id} onClick={() => void remove(activity.id)}>{workingId === activity.id ? "Working…" : "Remove from Community"}</button>
+                    : <button className="button button-primary button-small" disabled={workingId === activity.id} onClick={() => void publish(activity.id)}>{workingId === activity.id ? "Publishing…" : <><AppIcon name="globe2" /> Publish</>}</button>}
+                </div>
+              );
             })}
-            {!teacherState.library.length && <div className="community-empty compact">Create an activity in your Library first.</div>}
-          </div>
+            {!teacherState.library.length && <p className="cp-muted-note">Create an activity in your Library first.</p>}
+          </section>
+        )}
+
+        {notice && <div className="cp-banner"><AppIcon name="check2-circle" /> {notice}</div>}
+        {error && <div className="alert-error">{error}</div>}
+
+        <section className="cp-mode-group" aria-live="polite">
+          <h2 className="cp-mode-group-title">{loading ? "Loading activities…" : `${filtered.length} ${filtered.length === 1 ? "activity" : "activities"}`}{!loading && filtersActive && <small>of {activities.length}</small>}</h2>
+          {!loading && filtered.length > 0 && <div className="cp-card-grid">{filtered.map((activity) => <CommunityCard activity={activity} teacher={teacherState.teacher} ownActivity={teacherState.publishedIds.has(activity.activityId)} copying={copyingId === activity.activityId} onCopy={() => void copyToLibrary(activity)} key={activity.activityId} />)}</div>}
+          {!loading && filtered.length === 0 && <div className="cp-empty"><span className="cp-game-icon tone-butter"><AppIcon name="search" /></span><b>No activities match those filters.</b><span>Try a different level, grade or game mode.</span></div>}
         </section>
-      )}
-
-      {notice && <div className="community-notice"><AppIcon name="check2-circle" /> {notice}</div>}
-      {error && <div className="community-error"><AppIcon name="exclamation-triangle" /> {error}</div>}
-
-      <section className="community-catalog">
-        <div className="community-section-title"><div><span className="eyebrow">Explore</span><h2>{loading ? "Loading activities…" : `${filtered.length} activities ready to play`}</h2></div>{!loading && <span>{activities.length} shared total</span>}</div>
-        {!loading && filtered.length > 0 && <div className="community-grid">{filtered.map((activity) => <CommunityCard activity={activity} teacher={teacherState.teacher} ownActivity={teacherState.publishedIds.has(activity.activityId)} copying={copyingId === activity.activityId} onCopy={() => void copyToLibrary(activity)} key={activity.activityId} />)}</div>}
-        {!loading && filtered.length === 0 && <div className="community-empty"><span><AppIcon name="search" /></span><h3>No activities match those filters.</h3><p>Try a different level, grade or game mode.</p></div>}
-      </section>
-    </main>
+      </main>
+    </div>
   );
 }
 
 function CommunityCard({ activity, teacher, ownActivity, copying, onCopy }: { activity: CommunityActivity; teacher: boolean; ownActivity: boolean; copying: boolean; onCopy: () => void }) {
   const coverUrl = useResolvedImageUrl(activity.coverImageUrl);
+  const shown = activity.gameModes.slice(0, 5);
   return (
-    <article className="community-card">
-      <div className={`community-cover ${coverUrl ? "has-image" : ""}`} style={coverUrl ? { backgroundImage: `linear-gradient(180deg, rgba(27,20,73,.04), rgba(27,20,73,.76)), url("${coverUrl}")` } : undefined}>
-        <span className="community-kind">{activity.kind}</span>
-        {!coverUrl && <span className="community-cover-icon"><AppIcon name={activity.kind === "vocabulary" ? "type" : activity.kind === "grammar" ? "braces" : "layers"} /></span>}
-        <div><small>{activity.topic}</small><strong>{activity.grade}</strong></div>
+    <article className="cp-activity-card">
+      {coverUrl && <div className="cp-activity-cover" style={{ backgroundImage: `url("${coverUrl}")` }} aria-hidden="true" />}
+      <div className="cp-activity-icons">
+        {shown.map((game) => <GameIcon key={game} game={game} size="sm" />)}
+        {activity.gameModes.length > shown.length && <span className="more">+{activity.gameModes.length - shown.length}</span>}
       </div>
-      <div className="community-card-body">
-        <div className="community-card-meta"><span>{languageLabel(activity.targetLanguage)}</span><span>{activity.level}</span><span>{activity.itemCount} items</span>{activity.aiGenerated && <span title="AI-generated content"><AppIcon name="stars" /> AI</span>}</div>
-        <h3>{activity.title}</h3>
-        <p>{activity.description}</p>
-        <div className="community-author"><span>{activity.authorName.slice(0, 1).toUpperCase()}</span><div><small>Shared by</small><strong>{activity.authorName}</strong></div></div>
-        <div className="community-game-tags">{activity.gameModes.slice(0, 4).map((game) => <span key={game}><AppIcon name={GAME_MODE_CATALOG[game].icon} /> {GAME_MODE_CATALOG[game].shortName}</span>)}{activity.gameModes.length > 4 && <span>+{activity.gameModes.length - 4}</span>}</div>
-        <div className="community-card-actions"><Link className="button button-primary community-play" href={`/practice/${activity.activityId}`}><AppIcon name="play-fill" /> Play free</Link>{teacher && !ownActivity && <button className="button button-soft community-copy" disabled={copying} onClick={onCopy}>{copying ? "Adding…" : <><AppIcon name="copy" /> Add to Library</>}</button>}</div>
+      <h3>{activity.title}</h3>
+      {activity.description && <p>{activity.description}</p>}
+      <span className="cp-activity-meta">{[languageLabel(activity.targetLanguage), activity.level, activity.grade, `${activity.itemCount} items`].filter(Boolean).join(" · ")}</span>
+      <span className="cp-author"><span>{activity.authorName.slice(0, 1).toUpperCase()}</span>Shared by {activity.authorName}{activity.aiGenerated && <span className="cp-tag" title="AI-generated content"><AppIcon name="stars" /> AI</span>}</span>
+      <div className="cp-activity-actions">
+        <Link className="button button-primary button-small" href={`/practice/${activity.activityId}`}><AppIcon name="play-fill" /> Play</Link>
+        {teacher && !ownActivity && <button className="cp-link-button" disabled={copying} onClick={onCopy}>{copying ? "Adding…" : <><AppIcon name="copy" /> Add to Library</>}</button>}
       </div>
     </article>
   );

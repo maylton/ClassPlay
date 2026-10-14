@@ -60,6 +60,6 @@ assert.match(communityClient, /\/practice\/\$\{activity\.activityId\}/, "Communi
 assert.match(communityClient, /All grades/, "Community catalog must expose grade filtering");
 assert.match(communityClient, /All levels/, "Community catalog must expose level filtering");
 assert.match(communityClient, /Any game mode/, "Community catalog must expose game-mode filtering");
-assert.match(header, /href="\/community"/, "teacher workspace navigation must expose Community");
+assert.match(header, /href(=|: )"\/community"/, "teacher workspace navigation must expose Community");
 
 console.log("Community + permanent student account contracts: OK");

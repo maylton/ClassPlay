@@ -89,8 +89,8 @@
 
 .advanced-maze .maze-portal.correct b {
   background: linear-gradient(180deg, rgba(83,125,35,.98), rgba(42,83,31,.98));
-  border-color: rgba(185,237,83,.95);
-  box-shadow: 0 7px 18px rgba(0,0,0,.38), 0 0 22px rgba(185,237,83,.35);
+  border-color: rgba(118, 202, 161,.95);
+  box-shadow: 0 7px 18px rgba(0,0,0,.38), 0 0 22px rgba(118, 202, 161,.35);
 }
 
 .advanced-maze .maze-portal.disabled b {
@@ -221,9 +221,9 @@
 }
 
 .maze-monster.shade {
-  background: linear-gradient(160deg, #6a5ae0, #334ad8 65%, #1a255f);
+  background: linear-gradient(160deg, #1f7a4d, #334ad8 65%, #1a255f);
   border-radius: 50% 50% 28% 28% / 48% 48% 52% 52%;
-  box-shadow: 0 0 0 3px rgba(106,90,224,.2), 0 0 19px rgba(101,120,255,.58);
+  box-shadow: 0 0 0 3px rgba(105, 209, 159,.2), 0 0 19px rgba(101,120,255,.58);
   animation-duration: .34s;
 }
 

@@ -1,7 +1,7 @@
 .typing-rush {
   --rush-blue: #5b7cff;
   --rush-cyan: #62e5ff;
-  --rush-violet: #9a72ff;
+  --rush-violet: #8de4ba;
   --rush-pink: #ff78b7;
   --rush-ink: #10172f;
   min-height: min(780px, calc(100vh - 120px));
@@ -11,7 +11,7 @@
   color: white;
   background:
     radial-gradient(circle at 50% 10%, rgba(91,124,255,.26), transparent 28rem),
-    radial-gradient(circle at 84% 72%, rgba(154,114,255,.15), transparent 26rem),
+    radial-gradient(circle at 84% 72%, rgba(141, 228, 186,.15), transparent 26rem),
     linear-gradient(155deg,#10162d,#131b3a 48%,#0e1429);
 }
 

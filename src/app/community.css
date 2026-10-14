@@ -1,6 +1,6 @@
 .community-screen {
   min-height: 100vh;
-  background: #f5f4ff;
+  background: #f7f9f6;
   color: #232323;
   padding-bottom: 80px;
 }
@@ -31,7 +31,7 @@
   width: 34px;
   height: 34px;
   border-radius: 11px;
-  background: #6a5ae0;
+  background: #1f7a4d;
   color: #fff;
 }
 
@@ -55,7 +55,7 @@
 .community-header nav a:hover,
 .community-header nav a.active {
   background: #fff;
-  color: #5c4bd8;
+  color: #176443;
 }
 
 .community-hero {
@@ -70,9 +70,9 @@
   align-items: center;
   overflow: hidden;
   position: relative;
-  background: #6a5ae0;
+  background: #1f7a4d;
   color: #fff;
-  box-shadow: 0 26px 70px rgba(67, 48, 177, .2);
+  box-shadow: 0 26px 70px rgba(62, 163, 114, .2);
 }
 
 .community-hero::before,
@@ -88,7 +88,7 @@
   height: 260px;
   right: -80px;
   top: -100px;
-  background: rgba(185, 237, 83, .17);
+  background: rgba(118, 202, 161, .17);
 }
 
 .community-hero::after {
@@ -105,7 +105,7 @@
 }
 
 .community-hero .eyebrow {
-  color: #ddd7ff;
+  color: #dff7eb;
 }
 
 .community-hero h1 {
@@ -116,7 +116,7 @@
 }
 
 .community-hero h1 em {
-  color: #b9ed53;
+  color: #a9d8bf;
   font-style: normal;
 }
 
@@ -149,7 +149,7 @@
   width: 108px;
   height: 108px;
   border-radius: 30px;
-  background: #b9ed53;
+  background: #a9d8bf;
   color: #232323;
   font-size: 3rem;
 }
@@ -164,7 +164,7 @@
 }
 
 .community-hero-art > i {
-  color: #6a5ae0;
+  color: #1f7a4d;
   font-size: 1.4rem;
 }
 
@@ -179,8 +179,8 @@
   padding: 14px;
   border-radius: 20px;
   background: #fff;
-  border: 1px solid rgba(68,53,160,.09);
-  box-shadow: 0 18px 42px rgba(54,44,120,.11);
+  border: 1px solid rgba(65, 148, 108,.09);
+  box-shadow: 0 18px 42px rgba(52, 112, 83,.11);
 }
 
 .community-search {
@@ -188,9 +188,9 @@
   align-items: center;
   gap: 9px;
   padding: 0 13px;
-  border: 1px solid #dedbea;
+  border: 1px solid #dde8e3;
   border-radius: 13px;
-  background: #fbfaff;
+  background: #fbfcfa;
   color: #837d8e;
 }
 
@@ -208,9 +208,9 @@
 
 .community-toolbar select {
   padding: 0 12px;
-  border: 1px solid #dedbea;
+  border: 1px solid #dde8e3;
   border-radius: 13px;
-  background: #fbfaff;
+  background: #fbfcfa;
   font-size: .84rem;
   font-weight: 700;
 }
@@ -218,7 +218,7 @@
 .community-clear {
   border: 0;
   background: transparent;
-  color: #5c4bd8;
+  color: #176443;
   font-weight: 800;
   cursor: pointer;
 }
@@ -256,7 +256,7 @@
   height: 50px;
   flex: 0 0 auto;
   border-radius: 15px;
-  background: #b9ed53;
+  background: #a9d8bf;
   color: #232323;
   font-size: 1.25rem;
 }
@@ -268,7 +268,7 @@
 }
 
 .community-teacher-panel small {
-  color: #b9ed53;
+  color: #a9d8bf;
   font-size: .68rem;
   font-weight: 900;
   letter-spacing: .1em;
@@ -289,8 +289,8 @@
   padding: 24px;
   border-radius: 24px;
   background: #fff;
-  border: 1px solid rgba(68,53,160,.08);
-  box-shadow: 0 12px 30px rgba(54,44,120,.06);
+  border: 1px solid rgba(65, 148, 108,.08);
+  box-shadow: 0 12px 30px rgba(52, 112, 83,.06);
 }
 
 .community-section-title {
@@ -325,7 +325,7 @@
   gap: 18px;
   padding: 13px 14px;
   border-radius: 15px;
-  background: #f8f7ff;
+  background: #f9fbf8;
 }
 
 .community-publish-list strong,
@@ -364,14 +364,14 @@
   overflow: hidden;
   border-radius: 24px;
   background: #fff;
-  border: 1px solid rgba(68,53,160,.08);
-  box-shadow: 0 12px 28px rgba(54,44,120,.06);
+  border: 1px solid rgba(65, 148, 108,.08);
+  box-shadow: 0 12px 28px rgba(52, 112, 83,.06);
   transition: transform .18s ease, box-shadow .18s ease;
 }
 
 .community-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 20px 44px rgba(54,44,120,.11);
+  box-shadow: 0 20px 44px rgba(52, 112, 83,.11);
 }
 
 .community-cover {
@@ -381,7 +381,7 @@
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  background-color: #6a5ae0;
+  background-color: #1f7a4d;
   background-size: cover;
   background-position: center;
   color: #fff;
@@ -395,7 +395,7 @@
   width: 150px;
   height: 150px;
   border-radius: 999px;
-  background: rgba(185,237,83,.22);
+  background: rgba(118, 202, 161,.22);
 }
 
 .community-kind {
@@ -417,7 +417,7 @@
   margin: auto;
   border-radius: 20px;
   background: #fff;
-  color: #5c4bd8;
+  color: #176443;
   font-size: 1.65rem;
   transform: rotate(-4deg);
   box-shadow: 8px 8px 0 rgba(35,35,35,.16);
@@ -458,7 +458,7 @@
 .community-card-meta span {
   padding: 5px 8px;
   border-radius: 999px;
-  background: #f2f0ff;
+  background: #eef6f1;
   color: #655d78;
   font-size: .68rem;
   font-weight: 800;
@@ -495,8 +495,8 @@
   width: 34px;
   height: 34px;
   border-radius: 11px;
-  background: #e8e5fa;
-  color: #5c4bd8;
+  background: #e2f0e8;
+  color: #176443;
   font-weight: 900;
 }
 
@@ -530,7 +530,7 @@
   gap: 4px;
   padding: 6px 8px;
   border-radius: 9px;
-  background: #f7f6fb;
+  background: #f7faf9;
   color: #696273;
   font-size: .67rem;
   font-weight: 800;
@@ -549,7 +549,7 @@
   gap: 7px;
   padding: 54px 24px;
   border-radius: 24px;
-  border: 1px dashed #d5d0ea;
+  border: 1px dashed #d3e7dd;
   background: rgba(255,255,255,.66);
   color: #777080;
 }
@@ -560,8 +560,8 @@
   width: 54px;
   height: 54px;
   border-radius: 17px;
-  background: #e8e5fa;
-  color: #5c4bd8;
+  background: #e2f0e8;
+  color: #176443;
   font-size: 1.35rem;
 }
 

@@ -71,7 +71,7 @@
 
 .hunt-difficulty-card:hover {
   transform: translateY(-5px);
-  border-color: rgba(223,244,122,.38);
+  border-color: rgba(149, 217, 184,.38);
   background: linear-gradient(155deg, rgba(255,255,255,.13), rgba(255,255,255,.045));
   box-shadow: 0 28px 70px rgba(0,0,0,.23);
 }

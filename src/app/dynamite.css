@@ -9,7 +9,7 @@
 }
 
 .dynamite-timer-picker button {
-  border: 1px solid rgba(79, 55, 129, .18);
+  border: 1px solid rgba(63, 121, 93, .18);
   border-radius: 18px;
   background: rgba(255, 255, 255, .75);
   padding: 1rem;
@@ -23,8 +23,8 @@
 .dynamite-timer-picker button:hover,
 .dynamite-timer-picker button.active {
   transform: translateY(-2px);
-  border-color: #6f4be8;
-  box-shadow: 0 12px 28px rgba(76, 50, 150, .12);
+  border-color: #5cd79c;
+  box-shadow: 0 12px 28px rgba(61, 139, 101, .12);
 }
 
 .dynamite-timer-picker b {
@@ -78,12 +78,12 @@
   min-height: 100vh;
   background:
     radial-gradient(circle at 50% 28%, rgba(255, 215, 117, .24), transparent 34%),
-    linear-gradient(145deg, #211637 0%, #2d1d49 46%, #16111f 100%);
+    linear-gradient(145deg, #1a3327 0%, #224434 46%, #131d18 100%);
   color: white;
 }
 
 .dynamite-header {
-  background: rgba(20, 13, 31, .76);
+  background: rgba(15, 29, 22, .76);
   border-bottom: 1px solid rgba(255, 255, 255, .1);
   backdrop-filter: blur(16px);
 }
@@ -173,7 +173,7 @@
   top: 74px;
   height: 48px;
   border-radius: 9px;
-  background: linear-gradient(#2b2632, #17131d);
+  background: linear-gradient(#2b2632, #141c18);
   box-shadow: 0 8px 15px rgba(0,0,0,.32);
 }
 
@@ -246,7 +246,7 @@
   text-align: center;
   padding: 1.2rem 1.5rem;
   border-radius: 22px;
-  background: rgba(12, 9, 18, .32);
+  background: rgba(10, 17, 14, .32);
   border: 1px solid rgba(255,255,255,.08);
 }
 
@@ -275,13 +275,13 @@
 }
 
 .dynamite-next-call strong {
-  color: #d9ff76;
+  color: #98ddbc;
 }
 
 .dynamite-queue-panel {
   border-radius: 28px;
   background: rgba(255,255,255,.94);
-  color: #2c2438;
+  color: #26362e;
   padding: 1.15rem;
   overflow: hidden;
   align-self: stretch;
@@ -311,7 +311,7 @@
   min-height: 56px;
   border-radius: 15px;
   padding: .55rem .7rem;
-  background: #f5f2fa;
+  background: #f3f9f6;
   border: 1px solid transparent;
   transition: transform .2s ease;
 }
@@ -344,8 +344,8 @@
 }
 
 .dynamite-queue-list > div.next {
-  background: #f1fbd9;
-  border-color: #b5d868;
+  background: #e2efe6;
+  border-color: #81bfa1;
 }
 
 .dynamite-queue-list > div.eliminated {
@@ -389,7 +389,7 @@
 }
 
 .dynamite-final-screen {
-  background: radial-gradient(circle at 50% 20%, #5b458b, #1c142c 70%);
+  background: radial-gradient(circle at 50% 20%, #4d8369, #172920 70%);
 }
 
 .dynamite-winner-card {
@@ -402,19 +402,19 @@
   display: grid;
   place-items: center;
   border-radius: 30px;
-  background: #d9ff76;
-  color: #35234d;
+  background: #98ddbc;
+  color: #284839;
   font-size: 2.7rem;
   margin: 0 auto 1.2rem;
   transform: rotate(-7deg);
 }
 
 .dynamite-student-screen {
-  background: linear-gradient(160deg, #241735, #160f22);
+  background: linear-gradient(160deg, #1a3226, #112019);
 }
 
 .dynamite-student-screen .student-live-header {
-  background: rgba(20, 13, 31, .88);
+  background: rgba(15, 29, 22, .88);
   color: white;
 }
 
@@ -431,7 +431,7 @@
 .dynamite-phone-boom {
   border-radius: 26px;
   background: white;
-  color: #2d2537;
+  color: #27352e;
   padding: 1.25rem;
   text-align: center;
   box-shadow: 0 18px 50px rgba(0,0,0,.2);
@@ -448,12 +448,12 @@
   height: 112px;
   margin: 0 auto 1rem;
   border-radius: 35px;
-  background: linear-gradient(145deg, #3a243f, #1c1527);
+  background: linear-gradient(145deg, #273c32, #17251e);
   color: white;
   display: grid;
   place-items: center;
   align-content: center;
-  box-shadow: 0 14px 32px rgba(45, 20, 49, .24);
+  box-shadow: 0 14px 32px rgba(23, 46, 35, .24);
 }
 
 .dynamite-phone-timer span {
@@ -507,7 +507,7 @@
 .dynamite-phone-queue {
   border-radius: 22px;
   background: rgba(255,255,255,.96);
-  color: #30273a;
+  color: #293831;
   padding: .9rem;
 }
 
@@ -528,7 +528,7 @@
   flex: 0 0 auto;
   min-width: 125px;
   border-radius: 14px;
-  background: #f5f2f8;
+  background: #f3f7f5;
   padding: .55rem .6rem;
   display: grid;
   grid-template-columns: 25px 1fr;
@@ -561,12 +561,12 @@
 }
 
 .dynamite-phone-queue span.next {
-  background: #f0f9d9;
-  outline: 1px solid #b8d867;
+  background: #e0f2e9;
+  outline: 1px solid #80bfa1;
 }
 
 .dynamite-phone-queue span.me {
-  box-shadow: inset 0 0 0 2px #7454df;
+  box-shadow: inset 0 0 0 2px #63d09b;
 }
 
 .dynamite-phone-queue span.eliminated {
@@ -597,7 +597,7 @@
 }
 
 .dynamite-student-final {
-  background: radial-gradient(circle at 50% 18%, #5b458b, #1c142c 72%);
+  background: radial-gradient(circle at 50% 18%, #4d8369, #172920 72%);
 }
 
 @keyframes dynamite-name-pulse {
