@@ -15,6 +15,7 @@ import { getDerivedArcadeReadiness } from "@/lib/derived-arcade";
 import { GAME_MODE_CATALOG, isArcadeMode } from "@/lib/game-catalog";
 import type { ActivitySet, GameType } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
+import { GameIcon, ToneIcon } from "./GameIcon";
 import { GAME_COMPONENTS } from "./games/game-registry";
 import { LeaderboardModerationPanel } from "./leaderboard/LeaderboardModerationPanel";
 import { PracticeLeaderboard } from "./leaderboard/PracticeLeaderboard";
@@ -128,6 +129,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
     }
   }
 
+
   if (mode) {
     const GameComponent = GAME_COMPONENTS[mode];
     const common = { activity, onComplete: (score: number, correct: number, total: number) => complete(mode, score, correct, total) };
@@ -136,7 +138,7 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
       <main className={`play-screen ${isArcadeMode(mode) ? "arcade-play-screen" : ""} ${practice ? "student-practice-play" : ""}`}>
         <header className="play-header">
           {practice ? <Link className="play-brand" href="/"><b>C</b><span>ClassPlay</span></Link> : <button className="play-brand" onClick={() => setMode(null)}><b>C</b><span>ClassPlay</span></button>}
-          <div className="play-title"><small>{practice ? "Student practice" : activity.topic}</small><strong>{activity.title}</strong></div>
+          <div className="play-title"><small>{GAME_MODE_CATALOG[mode].name}</small><strong>{activity.title}</strong></div>
           <div className="play-header-actions"><SettingsPanel compact /><button className="button button-soft button-small" onClick={() => { setPracticeCompletion(null); setMode(null); }}><AppIcon name="arrow-left" /> Game modes</button></div>
         </header>
         <section className="play-canvas"><GameComponent key={gameKey} {...common} /></section>
@@ -161,74 +163,116 @@ export function GameHub({ activityId, practice = false }: { activityId: string; 
   for (const game of derivedArcade.modes) {
     if (!availableArcadeGames.includes(game)) availableArcadeGames.push(game);
   }
-  const derivedModeCount = derivedArcade.modes.filter((game) => !activity.enabledGames.includes(game)).length;
-  const teacherModeCount = activity.enabledGames.length + derivedModeCount + (liveReady ? 1 : 0) + (wildcardReady ? 1 : 0);
-  const practiceModeCount = activity.enabledGames.length + derivedModeCount;
+  const liveModeCount = liveReady ? (wildcardReady ? 2 : 1) : 0;
 
-  function modeCard(game: GameType) {
+  function modeTile(game: GameType) {
     const info = GAME_MODE_CATALOG[game];
-    return <button key={game} className={`mode-card ${info.colorClass}`} onClick={() => { setPracticeCompletion(null); setMode(game); }}><span className="mode-icon"><AppIcon name={info.icon} /></span><span><strong>{info.name}</strong><small>{info.pickerDescription}</small></span><i><AppIcon name="arrow-right" /></i></button>;
+    return (
+      <button key={game} type="button" className="cp-mode-tile" onClick={() => { setPracticeCompletion(null); setMode(game); }}>
+        <GameIcon game={game} />
+        <span><b>{info.name}</b><small>{info.pickerDescription}</small></span>
+      </button>
+    );
   }
+
+  const gameGroups = (
+    <>
+      {enabledCoreGames.length > 0 && (
+        <section className="cp-mode-group" aria-labelledby="classic-games">
+          <h2 className="cp-mode-group-title" id="classic-games">Classic games <small>{enabledCoreGames.length}</small></h2>
+          <div className="cp-mode-grid">{enabledCoreGames.map(modeTile)}</div>
+        </section>
+      )}
+      {availableArcadeGames.length > 0 && (
+        <section className="cp-mode-group" aria-labelledby="arcade-games">
+          <h2 className="cp-mode-group-title" id="arcade-games">Arcade <small>{availableArcadeGames.length}</small></h2>
+          <div className="cp-mode-grid">{availableArcadeGames.map(modeTile)}</div>
+        </section>
+      )}
+    </>
+  );
+
+  const heading = (
+    <div>
+      <span className="eyebrow">{practice ? "Practice" : activity.topic}</span>
+      <h1>{activity.title}</h1>
+      {activity.description && <p>{activity.description}</p>}
+      <div className="cp-hub-tags"><span className="cp-tag">{activity.grade}</span><span className="cp-tag">{activity.level}</span><span className="cp-tag">{activity.items.length} items</span></div>
+    </div>
+  );
 
   if (practice) {
     return (
-      <main className="mode-screen practice-mode-screen">
-        <header className="mode-header"><Link className="play-brand" href="/"><b>C</b><span>ClassPlay</span></Link><div className="mode-header-actions"><span className="practice-link-badge"><AppIcon name="link-45deg" /> Practice link</span><SettingsPanel compact /></div></header>
-        <section className="mode-hero practice-hero">
-          <span className="eyebrow">Choose your challenge</span>
-          <h1>{activity.title}</h1>
-          <p>{activity.description}</p>
-          <div className="mode-meta"><span>{activity.grade}</span><span>{activity.level}</span><span>{activity.items.length} items</span></div>
-          <div className="practice-hero-note"><AppIcon name="trophy" /><div><b>Play for the Top 10</b><span>Finish a game, enter your name, and see how your score compares with other players.</span></div></div>
-        </section>
-        <section className="mode-picker">
-          <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>What do you want to practise?</h2></div><span>{practiceModeCount} games available</span></div>
-          {enabledCoreGames.length > 0 && <div className="mode-grid">{enabledCoreGames.map(modeCard)}</div>}
-          {availableArcadeGames.length > 0 && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY ARCADE</small><h3>Move more. Play louder.</h3></div><span><AppIcon name="controller" /></span></div><div className="mode-grid arcade-mode-grid">{availableArcadeGames.map(modeCard)}</div></section>}
-        </section>
+      <main className="mode-screen cp-hub practice-mode-screen">
+        <header className="mode-header"><Link className="play-brand" href="/"><b>C</b><span>ClassPlay</span></Link><div className="mode-header-actions"><span className="cp-tag green"><AppIcon name="link-45deg" /> Practice link</span><SettingsPanel compact /></div></header>
+        <div className="cp-page">
+          <div className="cp-hub-head">{heading}</div>
+          <div className="cp-banner"><ToneIcon icon="trophy" tone="butter" /><div><b>Play for the Top 10</b><p>Finish a game, enter your name and see how your score compares with other players.</p></div></div>
+          {gameGroups}
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="mode-screen">
-      <header className="mode-header"><Link className="play-brand" href="/dashboard"><b>C</b><span>ClassPlay</span></Link><div className="mode-header-actions"><SettingsPanel compact /><Link href={`/edit/${activity.id}`} className="button button-soft button-small">Edit</Link><Link href="/dashboard" className="button button-soft button-small"><AppIcon name="arrow-left" /> Library</Link></div></header>
-      <section className="mode-hero">
-        <span className="eyebrow">Ready to play</span>
-        <h1>{activity.title}</h1>
-        <p>{activity.description}</p>
-        <div className="mode-meta"><span>{activity.grade}</span><span>{activity.level}</span><span>{activity.items.length} items</span></div>
-        {error && <div className="alert-error practice-share-error">{error}</div>}
-        <div className="teacher-play-actions">
-          {liveReady ? <div className="connected-cta"><div><b><AppIcon name="wifi" /> Connected Classroom</b><span>Run live modes on the projector; student phones are available when a mode uses or supports them.</span></div><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary">Start live room <AppIcon name="arrow-right" /></Link></div> : <div className="connected-cta"><div><b><AppIcon name="wifi-off" /> Connected Classroom needs question-ready content</b><span>Add at least two prompt + answer pairs or two usable Gap Fill sentences before hosting live.</span></div><Link href={`/edit/${activity.id}`} className="button button-primary">Prepare live content <AppIcon name="arrow-right" /></Link></div>}
-          <div className={`practice-share-cta ${activity.visibility === "unlisted" ? "shared" : ""}`}>
-            <div><b><AppIcon name="send" /> Student practice link</b><span>{activity.visibility === "unlisted" ? "Anyone with the link can practise and join each game's Top 10." : "Create an unlisted link students can use for independent practice."}</span>{shareMessage && <small className="practice-share-message">{shareMessage}</small>}</div>
-            <div className="practice-share-actions">
-              <button className="button button-primary" disabled={sharing} onClick={() => void sharePracticeLink()}>{sharing ? "Working…" : <>{activity.visibility === "unlisted" ? "Copy link" : "Create link"} <AppIcon name="link-45deg" /></>}</button>
-              {activity.visibility === "unlisted" && <button className="button button-soft" disabled={sharing} onClick={() => setModerating(true)}><AppIcon name="shield-check" /> Moderate scores</button>}
-              {activity.visibility === "unlisted" && <button className="button button-soft" disabled={sharing} onClick={() => void stopSharingPractice()}>Turn off</button>}
-            </div>
+    <main className="mode-screen cp-hub">
+      <header className="mode-header"><Link className="play-brand" href="/dashboard"><b>C</b><span>ClassPlay</span></Link><div className="mode-header-actions"><SettingsPanel compact /><Link href={`/edit/${activity.id}`} className="button button-soft button-small"><AppIcon name="pencil" /> Edit</Link><Link href="/dashboard" className="button button-soft button-small"><AppIcon name="arrow-left" /> Library</Link></div></header>
+      <div className="cp-page">
+        <div className="cp-hub-head">
+          {heading}
+          <div className="cp-hub-actions">
+            {liveReady
+              ? <Link href={`/host/new?activity=${encodeURIComponent(activity.id)}`} className="button button-primary button-large"><AppIcon name="broadcast" /> Start live room</Link>
+              : <Link href={`/edit/${activity.id}`} className="button button-soft">Prepare live content <AppIcon name="arrow-right" /></Link>}
           </div>
         </div>
-      </section>
-      <section className="mode-picker">
-        <div className="mode-picker-heading"><div><small>CHOOSE A MODE</small><h2>How do you want to practise?</h2></div><span>{teacherModeCount} modes available</span></div>
-        {enabledCoreGames.length > 0 && <div className="mode-grid">{enabledCoreGames.map(modeCard)}</div>}
-        {availableArcadeGames.length > 0 && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY ARCADE</small><h3>Move more. Play louder.</h3></div><span><AppIcon name="controller" /></span></div><div className="mode-grid arcade-mode-grid">{availableArcadeGames.map(modeCard)}</div></section>}
-        {liveReady && <section className="arcade-mode-section"><div className="arcade-mode-heading"><div><small>CLASSPLAY LIVE</small><h3>Party modes for the whole room.</h3></div><span><AppIcon name="wifi" /></span></div><div className="mode-grid arcade-mode-grid"><Link href={`/host/new?activity=${encodeURIComponent(activity.id)}&mode=dynamite`} className="mode-card pink"><span className="mode-icon"><AppIcon name="fire" /></span><span><strong>Dynamite</strong><small>LIVE ONLY · Pass it before it blows!</small></span><i><AppIcon name="arrow-right" /></i></Link>{wildcardReady && <Link href={`/host/new?activity=${encodeURIComponent(activity.id)}&mode=wildcard-grid`} className="mode-card green"><span className="mode-icon"><AppIcon name="grid-3x3-gap-fill" /></span><span><strong>Wildcard Grid</strong><small>LIVE ONLY · Pick a tile. Answer. Expect a twist.</small></span><i><AppIcon name="arrow-right" /></i></Link>}</div></section>}
+        {error && <div className="alert-error practice-share-error">{error}</div>}
 
-        <section className="compatible-variants-panel">
-          <div className="compatible-variants-heading">
-            <div><small>SMART VARIANTS</small><h2>{variants.length ? "Your content can do more." : "Want to unlock more ways to play?"}</h2><p>{variants.length ? "ClassPlay found other game modes that can use the content you already created. Add them without retyping anything." : "Edit this activity and add richer source content. ClassPlay will detect new compatible modes automatically."}</p></div>
-            <span className="smart-engine-mark"><AppIcon name="stars" /></span>
+        <div className="cp-rows">
+          {!liveReady && (
+            <div className="cp-row"><ToneIcon icon="wifi-off" tone="butter" /><div><b>Live room needs question-ready content</b><small>Add at least two prompt + answer pairs or two Gap Fill sentences to host a live room.</small></div></div>
+          )}
+          <div className="cp-row">
+            <ToneIcon icon="link-45deg" tone="mint" />
+            <div><b>Student practice link</b><small>{activity.visibility === "unlisted" ? "On — anyone with the link can practise and join each game’s Top 10." : "Students practise on their own and join each game’s Top 10."}</small></div>
+            <div className="cp-row-actions">
+              <button className="button button-soft button-small" disabled={sharing} onClick={() => void sharePracticeLink()}>{sharing ? "Working…" : <><AppIcon name={activity.visibility === "unlisted" ? "copy" : "link-45deg"} /> {activity.visibility === "unlisted" ? "Copy link" : "Create link"}</>}</button>
+              {activity.visibility === "unlisted" && <button className="button button-soft button-small" disabled={sharing} onClick={() => setModerating(true)}><AppIcon name="shield-check" /> Moderate scores</button>}
+              {activity.visibility === "unlisted" && <button className="cp-link-button" disabled={sharing} onClick={() => void stopSharingPractice()}>Turn off</button>}
+            </div>
+            {shareMessage && <p className="cp-row-note">{shareMessage}</p>}
           </div>
-          {variants.length > 0 ? <div className="compatible-variant-grid">{variants.map((variant) => {
-            const info = GAME_MODE_CATALOG[variant.mode];
-            const arcade = isArcadeMode(variant.mode);
-            return <article className={`compatible-variant-card ${info.colorClass} ${arcade ? "arcade-variant" : ""}`} key={variant.mode}><span className="variant-icon"><AppIcon name={info.icon} /></span><div><small>{arcade ? "ARCADE READY" : "READY TO GENERATE"}</small><strong>{info.name}</strong><p>{variant.reason}</p>{variant.generated.length > 0 && <span className="generated-note"><AppIcon name="lightning-charge" /> Generates {variant.generated.join(" + ")}</span>}</div><button className="button button-dark button-small" disabled={addingMode === variant.mode} onClick={() => void addVariant(variant.mode)}>{addingMode === variant.mode ? "Adding…" : <>Add mode <AppIcon name="plus-lg" /></>}</button></article>;
-          })}</div> : <Link href={`/edit/${activity.id}`} className="button button-soft">Edit content to unlock variants <AppIcon name="arrow-right" /></Link>}
+        </div>
+
+        {gameGroups}
+
+        {liveReady && (
+          <section className="cp-mode-group" aria-labelledby="live-games">
+            <h2 className="cp-mode-group-title" id="live-games">Live with the whole class <small>{liveModeCount}</small></h2>
+            <div className="cp-mode-grid">
+              <Link href={`/host/new?activity=${encodeURIComponent(activity.id)}&mode=dynamite`} className="cp-mode-tile"><ToneIcon icon="fire" tone="rose" /><span><b>Dynamite</b><small>Pass it before it blows. Last player standing wins.</small></span></Link>
+              {wildcardReady && <Link href={`/host/new?activity=${encodeURIComponent(activity.id)}&mode=wildcard-grid`} className="cp-mode-tile"><ToneIcon icon="grid-3x3-gap-fill" tone="mint" /><span><b>Wildcard Grid</b><small>Teams pick tiles, answer and get a twist.</small></span></Link>}
+            </div>
+          </section>
+        )}
+
+        <section className="cp-mode-group" aria-labelledby="more-games">
+          <h2 className="cp-mode-group-title" id="more-games">Unlock more games <small>{variants.length}</small></h2>
+          {variants.length > 0 ? (
+            <div className="cp-rows">
+              {variants.map((variant) => (
+                <div className="cp-row" key={variant.mode}>
+                  <GameIcon game={variant.mode} />
+                  <div><b>{GAME_MODE_CATALOG[variant.mode].name}</b><small>{variant.reason}</small></div>
+                  <button className="button button-soft button-small" disabled={addingMode === variant.mode} onClick={() => void addVariant(variant.mode)}>{addingMode === variant.mode ? "Adding…" : <><AppIcon name="plus-lg" /> Add</>}</button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="cp-muted-note">Your content already uses every game that fits. Add example sentences or more items in <Link href={`/edit/${activity.id}`}>Edit</Link> to unlock more.</p>
+          )}
         </section>
-      </section>
+      </div>
       {moderating && <LeaderboardModerationPanel activityId={activity.id} onClose={() => setModerating(false)} />}
     </main>
   );

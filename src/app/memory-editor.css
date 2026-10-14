@@ -4,7 +4,7 @@
   padding: .85rem;
   border: 2px solid var(--studio-border);
   border-radius: 16px;
-  background: #faf9ff;
+  background: #fafefc;
 }
 
 .pair-media-toggle {
@@ -22,7 +22,7 @@
   grid-template-rows: auto auto;
   align-items: center;
   column-gap: .65rem;
-  border: 2px solid #d9d5ef;
+  border: 2px solid #e2e9e4;
   border-radius: 14px;
   background: #fff;
   color: var(--studio-ink);
@@ -75,7 +75,7 @@
   align-items: center;
   margin-top: .75rem;
   padding: .75rem;
-  border: 1px solid #d8d3ef;
+  border: 1px solid #d6ece1;
   border-radius: 14px;
   background: #fff;
 }
@@ -86,9 +86,9 @@
   overflow: hidden;
   display: grid;
   place-items: center;
-  border: 1px solid #ddd9ef;
+  border: 1px solid #dbede4;
   border-radius: 12px;
-  background: #f3f2f8;
+  background: #f3f7f5;
 }
 
 .pair-media-preview-frame img {

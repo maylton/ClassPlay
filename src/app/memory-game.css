@@ -30,7 +30,7 @@
   padding: .2rem;
   display: inline-flex;
   gap: .2rem;
-  background: #ebe9f7;
+  background: #ebf5f0;
   border: 1px solid var(--studio-border);
   border-radius: 11px;
 }
@@ -55,7 +55,7 @@
 .memory-back-toggle button.active {
   color: var(--studio-ink);
   background: #fff;
-  box-shadow: 0 2px 7px rgba(49, 37, 122, .12);
+  box-shadow: 0 2px 7px rgba(46, 113, 81, .12);
 }
 
 .memory-back-toggle button > span {

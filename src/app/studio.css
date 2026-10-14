@@ -6,33 +6,33 @@
    Design tokens
    -------------------------------------------------------------------------- */
 :root {
-  --studio-violet: #6a5ae0;
-  --studio-violet-strong: #5c4bd8;
-  --studio-lilac: #e8e5fa;
-  --studio-lilac-2: #f2f0ff;
-  --studio-canvas: #f5f4ff;
+  --studio-violet: #1f7a4d;
+  --studio-violet-strong: #176443;
+  --studio-lilac: #e2f0e8;
+  --studio-lilac-2: #eef6f1;
+  --studio-canvas: #f7f9f6;
   --studio-panel: #ffffff;
-  --studio-border: #dedaf5;
-  --studio-ink: #232323;
-  --studio-muted: #6e6b7b;
+  --studio-border: #e2e9e4;
+  --studio-ink: #142019;
+  --studio-muted: #5f6d64;
   --studio-blue: #1786f7;
   --studio-navy: #083d9b;
   --studio-coral: #ff8066;
-  --studio-lime: #b9ed53;
-  --studio-lime-deep: #7fbd1d;
+  --studio-lime: #a9d8bf;
+  --studio-lime-deep: #1f7a4d;
   --studio-mint: #63d9b4;
   --studio-yellow: #ffd15f;
   --studio-sky: #79c7ff;
-  --studio-shadow: 0 10px 30px rgba(49, 37, 122, .09);
+  --studio-shadow: 0 8px 24px rgba(20, 32, 25, .06);
 
   /* Compatibility aliases used by the stable base/feature styles. */
   --paper: var(--studio-canvas);
   --surface: var(--studio-panel);
   --ink: var(--studio-ink);
   --muted: var(--studio-muted);
-  --line: #d9d5ef;
+  --line: #e2e9e4;
   --green: var(--studio-violet);
-  --green-dark: var(--studio-ink);
+  --green-dark: var(--studio-violet-strong);
   --green-soft: var(--studio-lilac);
   --lime: var(--studio-lime);
   --mustard: var(--studio-yellow);
@@ -51,7 +51,7 @@ body {
   min-height: 100vh;
   background-image: none !important;
   color: var(--studio-ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
 }
 
 h1,
@@ -67,7 +67,7 @@ h3,
 .host-question-panel h1,
 .student-question-card h1,
 .activity-card h3 {
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   font-weight: 900;
   letter-spacing: -.055em;
 }
@@ -101,7 +101,7 @@ h3,
   background: #fff;
   border: 1px solid var(--studio-border);
   border-radius: 18px;
-  box-shadow: 0 8px 28px rgba(67, 54, 150, .07);
+  box-shadow: 0 8px 28px rgba(65, 139, 103, .07);
 }
 
 .brand {
@@ -120,7 +120,7 @@ h3,
   background: var(--studio-violet) !important;
   color: #fff !important;
   box-shadow: 3px 3px 0 var(--studio-lime) !important;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
   font-weight: 900;
 }
 
@@ -161,7 +161,7 @@ h3,
 .button-ghost {
   background: #fff !important;
   color: var(--studio-ink);
-  border-color: #c9c4e3 !important;
+  border-color: #c7e0d4 !important;
   box-shadow: none;
 }
 
@@ -181,7 +181,7 @@ h3,
 
 .storage-pill.cloud {
   background: var(--studio-lilac) !important;
-  border-color: #cfc9ef !important;
+  border-color: #cdebdc !important;
   color: var(--studio-ink) !important;
 }
 
@@ -199,7 +199,7 @@ h3,
   margin-top: 1rem;
   padding-inline: 1.1rem;
   background: #fff;
-  border: 1px solid #dcd8ef !important;
+  border: 1px solid #dbece4 !important;
   border-radius: 22px;
 }
 
@@ -253,12 +253,12 @@ h3,
 
 .hero-copy > p {
   max-width: 620px;
-  color: #e9e7ff !important;
+  color: #ecfaf3 !important;
 }
 
 .hero-note {
   padding-left: .8rem;
-  color: #dcd8ff !important;
+  color: #dff8ec !important;
   border-left: 3px solid var(--studio-lime) !important;
 }
 
@@ -271,7 +271,7 @@ h3,
   background: #fff;
   border: 4px solid var(--studio-lilac) !important;
   border-radius: 28px !important;
-  box-shadow: 0 18px 0 rgba(41, 29, 126, .35) !important;
+  box-shadow: 0 18px 0 rgba(40, 115, 79, .35) !important;
   transform: rotate(1.25deg);
 }
 
@@ -294,7 +294,7 @@ h3,
 .demo-answer span { background: #fff; }
 .demo-chips span:nth-child(1) { background: #fff0bc; }
 .demo-chips span:nth-child(2) { background: #dff8ef; }
-.demo-chips span:nth-child(3) { background: #e7f5ce; }
+.demo-chips span:nth-child(3) { background: #d7ece2; }
 .demo-content button {
   border-radius: 7px;
   background: var(--studio-ink);
@@ -372,7 +372,7 @@ h3,
 .app-shell:has(.studio-dashboard) .app-header {
   position: relative;
   z-index: 10;
-  box-shadow: 0 10px 32px rgba(43, 32, 117, .16);
+  box-shadow: 0 10px 32px rgba(41, 108, 76, .16);
 }
 
 .dashboard-main.studio-dashboard {
@@ -416,7 +416,7 @@ h3,
   color: var(--studio-ink) !important;
   border: 3px solid var(--studio-border);
   border-radius: 28px;
-  box-shadow: 0 13px 34px rgba(49, 37, 122, .13);
+  box-shadow: 0 13px 34px rgba(46, 113, 81, .13);
 }
 
 .studio-welcome .welcome-copy::before {
@@ -482,7 +482,7 @@ h3,
 }
 
 .icon-text-button:hover {
-  background: #f0eff9;
+  background: #f0f8f4;
 }
 
 .welcome-studio-card {
@@ -597,7 +597,7 @@ h3,
   color: var(--studio-ink) !important;
   border: 3px solid var(--studio-lilac) !important;
   border-radius: 20px !important;
-  box-shadow: 0 6px 0 rgba(106, 90, 224, .12) !important;
+  box-shadow: 0 6px 0 rgba(105, 209, 159, .12) !important;
 }
 
 .studio-stats .stat-icon {
@@ -606,14 +606,14 @@ h3,
   height: 42px;
   display: grid !important;
   place-items: center;
-  background: #f8f7ff;
-  border: 1px solid #e5e2f3;
+  background: #f9fbf8;
+  border: 1px solid #e4f1eb;
   border-radius: 13px;
 }
 
 .studio-stats .stat-card strong {
   align-self: end;
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
   font-size: 1.85rem !important;
   line-height: 1;
 }
@@ -644,7 +644,7 @@ h3,
   background: #fff;
   border: 3px solid var(--studio-lilac) !important;
   border-radius: 28px !important;
-  box-shadow: 0 14px 38px rgba(72, 55, 174, .07) !important;
+  box-shadow: 0 14px 38px rgba(68, 161, 116, .07) !important;
 }
 
 .studio-library .section-toolbar {
@@ -685,7 +685,7 @@ h3,
   background: #fff !important;
   border: 3px solid var(--studio-lilac) !important;
   border-radius: 22px !important;
-  box-shadow: 0 6px 0 rgba(106, 90, 224, .11) !important;
+  box-shadow: 0 6px 0 rgba(105, 209, 159, .11) !important;
 }
 
 .activity-card::before {
@@ -725,7 +725,7 @@ h3,
 }
 
 .activity-visual.has-image {
-  background-color: #37305f !important;
+  background-color: #355a48 !important;
 }
 
 .activity-visual.has-image::after {
@@ -850,7 +850,7 @@ h3,
   margin: auto 0 0 !important;
   padding-top: .9rem;
   gap: .4rem !important;
-  border-top: 1px solid #ece9f8 !important;
+  border-top: 1px solid #ebf6f1 !important;
 }
 
 .activity-actions .button {
@@ -1004,7 +1004,7 @@ h3,
 }
 
 .game-picker.selected {
-  background: #eff9da !important;
+  background: #e1f2ea !important;
   border-color: var(--studio-ink) !important;
   box-shadow: 3px 3px 0 var(--studio-lime) !important;
 }
@@ -1053,7 +1053,7 @@ h3,
 }
 
 .mode-hero p {
-  color: #dedbff !important;
+  color: #e2f8ed !important;
 }
 
 .mode-meta span {
@@ -1068,7 +1068,7 @@ h3,
   color: var(--studio-ink) !important;
   border: 4px solid var(--studio-lilac) !important;
   border-radius: 24px !important;
-  box-shadow: 0 10px 0 rgba(41, 29, 126, .28) !important;
+  box-shadow: 0 10px 0 rgba(40, 115, 79, .28) !important;
 }
 
 .connected-cta span {
@@ -1119,9 +1119,9 @@ h3,
 }
 
 .mode-card.violet {
-  --mode-bg: #7056e8;
+  --mode-bg: #66d8a1;
   --mode-fg: #fff;
-  --mode-shadow: #4933b1;
+  --mode-shadow: #41a374;
 }
 
 .mode-card.blue {
@@ -1243,7 +1243,7 @@ h3,
 }
 
 .play-header .play-title small {
-  color: #dcd8ff !important;
+  color: #dff8ec !important;
 }
 
 .play-header .play-title strong {
@@ -1265,7 +1265,7 @@ h3,
   background: #fff;
   border: 4px solid var(--studio-lilac);
   border-radius: 30px;
-  box-shadow: 0 12px 0 rgba(106, 90, 224, .12);
+  box-shadow: 0 12px 0 rgba(105, 209, 159, .12);
 }
 
 .game-progress {
@@ -1286,7 +1286,7 @@ h3,
 }
 
 .game-question h2 {
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-body);
   font-weight: 900;
   letter-spacing: -.055em;
 }
@@ -1309,7 +1309,7 @@ h3,
 }
 
 .choice-grid button:nth-child(4n+1) > span { background: #dfeeff !important; }
-.choice-grid button:nth-child(4n+2) > span { background: #f0ffd6 !important; }
+.choice-grid button:nth-child(4n+2) > span { background: #e0f5eb !important; }
 .choice-grid button:nth-child(4n+3) > span { background: #ffe8ef !important; }
 .choice-grid button:nth-child(4n+4) > span { background: var(--studio-lilac) !important; }
 
@@ -1319,11 +1319,11 @@ h3,
 .completion-card {
   border: 4px solid var(--studio-lilac) !important;
   border-radius: 28px !important;
-  box-shadow: 0 10px 0 rgba(106, 90, 224, .12) !important;
+  box-shadow: 0 10px 0 rgba(105, 209, 159, .12) !important;
 }
 
 .big-flashcard.flipped {
-  background: #effad9;
+  background: #e0f3ea;
 }
 
 .memory-grid {
@@ -1355,8 +1355,8 @@ h3,
 }
 
 .matching-column button.selected {
-  background: #edf9d4;
-  border-color: #95c83c !important;
+  background: #dcf1e7;
+  border-color: #69b08d !important;
   box-shadow: 3px 3px 0 var(--studio-lime);
 }
 
@@ -1365,7 +1365,7 @@ h3,
 }
 
 .feedback-message.correct {
-  background: #dcf8c7 !important;
+  background: #d2ede0 !important;
   color: #214c18 !important;
 }
 
@@ -1374,7 +1374,7 @@ h3,
   color: #8f2e1e !important;
 }
 
-.completion-stats div:nth-child(1) { background: #e8f9c6; }
+.completion-stats div:nth-child(1) { background: #d1eee0; }
 .completion-stats div:nth-child(2) { background: #fff0ba; }
 .completion-stats div:nth-child(3) { background: #dff6ee; }
 
@@ -1403,7 +1403,7 @@ h3,
 }
 
 .migration-banner {
-  background: #edf5d6;
+  background: #ddeee6;
   border-color: var(--studio-ink);
   border-radius: 5px;
 }
@@ -1551,7 +1551,7 @@ h3,
   background: #fff !important;
   border: 4px solid var(--studio-lilac) !important;
   border-radius: 28px !important;
-  box-shadow: 0 10px 0 rgba(106, 90, 224, .14) !important;
+  box-shadow: 0 10px 0 rgba(105, 209, 159, .14) !important;
 }
 
 .student-option,
@@ -1564,7 +1564,7 @@ h3,
   border-color: var(--studio-violet) !important;
 }
 
-.student-option:nth-child(4n+1) span { background: #e8f9c6 !important; }
+.student-option:nth-child(4n+1) span { background: #d1eee0 !important; }
 .student-option:nth-child(4n+2) span { background: #fff0ba !important; }
 .student-option:nth-child(4n+3) span { background: #dff6ee !important; }
 .student-option:nth-child(4n+4) span { background: #ffe0d9 !important; }

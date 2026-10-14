@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { getGameResults, getProfile, saveProfile } from "@/lib/storage";
+import { getProfile, saveProfile } from "@/lib/storage";
 import {
   cloneActivity,
   getMigratableLocalActivities,
@@ -10,29 +10,40 @@ import {
   migrateLocalActivitiesToCloud,
   removeActivity,
 } from "@/lib/repositories/activity-repository";
-import { GAME_MODE_CATALOG } from "@/lib/game-catalog";
 import { resolveActivityImageUrl } from "@/lib/media";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
-import { isSupabaseConfigured } from "@/lib/supabase/config";
 import type { ActivitySet, TeacherProfile } from "@/lib/types";
 import { AppIcon } from "./AppIcon";
+import { GameIcon } from "./GameIcon";
+
+type Filter = "all" | "vocabulary" | "grammar" | "mixed" | "shared";
+
+const FILTERS: { id: Filter; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "vocabulary", label: "Vocabulary" },
+  { id: "grammar", label: "Grammar" },
+  { id: "mixed", label: "Mixed" },
+  { id: "shared", label: "Practice link on" },
+];
+
+const SAMPLE_ID = "daily-routine-present-simple";
 
 export function DashboardClient() {
   const [activities, setActivities] = useState<ActivitySet[]>([]);
   const [profile, setProfile] = useState<TeacherProfile>({ name: "Teacher" });
   const [editingName, setEditingName] = useState(false);
-  const [resultsCount, setResultsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [cloud, setCloud] = useState(false);
   const [localImportCount, setLocalImportCount] = useState(0);
   const [importMessage, setImportMessage] = useState("");
   const [error, setError] = useState("");
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<Filter>("all");
 
   const refresh = async () => {
     try {
       setError("");
       setActivities(await listActivities());
-      setResultsCount(getGameResults().length);
       setLocalImportCount(getMigratableLocalActivities().length);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Could not load activities.");
@@ -72,6 +83,16 @@ export function DashboardClient() {
     return () => { active = false; };
   }, [activities]);
 
+  const visible = useMemo(() => {
+    const needle = query.trim().toLocaleLowerCase();
+    return activities.filter((activity) => {
+      if (filter === "shared" && activity.visibility !== "unlisted") return false;
+      if (filter !== "all" && filter !== "shared" && activity.kind !== filter) return false;
+      if (!needle) return true;
+      return [activity.title, activity.topic, activity.description, activity.grade, activity.level].some((value) => value?.toLocaleLowerCase().includes(needle));
+    });
+  }, [activities, filter, query]);
+
   async function handleDuplicate(id: string) {
     try { await cloneActivity(id); await refresh(); } catch (cause) { setError(cause instanceof Error ? cause.message : "Could not duplicate activity."); }
   }
@@ -103,98 +124,74 @@ export function DashboardClient() {
   }
 
   return (
-    <main className="dashboard-main studio-dashboard">
-      <section className="welcome-row studio-welcome">
-        <div className="welcome-copy">
-          <span className="eyebrow">Teacher workspace</span>
-          <div className="welcome-title-row">
-            <h1>Good to see you, {profile.name}.</h1>
-          </div>
-          <p>{cloud ? "Your library is synced and ready for your next class." : "Pick up an activity or create something new for your next class."}</p>
-          <button className="icon-text-button" onClick={() => setEditingName((value) => !value)}><AppIcon name="pencil" /> Edit name</button>
-          {editingName && (
-            <form className="inline-profile" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void updateName(String(form.get("name") ?? "")); }}>
-              <input name="name" defaultValue={profile.name} autoFocus aria-label="Teacher name" />
+    <main className="cp-page cp-library">
+      <div className="cp-page-head">
+        <div>
+          {editingName ? (
+            <form className="cp-inline-form" onSubmit={(event) => { event.preventDefault(); const form = new FormData(event.currentTarget); void updateName(String(form.get("name") ?? "")); }}>
+              <input name="name" defaultValue={profile.name} autoFocus aria-label="Your name" />
               <button className="button button-primary button-small">Save</button>
+              <button type="button" className="cp-link-button" onClick={() => setEditingName(false)}>Cancel</button>
             </form>
+          ) : (
+            <p className="cp-greeting">Hi, {profile.name} <button type="button" className="cp-link-button" onClick={() => setEditingName(true)} aria-label="Edit your name"><AppIcon name="pencil" /></button></p>
           )}
+          <h1>My library</h1>
+          <p>{loading ? "Loading…" : `${activities.length} ${activities.length === 1 ? "activity" : "activities"} · ${totalGames} game modes ready`}</p>
         </div>
-        <aside className="welcome-studio-card" aria-label="Create your next classroom activity">
-          <span className="studio-card-kicker">Ready when you are</span>
-          <h2>Make the next class more interactive.</h2>
-          <p>Create once, then switch between game modes whenever you need.</p>
-          <div className="studio-card-actions">
-            <Link className="button studio-primary-action" href="/create"><AppIcon name="plus-lg" /> New activity</Link>
-            <Link className="studio-link" href="/join">Join a room <AppIcon name="arrow-right" /></Link>
-          </div>
-        </aside>
-      </section>
+      </div>
 
       {cloud && localImportCount > 0 && (
-        <section className="migration-banner">
-          <div><span><AppIcon name="cloud-arrow-up" /></span><div><strong>Bring your MVP activities with you</strong><p>{localImportCount} local {localImportCount === 1 ? "activity is" : "activities are"} ready to move into your cloud library. Duplicates are skipped safely.</p>{importMessage && <small>{importMessage}</small>}</div></div>
-          <button className="button button-primary" onClick={() => void importLocal()}>Import local activities</button>
-        </section>
+        <div className="cp-banner">
+          <span className="cp-game-icon tone-mint"><AppIcon name="cloud-arrow-up" /></span>
+          <div><b>Bring your local activities to the cloud</b><p>{localImportCount} {localImportCount === 1 ? "activity is" : "activities are"} saved only in this browser. Duplicates are skipped.</p>{importMessage && <small>{importMessage}</small>}</div>
+          <button className="button button-primary button-small" onClick={() => void importLocal()}>Import</button>
+        </div>
       )}
       {error && <div className="alert-error">{error}</div>}
 
-      <section className="stats-grid studio-stats" aria-label="ClassPlay stats">
-        <div className="stat-card"><span className="stat-icon"><AppIcon name="collection-play" /></span><strong>{loading ? "…" : activities.length}</strong><span>Activity sets</span></div>
-        <div className="stat-card"><span className="stat-icon"><AppIcon name="controller" /></span><strong>{loading ? "…" : totalGames}</strong><span>Modes enabled</span></div>
-        <div className="stat-card"><span className="stat-icon"><AppIcon name="activity" /></span><strong>{resultsCount}</strong><span>Local rounds</span></div>
-      </section>
-
-      <section className="library-section studio-library">
-        <div className="section-toolbar">
-          <div><span className="eyebrow">My library</span><h2>Recent activities</h2><p className="section-subcopy">Jump back into a lesson or turn the same content into a different game.</p></div>
-          <span className={`storage-pill ${cloud ? "cloud" : ""}`}><AppIcon name={cloud ? "cloud-check" : "hdd"} /> {cloud ? "Cloud sync on" : isSupabaseConfigured ? "Local session" : "Local-first mode"}</span>
+      <div className="cp-toolbar">
+        <label className="cp-search"><AppIcon name="search" /><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search activities" aria-label="Search activities" /></label>
+        <div className="cp-chips" role="group" aria-label="Filter activities">
+          {FILTERS.map((option) => <button key={option.id} type="button" className="cp-chip" aria-pressed={filter === option.id} onClick={() => setFilter(option.id)}>{option.label}</button>)}
         </div>
-        <div className="activity-grid studio-activity-grid">
-          {activities.map((activity) => {
-            const previewImage = previews[activity.id];
+      </div>
 
-            return (
-              <article className="activity-card" key={activity.id}>
-                <div
-                  className={`activity-visual ${previewImage ? "has-image" : ""}`}
-                  style={previewImage ? { backgroundImage: `linear-gradient(180deg, rgba(18,15,45,.08), rgba(18,15,45,.76)), url("${previewImage}")` } : undefined}
-                >
-                  <span className="activity-level">{activity.level}</span>
-                  <div className="activity-visual-copy">
-                    <small>{activity.kind === "mixed" ? "Mixed practice" : `${activity.kind} practice`}</small>
-                    <strong>{activity.topic}</strong>
-                  </div>
-                </div>
-                <div className="activity-card-body">
-                  <span className="activity-meta">{activity.grade} · {activity.items.length} items</span>
-                  <h3>{activity.title}</h3>
-                  <p>{activity.description}</p>
-                  <div className="activity-mode-summary" aria-label={`${activity.enabledGames.length} game modes enabled`}>
-                    <span>Game modes</span><b>{activity.enabledGames.length} enabled</b>
-                  </div>
-                  <div className="game-tags">
-                    {activity.enabledGames.slice(0, 4).map((game) => <span key={game}>{GAME_MODE_CATALOG[game].shortName}</span>)}
-                    {activity.enabledGames.length > 4 && <span>+{activity.enabledGames.length - 4}</span>}
-                  </div>
-                  <div className="activity-actions">
-                    <Link className="button button-dark" href={`/play/${activity.id}`}><AppIcon name="play-fill" /> Play</Link>
-                    <Link className="button button-soft" href={`/edit/${activity.id}`}>Edit</Link>
-                    <button className="button button-soft" onClick={() => void handleDuplicate(activity.id)}>Duplicate</button>
-                    {activity.id !== "daily-routine-present-simple" && <button className="text-danger" onClick={() => void handleDelete(activity.id)}>Delete</button>}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-          <Link className="new-activity-card studio-create-card" href="/create">
-            <span><AppIcon name="plus-lg" /></span>
-            <small>CLASSPLAY STUDIO</small>
-            <strong>Create something<br />for your next class.</strong>
-            <p>Start with your content. Pick the game later.</p>
-            <b>New activity <AppIcon name="arrow-right" /></b>
-          </Link>
-        </div>
-      </section>
+      <div className="cp-card-grid">
+        {visible.map((activity) => {
+          const cover = previews[activity.id];
+          const shown = activity.enabledGames.slice(0, 5);
+          return (
+            <article className="cp-activity-card" key={activity.id}>
+              {cover && <div className="cp-activity-cover" style={{ backgroundImage: `url("${cover}")` }} aria-hidden="true" />}
+              <div className="cp-activity-icons">
+                {shown.map((game) => <GameIcon key={game} game={game} size="sm" />)}
+                {activity.enabledGames.length > shown.length && <span className="more">+{activity.enabledGames.length - shown.length}</span>}
+              </div>
+              <h3>{activity.title}</h3>
+              {activity.description && <p>{activity.description}</p>}
+              <span className="cp-activity-meta">{[activity.topic, activity.grade, `${activity.items.length} items`, activity.level].filter(Boolean).join(" · ")}</span>
+              {activity.visibility === "unlisted" && <div><span className="cp-tag green"><AppIcon name="link-45deg" /> Practice link on</span></div>}
+              <div className="cp-activity-actions">
+                <Link className="button button-primary button-small" href={`/play/${activity.id}`}><AppIcon name="play-fill" /> Play</Link>
+                <Link className="cp-link-button" href={`/edit/${activity.id}`}>Edit</Link>
+                <button className="cp-link-button" onClick={() => void handleDuplicate(activity.id)}>Duplicate</button>
+                <span className="spacer" />
+                {activity.id !== SAMPLE_ID && <button className="cp-link-button danger" onClick={() => void handleDelete(activity.id)} aria-label={`Delete ${activity.title}`}><AppIcon name="trash3" /></button>}
+              </div>
+            </article>
+          );
+        })}
+        <Link className="cp-new-card" href="/create">
+          <span className="plus"><AppIcon name="plus-lg" /></span>
+          <b>New activity</b>
+          <span>Add your language. Games unlock on their own.</span>
+        </Link>
+      </div>
+
+      {!loading && activities.length > 0 && visible.length === 0 && (
+        <div className="cp-empty"><span className="cp-game-icon tone-butter"><AppIcon name="search" /></span><b>No activities match.</b><button className="cp-link-button" onClick={() => { setQuery(""); setFilter("all"); }}>Clear search and filters</button></div>
+      )}
     </main>
   );
 }

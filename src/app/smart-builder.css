@@ -2,7 +2,7 @@
    Responsibility-based styles for adaptive creation and compatible variants. */
 
 .smart-editor .editor-layout { gap: 1.15rem; }
-.smart-editor .editor-panel { border: 3px solid var(--studio-border); box-shadow: 0 7px 0 rgba(106,90,224,.09); }
+.smart-editor .editor-panel { border: 3px solid var(--studio-border); box-shadow: 0 7px 0 rgba(105, 209, 159,.09); }
 .smart-editor .panel-heading > span { background: var(--studio-violet); color: #fff; }
 
 .smart-modes-panel .game-picker-grid { gap: .8rem; }
@@ -12,7 +12,7 @@
   background: #fff;
   transition: transform .16s ease, border-color .16s ease, box-shadow .16s ease, background .16s ease;
 }
-.smart-modes-panel .game-picker:hover { transform: translateY(-2px); border-color: #bdb5ec; }
+.smart-modes-panel .game-picker:hover { transform: translateY(-2px); border-color: #bbe6d1; }
 .smart-modes-panel .game-picker.selected {
   border-color: var(--studio-violet);
   background: var(--studio-lilac-2);
@@ -20,8 +20,8 @@
 }
 .smart-modes-panel .game-picker.compatible {
   border-color: var(--studio-lime-deep);
-  background: #f7ffe8;
-  box-shadow: 0 4px 0 rgba(127,189,29,.2);
+  background: #edf5ef;
+  box-shadow: 0 4px 0 rgba(94, 187, 142,.2);
 }
 .game-picker-state {
   display: inline-flex;
@@ -47,9 +47,9 @@
   gap: .85rem;
   margin-top: 1rem;
   padding: .85rem 1rem;
-  border: 2px solid #d6eeb0;
+  border: 2px solid #bee0d0;
   border-radius: 16px;
-  background: #f6ffe8;
+  background: #edf5ef;
 }
 .smart-ready-summary > span {
   width: 2.5rem;
@@ -71,7 +71,7 @@
   align-content: center;
   text-align: center;
   padding: 2rem;
-  border: 2px dashed #cfc9ed;
+  border: 2px dashed #cde9db;
   border-radius: 22px;
   background: var(--studio-lilac-2);
 }
@@ -104,7 +104,7 @@
   padding-top: 1.25rem;
   border: 2px solid var(--studio-border);
   background: #fff;
-  box-shadow: 0 5px 0 rgba(106,90,224,.07);
+  box-shadow: 0 5px 0 rgba(105, 209, 159,.07);
 }
 .smart-item-editor .item-number { background: var(--studio-violet); color: #fff; }
 .field-help {
@@ -118,7 +118,7 @@
 .generated-variants {
   margin-top: 1.05rem;
   padding: 1rem;
-  border: 2px solid #dcd7f5;
+  border: 2px solid #daf2e6;
   border-radius: 18px;
   background: var(--studio-lilac-2);
 }
@@ -143,16 +143,16 @@
 .generated-card {
   min-height: 94px;
   padding: .75rem;
-  border: 1px solid #d8d3ef;
+  border: 1px solid #d6ece1;
   border-radius: 14px;
   background: #fff;
 }
-.generated-card.ready { border-color: #c4df93; background: #fbfff1; }
+.generated-card.ready { border-color: #a4ceba; background: #f4fcf8; }
 .generated-card.waiting { opacity: .72; }
 .generated-card > small { display: block; margin-bottom: .4rem; color: var(--studio-violet); font-size: .58rem; font-weight: 950; letter-spacing: .11em; }
 .generated-card > strong { display: block; font-size: .82rem; line-height: 1.4; }
 .generated-chunks { display: flex; flex-wrap: wrap; gap: .3rem; }
-.generated-chunks span { padding: .35rem .48rem; border: 1px solid #d7d1ef; border-radius: 8px; background: #fff; font-size: .72rem; font-weight: 800; }
+.generated-chunks span { padding: .35rem .48rem; border: 1px solid #d4ece0; border-radius: 8px; background: #fff; font-size: .72rem; font-weight: 800; }
 .generated-chunks em { color: var(--studio-muted); font-size: .72rem; font-style: normal; }
 
 .smart-advanced-toggle {
@@ -174,7 +174,7 @@
   gap: .7rem;
   margin-top: .55rem;
   padding-top: .8rem;
-  border-top: 1px solid #d8d3ef;
+  border-top: 1px solid #d6ece1;
 }
 .smart-advanced-fields .field-wide { grid-column: 1 / -1; }
 
@@ -195,9 +195,9 @@
   margin-top: 2rem;
   padding: 1.35rem;
   border-radius: 28px;
-  background: #232238;
+  background: #24362d;
   color: #fff;
-  box-shadow: 0 9px 0 rgba(51,43,113,.18);
+  box-shadow: 0 9px 0 rgba(51, 105, 79,.18);
 }
 .compatible-variants-heading {
   display: flex;
@@ -208,7 +208,7 @@
 }
 .compatible-variants-heading small { color: var(--studio-lime); font-size: .62rem; font-weight: 950; letter-spacing: .14em; }
 .compatible-variants-heading h2 { margin: .32rem 0 .35rem; color: #fff; font-size: clamp(1.65rem,3vw,2.35rem); letter-spacing: -.045em; }
-.compatible-variants-heading p { max-width: 690px; margin: 0; color: #c8c6d8; line-height: 1.5; font-size: .82rem; }
+.compatible-variants-heading p { max-width: 690px; margin: 0; color: #c8d6cf; line-height: 1.5; font-size: .82rem; }
 .smart-engine-mark {
   width: 3rem;
   height: 3rem;
@@ -297,5 +297,5 @@
 .editor-check-field .editor-check input {
   width: 18px;
   height: 18px;
-  accent-color: #6a5ae0;
+  accent-color: #1f7a4d;
 }

@@ -6,7 +6,7 @@
   margin-top: 24px;
   padding: 14px;
   border-radius: 14px;
-  background: #f5f4ff;
+  background: #f7f9f6;
   color: #716b7e;
   font-weight: 700;
 }
@@ -18,7 +18,7 @@
   margin-top: 25px;
   padding: 5px;
   border-radius: 15px;
-  background: #f1eff9;
+  background: #f0f8f4;
 }
 
 .student-auth-tabs button {
@@ -35,8 +35,8 @@
 
 .student-auth-tabs button.active {
   background: #fff;
-  color: #5c4bd8;
-  box-shadow: 0 5px 14px rgba(63,50,140,.09);
+  color: #176443;
+  box-shadow: 0 5px 14px rgba(60, 130, 96,.09);
 }
 
 .student-auth-message,
@@ -52,12 +52,12 @@
 }
 
 .student-auth-message {
-  background: #effbd9;
+  background: #e2efe6;
   color: #4d6b19;
 }
 
 .student-auth-callout {
-  background: #f2f0ff;
+  background: #eef6f1;
   color: #635c74;
 }
 
@@ -65,7 +65,7 @@
 .student-auth-callout i {
   flex: 0 0 auto;
   margin-top: 1px;
-  color: #5c4bd8;
+  color: #176443;
 }
 
 .student-auth-privacy {
@@ -81,7 +81,7 @@
 .student-auth-text-button {
   border: 0;
   background: transparent;
-  color: #5c4bd8;
+  color: #176443;
   font: inherit;
   font-size: .79rem;
   font-weight: 800;
@@ -91,7 +91,7 @@
 .student-auth-forgot {
   justify-self: end;
   margin-top: -5px;
-  color: #5c4bd8;
+  color: #176443;
   text-decoration: none;
   font-size: .76rem;
   font-weight: 800;
@@ -109,7 +109,7 @@
   margin-top: 24px;
   padding: 13px;
   border-radius: 16px;
-  background: #f5f4ff;
+  background: #f7f9f6;
   text-align: left;
 }
 
@@ -120,7 +120,7 @@
   width: 40px;
   height: 40px;
   border-radius: 12px;
-  background: #6a5ae0;
+  background: #1f7a4d;
   color: #fff;
   font-weight: 900;
 }
@@ -155,7 +155,7 @@
 .student-signed-in button {
   border: 0;
   background: transparent;
-  color: #5c4bd8;
+  color: #176443;
   font: inherit;
   font-size: .72rem;
   font-weight: 800;
@@ -176,7 +176,7 @@
   gap: 7px;
   min-height: 40px;
   padding: 4px 9px 4px 4px;
-  border: 1px solid #ddd9eb;
+  border: 1px solid #dbe9e2;
   border-radius: 14px;
   background: #fff;
   color: #4e4857;

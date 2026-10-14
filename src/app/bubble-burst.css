@@ -1,21 +1,21 @@
 .mode-card.bubble {
-  --mode-bg: #4ec9ff;
-  --mode-fg: #10213b;
-  --mode-shadow: #1677a5;
+  --mode-bg: #fff;
+  --mode-fg: var(--cp-ink);
+  --mode-shadow: transparent;
 }
-.compatible-variant-card.bubble { --variant-accent: #31aee6; }
+.compatible-variant-card.bubble { --variant-accent: var(--tone-sky-ink); }
 
-.bubble-burst { color: #fff; }
-.bubble-hud strong { color: #8eeaff; }
+.bubble-burst { color: var(--cp-ink); }
+.bubble-hud strong { color: var(--tone-sky-ink); }
 .bubble-question {
   margin-bottom: .85rem;
   padding: 1rem 1.1rem .9rem;
   display: grid;
   gap: .45rem;
-  background: #fff;
-  color: #1e2443;
-  border-radius: 20px;
-  box-shadow: 0 7px 0 #31aee6;
+  background: var(--cp-surface);
+  color: var(--cp-ink);
+  border: 1px solid var(--cp-line);
+  border-radius: 18px;
 }
 .bubble-question > div:first-child {
   display: flex;
@@ -24,15 +24,15 @@
   gap: .8rem;
 }
 .bubble-question small {
-  color: #7157df;
-  font-size: .6rem;
-  font-weight: 950;
+  color: var(--cp-green);
+  font-size: .7rem;
+  font-weight: 600;
   letter-spacing: .14em;
 }
 .bubble-question div > span {
-  color: #6e738d;
-  font-size: .7rem;
-  font-weight: 800;
+  color: var(--cp-muted);
+  font-size: .74rem;
+  font-weight: 600;
 }
 .bubble-question > strong {
   font-size: clamp(1.25rem, 2.7vw, 2.15rem);
@@ -41,13 +41,13 @@
 .bubble-timer {
   height: 10px;
   overflow: hidden;
-  background: #e9ecf6;
+  background: var(--cp-line);
   border-radius: 999px;
 }
 .bubble-timer span {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #4ec9ff, #7a5ae8);
+  background: var(--cp-green);
   border-radius: inherit;
   transition: width .1s linear;
 }
@@ -57,13 +57,11 @@
   min-height: 570px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 15% 18%, rgba(78,201,255,.22), transparent 24%),
-    radial-gradient(circle at 80% 22%, rgba(185,237,83,.13), transparent 20%),
-    radial-gradient(circle at 50% 82%, rgba(122,90,232,.22), transparent 28%),
-    linear-gradient(180deg, #111738 0%, #161b48 54%, #10132f 100%);
-  border: 3px solid #384171;
-  border-radius: 30px;
-  box-shadow: inset 0 0 80px rgba(0,0,0,.28), 0 10px 0 #090c22;
+    radial-gradient(circle at 15% 18%, rgba(255,255,255,.8), transparent 24%),
+    radial-gradient(circle at 80% 26%, rgba(255,255,255,.6), transparent 20%),
+    linear-gradient(180deg, #dcecfb 0%, #eaf4fd 60%, #e2f0e8 100%);
+  border: 1px solid var(--cp-line);
+  border-radius: 24px;
 }
 .bubble-sheen,
 .bubble-sheen::before,
@@ -74,9 +72,9 @@
   pointer-events: none;
 }
 .bubble-sheen {
-  background-image: radial-gradient(circle, rgba(255,255,255,.8) 0 1px, transparent 1.5px);
+  background-image: radial-gradient(circle, rgba(40,95,156,.35) 0 1px, transparent 1.5px);
   background-size: 46px 46px;
-  opacity: .18;
+  opacity: .35;
 }
 .bubble-sheen::before {
   background: radial-gradient(circle at 50% 45%, rgba(255,255,255,.08), transparent 38%);
@@ -91,15 +89,15 @@
   align-content: center;
   gap: .4rem;
   padding: 1rem;
-  border: 3px solid rgba(255,255,255,.68);
+  border: 3px solid rgba(255,255,255,.9);
   border-radius: 50%;
-  color: #10213b;
+  color: var(--cp-ink);
   cursor: pointer;
   text-align: center;
   box-shadow:
     inset 14px 16px 28px rgba(255,255,255,.34),
-    inset -16px -20px 28px rgba(24,53,92,.18),
-    0 14px 28px rgba(0,0,0,.28);
+    inset -16px -20px 28px rgba(24,53,92,.12),
+    0 10px 20px rgba(40,95,156,.18);
   animation: bubble-float 5.6s ease-in-out infinite alternate;
   transition: filter .15s ease, border-color .15s ease;
 }
@@ -114,7 +112,7 @@
   overflow-wrap: anywhere;
   font-size: clamp(.78rem, 1.4vw, 1rem);
   line-height: 1.12;
-  font-weight: 950;
+  font-weight: 700;
 }
 .answer-bubble kbd {
   position: relative;
@@ -123,8 +121,8 @@
   height: 27px;
   display: grid;
   place-items: center;
-  background: rgba(16,33,59,.84);
-  color: #fff;
+  background: rgba(255,255,255,.85);
+  color: var(--cp-ink);
   border: 0;
   border-radius: 999px;
   font: inherit;
@@ -141,10 +139,10 @@
   background: rgba(255,255,255,.54);
   transform: rotate(-25deg);
 }
-.answer-bubble.bubble-1 { background: linear-gradient(145deg, #8eeaff, #49b9f5); }
-.answer-bubble.bubble-2 { background: linear-gradient(145deg, #c6f47a, #91d83f); }
-.answer-bubble.bubble-3 { background: linear-gradient(145deg, #ffc4dc, #ff7da8); }
-.answer-bubble.bubble-4 { background: linear-gradient(145deg, #c7baff, #8b73ef); }
+.answer-bubble.bubble-1 { background: linear-gradient(145deg, #d4ebff, #9ccbf2); }
+.answer-bubble.bubble-2 { background: linear-gradient(145deg, #d9f3e6, #9fd8bb); }
+.answer-bubble.bubble-3 { background: linear-gradient(145deg, #fde2ea, #f5a9c2); }
+.answer-bubble.bubble-4 { background: linear-gradient(145deg, #fff1c8, #f5d27a); }
 .answer-bubble.popped-wrong {
   pointer-events: none;
   animation: bubble-pop-wrong .3s ease-out forwards;
@@ -153,7 +151,7 @@
   pointer-events: none;
   animation: bubble-pop-right .42s ease-out forwards;
   border-color: #fff;
-  box-shadow: 0 0 0 9px rgba(255,255,255,.1), 0 0 32px rgba(185,237,83,.6);
+  box-shadow: 0 0 0 9px rgba(31,122,77,.12), 0 0 24px rgba(31,122,77,.35);
 }
 .answer-bubble:disabled { cursor: default; }
 
@@ -165,8 +163,8 @@
   transform: translateX(-50%);
   min-height: 32px;
   white-space: nowrap;
-  font-size: .76rem;
-  font-weight: 950;
+  font-size: .8rem;
+  font-weight: 600;
 }
 .bubble-feedback span {
   display: inline-flex;
@@ -174,14 +172,14 @@
   gap: .35rem;
   padding: .45rem .7rem;
   border-radius: 999px;
-  background: #fff;
-  color: #20243e;
-  box-shadow: 0 6px 18px rgba(0,0,0,.18);
+  background: var(--cp-surface);
+  color: var(--cp-ink);
+  border: 1px solid var(--cp-line);
 }
-.bubble-feedback .perfect { background: #fff0a8; color: #6d5200; }
-.bubble-feedback .correct { background: #dff6b8; color: #3d6616; }
-.bubble-feedback .wrong { background: #ffdce5; color: #7d3042; }
-.bubble-feedback .timeout { background: #e2e5f4; color: #343957; }
+.bubble-feedback .perfect { background: var(--tone-butter); color: var(--tone-butter-ink); }
+.bubble-feedback .correct { background: var(--cp-green-soft); color: var(--cp-green-ink); }
+.bubble-feedback .wrong { background: var(--cp-coral-soft); color: #9b2f22; }
+.bubble-feedback .timeout { background: var(--cp-paper); color: var(--cp-muted); }
 
 @keyframes bubble-float {
   from { transform: translate(-50%, -50%) translate(-6px, 5px) rotate(-1deg); }
