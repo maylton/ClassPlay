@@ -277,3 +277,25 @@
   .smart-modes-panel .game-picker { transition: none; }
   .smart-modes-panel .game-picker:hover { transform: none; }
 }
+
+/* Quality check and language settings (remediation phase 5) */
+.smart-mode-requirements.quality-check {
+  border-color: #c9d6f2;
+  background: #f3f7ff;
+}
+.smart-mode-requirements.quality-check span { color: #3d4f78; }
+.smart-mode-requirements.quality-check small { color: #6a7795; font-size: .68rem; }
+
+.editor-check-field .editor-check {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  min-height: 44px;
+  font-size: .82rem;
+  font-weight: 700;
+}
+.editor-check-field .editor-check input {
+  width: 18px;
+  height: 18px;
+  accent-color: #6a5ae0;
+}

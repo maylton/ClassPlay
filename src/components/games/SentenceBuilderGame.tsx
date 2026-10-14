@@ -58,7 +58,9 @@ export function SentenceBuilderGame({ activity, onComplete }: GameProps) {
 
   function check() {
     if (answer.length !== requiredWords.length) return;
-    const isCorrect = isCorrectAnswer(answer.map((token) => token.text).join(" "), sentenceAnswer(item));
+    const built = answer.map((token) => token.text).join(" ");
+    // Teachers can register alternative word orders as accepted answers.
+    const isCorrect = [sentenceAnswer(item), ...(item.acceptedAnswers ?? [])].some((expected) => isCorrectAnswer(built, expected));
     setFeedback(isCorrect ? "correct" : "wrong");
     const nextCorrect = correct + (isCorrect ? 1 : 0);
     const nextScore = score + (isCorrect ? 120 : 0);

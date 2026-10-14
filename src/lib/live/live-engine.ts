@@ -125,6 +125,7 @@ export function buildLiveQuestion(
     imageUrl: item.imageUrl,
     options,
     startedAt: new Date().toISOString(),
+    language: activity.targetLanguage,
     correctAnswer,
   };
 }

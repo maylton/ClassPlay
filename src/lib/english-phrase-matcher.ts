@@ -44,14 +44,16 @@ const IRREGULAR_BASES: Record<string, string> = {
 
 function words(value: string): WordToken[] {
   const tokens: WordToken[] = [];
-  const pattern = /[A-Za-z0-9']+/g;
+  // Letters of any script (so "está", "niño" or Cyrillic words stay whole);
+  // both apostrophe styles count as part of a word.
+  const pattern = /[\p{L}\p{M}\p{N}'’]+/gu;
   let match: RegExpExecArray | null;
 
   while ((match = pattern.exec(value)) !== null) {
     tokens.push({
       start: match.index,
       end: match.index + match[0].length,
-      normalized: match[0].toLocaleLowerCase(),
+      normalized: match[0].toLocaleLowerCase().replace(/’/g, "'"),
     });
   }
 

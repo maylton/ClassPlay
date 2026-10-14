@@ -20,6 +20,7 @@ export interface CommunityActivity {
   itemCount: number;
   gameModes: GameType[];
   aiGenerated: boolean;
+  targetLanguage?: string;
 }
 
 export interface CommunityTeacherState {
@@ -54,6 +55,7 @@ function mapCatalog(row: Record<string, unknown>): CommunityActivity {
     itemCount: Number(row.item_count ?? 0),
     gameModes: Array.isArray(row.game_modes) ? row.game_modes.map((mode) => String(mode) as GameType) : [],
     aiGenerated: row.ai_generated === true,
+    targetLanguage: typeof row.target_language === "string" ? row.target_language : undefined,
   };
 }
 
@@ -75,7 +77,7 @@ export async function listCommunityActivities(): Promise<CommunityActivity[]> {
   const supabase = clientOrThrow();
   const { data, error } = await supabase
     .from("community_catalog")
-    .select("activity_set_id,author_name,published_at,title,description,subject,topic,cefr_level,grade,kind,cover_image_url,item_count,game_modes,ai_generated")
+    .select("*")
     .order("published_at", { ascending: false });
   if (error) throw error;
 

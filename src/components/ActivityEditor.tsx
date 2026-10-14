@@ -13,10 +13,12 @@ import {
   selectedModeNeeds,
   validateEnabledModes,
 } from "@/lib/activity-intelligence";
+import { analyzeActivityQuality } from "@/lib/activity-quality";
 import { GAME_MODE_CATALOG, GAME_MODE_ORDER } from "@/lib/game-catalog";
+import { DEFAULT_LANGUAGE, LANGUAGES, languageLabel } from "@/lib/languages";
 import { removeActivityImage, uploadActivityImage } from "@/lib/media";
 import { loadActivity, saveActivity } from "@/lib/repositories/activity-repository";
-import type { ActivityItem, ActivityKind, ActivitySet, GameType } from "@/lib/types";
+import type { ActivityItem, ActivityKind, ActivitySet, ActivityVisibility, GameType } from "@/lib/types";
 
 type PairMediaMode = "text" | "image";
 
@@ -25,7 +27,20 @@ function createId(prefix: string) {
 }
 
 function emptyItem(index: number): ActivityItem {
-  return { id: createId(`item-${index}`), prompt: "", answer: "", hint: "", imageUrl: "", example: "", gapSentence: "", distractors: [], sentenceParts: [] };
+  return { id: createId(`item-${index}`), prompt: "", answer: "", hint: "", imageUrl: "", example: "", gapSentence: "", distractors: [], sentenceParts: [], acceptedAnswers: [] };
+}
+
+/**
+ * "a | b" list fields keep the raw text while typing (splitting and re-joining
+ * the exact separator), so typing "|" does not vanish; the lists are trimmed
+ * and emptied of blanks when the activity is prepared for saving.
+ */
+function listFieldValue(values?: string[]) {
+  return (values ?? []).join("|");
+}
+
+function parseListField(value: string) {
+  return value.split("|");
 }
 
 function isGeneratedImagePrompt(value?: string) {
@@ -42,6 +57,10 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   const [level, setLevel] = useState("A1–A2");
   const [grade, setGrade] = useState("7th grade");
   const [kind, setKind] = useState<ActivityKind>("mixed");
+  const [targetLanguage, setTargetLanguage] = useState(DEFAULT_LANGUAGE);
+  const [strictAccents, setStrictAccents] = useState(false);
+  // Keep the saved visibility: editing must not silently turn off a practice link.
+  const [visibility, setVisibility] = useState<ActivityVisibility>("private");
   const [enabledGames, setEnabledGames] = useState<GameType[]>(activityId ? [] : []);
   const [items, setItems] = useState<ActivityItem[]>([emptyItem(1), emptyItem(2), emptyItem(3), emptyItem(4)]);
   const [createdAt, setCreatedAt] = useState(() => new Date().toISOString());
@@ -65,6 +84,9 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
       setLevel(activity.level);
       setGrade(activity.grade);
       setKind(activity.kind);
+      setTargetLanguage(activity.targetLanguage ?? DEFAULT_LANGUAGE);
+      setStrictAccents(activity.strictAccents ?? false);
+      setVisibility(activity.visibility ?? "private");
       setEnabledGames(activity.enabledGames);
       setItems(activity.items);
       setPairMediaModes({});
@@ -97,14 +119,17 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
     level,
     grade,
     kind,
-    visibility: "private",
+    visibility,
+    targetLanguage,
+    strictAccents,
     items: itemsForSave,
     enabledGames,
     createdAt,
     updatedAt: new Date().toISOString(),
-  }), [draftId, title, description, topic, level, grade, kind, itemsForSave, enabledGames, createdAt]);
+  }), [draftId, title, description, topic, level, grade, kind, visibility, targetLanguage, strictAccents, itemsForSave, enabledGames, createdAt]);
 
   const modeErrors = useMemo(() => validateEnabledModes(activityDraft.items, enabledGames), [activityDraft.items, enabledGames]);
+  const qualityWarnings = useMemo(() => analyzeActivityQuality(activityDraft.items), [activityDraft.items]);
 
   useEffect(() => {
     if (!activityId || !loadedRef.current || !dirty) return;
@@ -211,7 +236,7 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
   if (loading) return <main className="loading-screen">Loading activity editor…</main>;
 
   const contentFirst = enabledGames.length === 0;
-  const promptLabel = contentFirst ? "Prompt / clue" : needs.gap ? needs.pair ? "Prompt / target expression" : "Target word / expression" : "Prompt / English";
+  const promptLabel = contentFirst ? "Prompt / clue" : needs.gap ? needs.pair ? "Prompt / target expression" : "Target word / expression" : `Prompt / ${languageLabel(targetLanguage)}`;
   const showExample = contentFirst || needs.sentence || enabledGames.includes("flashcards");
   const canChoosePairMedia = (contentFirst || enabledGames.includes("memory") || enabledGames.includes("flashcards")) && !needs.gap && !needs.builder;
 
@@ -233,6 +258,8 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
             <label className="field"><span>Level</span><select value={level} onChange={(event) => changed(() => setLevel(event.target.value))}><option>A1</option><option>A1–A2</option><option>A2</option><option>A2–B1</option><option>B1</option><option>B1–B2</option></select></label>
             <label className="field"><span>Grade</span><select value={grade} onChange={(event) => changed(() => setGrade(event.target.value))}><option>6th grade</option><option>7th grade</option><option>8th grade</option><option>9th grade</option><option>Private class</option></select></label>
             <label className="field"><span>Content type</span><select value={kind} onChange={(event) => changed(() => setKind(event.target.value as ActivityKind))}><option value="mixed">Mixed</option><option value="vocabulary">Vocabulary</option><option value="grammar">Grammar</option></select></label>
+            <label className="field"><span>Language taught</span><select value={targetLanguage} onChange={(event) => changed(() => setTargetLanguage(event.target.value))}>{LANGUAGES.map((language) => <option key={language.code} value={language.code}>{language.label}</option>)}</select><small className="field-help">Sets the read-aloud voice and labels.</small></label>
+            <label className="field editor-check-field"><span>Typed answers</span><span className="editor-check"><input type="checkbox" checked={strictAccents} onChange={(event) => changed(() => setStrictAccents(event.target.checked))} /> Require accents (“está” ≠ “esta”)</span></label>
           </div>
         </section>
 
@@ -313,6 +340,8 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
                     {showExample && <label className="field field-wide"><span>{needs.sentence ? "Full sentence" : "Full sentence / example (optional)"}</span><input value={item.example ?? ""} onChange={(event) => updateItem(index, { example: event.target.value })} placeholder="She wakes up at 6:30 every day." />{needs.sentence && <small className="field-help">This sentence can power Gap Fill, Sentence Builder and smart Matching transformations.</small>}</label>}
 
                     {needs.hint && <label className="field"><span>Hint (optional)</span><input value={item.hint ?? ""} onChange={(event) => updateItem(index, { hint: event.target.value })} placeholder="Short clue" /></label>}
+
+                    <label className="field field-wide"><span>Also accept <em>(optional, separate with |)</em></span><input value={listFieldValue(item.acceptedAnswers)} onChange={(event) => updateItem(index, { acceptedAnswers: parseListField(event.target.value) })} placeholder="do not | don’t" /><small className="field-help">Other correct answers. They count in typing games and are never shown as wrong options.</small></label>
                   </div>
 
                   {(needs.gap || needs.builder) && <div className="generated-variants">
@@ -323,8 +352,8 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
                     </div>
                     <button type="button" className="smart-advanced-toggle" onClick={() => toggleAdvanced(item.id)}><AppIcon name={advanced ? "chevron-up" : "sliders"} /> {advanced ? "Hide advanced controls" : "Customize generated data"}</button>
                     {advanced && <div className="smart-advanced-fields">
-                      {needs.gap && <><label className="field field-wide"><span>Custom gap sentence</span><input value={item.gapSentence ?? ""} onChange={(event) => updateItem(index, { gapSentence: event.target.value })} placeholder={gapPreview || "She _____ at 6:30 every day."} /><small className="field-help">Leave empty to keep automatic generation. Use _____ for the blank.</small></label><label className="field field-wide"><span>Extra gap distractors <em>(separate with |)</em></span><input value={(item.distractors ?? []).join(" | ")} onChange={(event) => updateItem(index, { distractors: event.target.value.split("|").map((part) => part.trim()).filter(Boolean) })} placeholder="wake up | waking up | woke up" /></label></>}
-                      {needs.builder && <label className="field field-wide"><span>Custom sentence chunks <em>(separate with |)</em></span><input value={(item.sentenceParts ?? []).join(" | ")} onChange={(event) => updateItem(index, { sentenceParts: event.target.value.split("|").map((part) => part.trim()).filter(Boolean) })} placeholder={chunksPreview.join(" | ")} /><small className="field-help">Leave empty to let ClassPlay split the sentence automatically. The game itself uses individual words.</small></label>}
+                      {needs.gap && <><label className="field field-wide"><span>Custom gap sentence</span><input value={item.gapSentence ?? ""} onChange={(event) => updateItem(index, { gapSentence: event.target.value })} placeholder={gapPreview || "She _____ at 6:30 every day."} /><small className="field-help">Leave empty to keep automatic generation. Use _____ for the blank.</small></label><label className="field field-wide"><span>Extra gap distractors <em>(separate with |)</em></span><input value={listFieldValue(item.distractors)} onChange={(event) => updateItem(index, { distractors: parseListField(event.target.value) })} placeholder="wake up | waking up | woke up" /></label></>}
+                      {needs.builder && <label className="field field-wide"><span>Custom sentence chunks <em>(separate with |)</em></span><input value={listFieldValue(item.sentenceParts)} onChange={(event) => updateItem(index, { sentenceParts: parseListField(event.target.value) })} placeholder={chunksPreview.join(" | ")} /><small className="field-help">Leave empty to let ClassPlay split the sentence automatically. The game itself uses individual words.</small></label>}
                     </div>}
                   </div>}
 
@@ -334,6 +363,7 @@ export function ActivityEditor({ activityId }: { activityId?: string }) {
             })}
           </div>
           {modeErrors.length > 0 && <div className="smart-mode-requirements"><strong><AppIcon name="info-circle" /> Review selected modes</strong>{modeErrors.map((message) => <span key={message}>{message}</span>)}</div>}
+          {qualityWarnings.length > 0 && <div className="smart-mode-requirements quality-check"><strong><AppIcon name="clipboard-check" /> Quality check</strong>{qualityWarnings.map((warning) => <span key={warning.message}>{warning.message}</span>)}<small>Suggestions only — you can still save.</small></div>}
           <button className="button button-soft add-item-button" onClick={() => changed(() => setItems((current) => [...current, emptyItem(current.length + 1)]))}><AppIcon name="plus-lg" /> Add another item</button>
         </section>
       </div>

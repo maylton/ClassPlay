@@ -116,30 +116,70 @@ consulta ao banco.
 
 ---
 
-## Fase 4 — Privacidade e plataforma `[ ]`
+## Fases 4 e 5 — Privacidade, plataforma e suporte multilíngue `[~]`
 
-| # | Problema | Correção proposta |
-|---|----------|-------------------|
-| 4.1 | “Unlisted” é listável por qualquer pessoa pela API (`select … where visibility = 'unlisted'`). | Remover as políticas de leitura por `visibility`; servir atividades de prática por RPC `get_practice_activity(id)` que exige o ID exato e não expõe `owner_id`. Ajustar `community_catalog` e as políticas de `practice_scores`. |
-| 4.2 | Imagens privadas não aparecem em prática, Comunidade, tarefas e cópias. | RPC/rota de servidor que gera URL assinada quando o visitante tem direito à atividade; ao clonar, copiar os arquivos para a pasta do novo dono. |
-| 4.3 | Sem cabeçalhos de segurança. | CSP, `frame-ancestors 'none'`, `Referrer-Policy`, `X-Content-Type-Options` em `next.config.ts`. |
-| 4.4 | Salvamento em várias etapas sem transação; apagar item apaga histórico de respostas. | RPC `save_activity(jsonb)` transacional; trocar o cascade de `answers.item_id` por `set null` (guardando o texto da pergunta na resposta). |
-| 4.5 | LGPD com menores: dados nunca são apagados. | Rotina `pg_cron` apagando sessões/jogadores expirados após N dias; política de privacidade; exportar/excluir dados de aluno. |
-| 4.6 | Senha de professor com 6 caracteres. | Mínimo 8, igual ao aluno (cliente + configuração do Supabase Auth). |
+Branch `agent/remediation-phase-4-5` (empilhada sobre as Fases 2–3). Migration:
+`0025_phase4_5_privacy_and_languages.sql`.
 
----
+**Status:** código implementado e testado; falta aplicar a migration.
 
-## Fase 5 — Geração de jogos e suporte multilíngue `[ ]`
+- [x] `typecheck`, `lint`, `build` e todas as suítes passando
+- [x] `npm run test:remediation` (inclui `scripts/test-remediation-phase4-5.mjs`)
+- [x] `npm run test:db` (inclui `scripts/db/test-db-phase4-5.mjs`). O teste pegou um erro real de SQL
+      no `save_activity` antes de ele chegar à produção.
+- [ ] Aplicar `0023`, `0024` e `0025`, nessa ordem, no Supabase (com backup)
+- [ ] Ativar a extensão **pg_cron** (Dashboard → Database → Extensions) e agendar a limpeza (item 4.5):
+      `select cron.schedule('classplay-purge-live-sessions', '17 3 * * *', 'select private.purge_expired_live_sessions(90)');`
+      Se o pg_cron já estava ativo quando a 0025 rodou, isso já foi feito.
+- [ ] Ajustar o tamanho mínimo de senha para 8 em Supabase → Authentication → Providers → Email
+- [ ] Teste manual: abrir um link de prática sem login, editar uma atividade compartilhada, criar uma
+      atividade em espanhol e outra em japonês
 
-| # | Problema | Correção proposta |
-|---|----------|-------------------|
-| 5.1 | Motor só entende inglês (morfologia, TTS `en-*`, rótulo “ENGLISH”). | Campo `target_language` na atividade (BCP-47, ex.: `es-ES`); TTS e rótulos usam esse idioma; o casador de frases cai para correspondência literal fora do inglês. |
-| 5.2 | Typing Rush e Word Hunt descartam letras fora de a-z (russo, grego, japonês…). | Normalização Unicode (`\p{L}\p{N}`) em vez de `[a-z0-9]`; Word Hunt usa o alfabeto das próprias respostas para preencher a grade. |
-| 5.3 | Acentos sempre ignorados (“esta” = “está”). | Opção por atividade: “exigir acentos”. |
-| 5.4 | Só uma resposta correta. | Campo `accepted_answers` (lista) usado por Quiz, Gap Fill, Typing Rush e pelas RPCs ao vivo; Sentence Builder aceita ordens alternativas cadastradas. |
-| 5.5 | Distratores ambíguos (sinônimos, formas gramaticais também corretas). | “Verificador de qualidade” no editor: distrator igual a uma resposta aceita, respostas duplicadas, resposta visível no prompt/dica, itens descartados com motivo. |
-| 5.6 | Flashcards: “Got it” conta como acerto; “Review again” não devolve o cartão. | Reinserir o cartão no fim da fila; não usar autoavaliação em ranking/tarefa (ou marcar como “autoavaliado”). |
-| 5.7 | Regras de elegibilidade duplicadas em TS e SQL (podem divergir). | Gravar os modos derivados disponíveis ao salvar a atividade e consultar essa coluna no SQL. |
+**Implantação:** o código desta fase continua funcionando se chegar antes da migration. Se a RPC nova
+não existir, ele usa o caminho antigo. Mesmo assim, o ideal é aplicar a migration primeiro.
+
+### Fase 4 — o que mudou
+
+| # | Problema | O que foi feito | Onde |
+|---|----------|-----------------|------|
+| 4.1 | Qualquer pessoa listava pela API todas as atividades com link de prática (com respostas e ID do dono). | Só atividades publicadas na Comunidade são públicas. O link de prática abre pela RPC `get_practice_activity(id)`, que exige o ID exato e não devolve o dono. Ranking de prática e catálogo da Comunidade continuam funcionando. | migration 0025, `activity-repository.ts` |
+| 4.2 | Imagens não apareciam no link de prática, na Comunidade, nas tarefas e nas cópias. | Política de storage: uma imagem pode ser vista por quem pode ver uma atividade que a usa. Ao copiar uma atividade de outra pessoa, as imagens são copiadas para a pasta do novo dono (se a cópia falhar, a referência original continua visível). A capa da Comunidade também passou a usar URL assinada. | migration 0025, `media.ts`, `CommunityClient.tsx`, `useResolvedImageUrl.ts` |
+| 4.3 | Sem cabeçalhos de segurança. | `frame-ancestors 'none'`, `X-Frame-Options`, `nosniff`, `Referrer-Policy` e `Permissions-Policy`. **Não** incluí uma CSP completa (scripts/conexões), que pode quebrar o app sem teste no navegador; o próximo passo é publicá-la como `Content-Security-Policy-Report-Only`. | `next.config.ts` |
+| 4.4 | Salvar era uma sequência de 5 chamadas sem transação; editar o deck apagava as respostas ao vivo. | RPC `save_activity` em uma única transação, com RLS. Respostas ao vivo ficam com `item_id = null` e guardam o texto da pergunta. | migration 0025, `activity-repository.ts` |
+| 4.5 | Dados de alunos menores nunca eram apagados. | Função `private.purge_expired_live_sessions(90)` apaga salas encerradas há mais de 90 dias (com jogadores e respostas), agendada diariamente se o pg_cron estiver ativo. | migration 0025 |
+| 4.6 | Professor podia criar senha de 6 caracteres. | Cadastro novo exige 8. O login continua aceitando 6, para não trancar quem já tem conta. | `AuthClient.tsx` |
+
+**Pendências da Fase 4 (decisão de produto ou jurídica):**
+- Política de privacidade e termos para uso com menores (LGPD).
+- Exportar/excluir os dados de um aluno a pedido.
+- O ranking de prática não expira. Decidir se deve.
+- Se as escolas precisarem **incorporar** o ClassPlay em outro site (Moodle, Google Sites),
+  `frame-ancestors 'none'` impede. Nesse caso, liste os domínios permitidos em `next.config.ts`.
+
+### Fase 5 — o que mudou
+
+| # | Problema | O que foi feito | Onde |
+|---|----------|-----------------|------|
+| 5.1 | Tudo pressupunha inglês. | Campo **Language taught** no editor (12 idiomas). Leitura em voz alta (flashcards, Echo Chain, celular no ao vivo) usa a voz do idioma, e rótulos como “ENGLISH” mostram o idioma da atividade. A Comunidade mostra o idioma no cartão. | `languages.ts`, `tts.ts`, editor e jogos |
+| 5.2 | Typing Rush e Word Hunt não funcionavam fora do alfabeto latino. | Comparação e grade aceitam qualquer escrita. A grade do Word Hunt é preenchida com letras do próprio alfabeto das respostas e não separa caracteres compostos (ex.: が). O gerador de lacunas também passou a reconhecer palavras acentuadas (“está”). | `typing-rush-engine.ts`, `word-hunt-engine.ts`, `english-phrase-matcher.ts` |
+| 5.3 | Acentos sempre ignorados. | Opção **Require accents** por atividade (Typing Rush e Word Hunt). | editor, migration 0025 |
+| 5.4 | Só uma resposta correta. | Campo **Also accept** por item: vale no Typing Rush, nunca aparece como opção errada (Quiz, Gap Fill, arcades, ao vivo) e o Sentence Builder aceita ordens alternativas. | editor, `game-engine.ts`, jogos |
+| 5.5 | Problemas de conteúdo passavam despercebidos. | Painel **Quality check** no editor: respostas repetidas (Matching/Memory ficam ambíguos), resposta visível no prompt ou na dica, distrator que também é correto, item incompleto. São sugestões, não bloqueiam o salvamento. | `activity-quality.ts`, editor |
+| 5.6 | “Review again” só pulava o cartão. | O cartão volta para o fim do baralho (até 2 vezes). | `FlashcardsGame.tsx` |
+| 5.7 | Regras de elegibilidade duplicadas em TS e SQL. | **Não feito.** A regra SQL foi movida para uma função (`private.practice_score_allowed`), o que facilita unificar depois. | — |
+
+**Bugs encontrados e corrigidos durante a fase**
+- Editar uma atividade com link de prática (ou publicada na Comunidade) **desligava o link**: o editor
+  sempre salvava `visibility: "private"`.
+- Nos campos “separe com |” (distratores, partes da frase), o `|` sumia enquanto se digitava, então era
+  impossível cadastrar mais de um valor digitando.
+
+**Limitações conhecidas**
+- A geração automática de lacunas a partir do exemplo continua usando a morfologia do inglês
+  (go/goes/went). Em outros idiomas ela funciona por correspondência exata da palavra; em idiomas
+  sem espaços (japonês, chinês), o professor escreve a lacuna à mão.
+- A voz depende das vozes instaladas no dispositivo do aluno.
+- Flashcards ainda contam como acerto o que o próprio aluno marca (“Got it”).
 
 ---
 
@@ -149,7 +189,8 @@ Os testes atuais conferem trechos de texto no código (regex). Eles passaram mes
 
 - [x] Base criada: `scripts/db/` sobe um Postgres embutido (PGlite, sem Docker), aplica todas as
       migrations do zero e testa RLS e RPCs com os papéis `anon`/`authenticated` (`npm run test:db`, no CI).
-- [ ] Ampliar a cobertura de banco: RLS completa (professor A × B, aluno, anônimo) e as demais RPCs ao vivo.
+- [~] Ampliar a cobertura de banco: Fases 4–5 cobrem leitura anônima, storage, salvamento e limpeza;
+      faltam RLS de turmas/tarefas completa e as RPCs do Wildcard Grid.
 - [ ] Testes de comportamento para os motores (já existe a infraestrutura com `ts.transpileModule`).
 - [ ] Job de CI que sobe o Supabase local e aplica todas as migrations do zero.
 

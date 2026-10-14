@@ -27,6 +27,7 @@ export function TypingRushGame({ activity, onComplete }: GameProps) {
   const source = useMemo(() => chooseTypingRushSource(activity.kind, quizItems.length, gapItems.length), [activity.kind, gapItems.length, quizItems.length]);
   const [runKey, setRunKey] = useState(0);
   const rounds = useMemo(() => source ? buildTypingRushRounds(source === "gap-fill" ? gapItems : quizItems, source) : [], [gapItems, quizItems, source]);
+  const acceptedByItem = useMemo(() => new Map(activity.items.map((item) => [item.id, item.acceptedAnswers ?? []])), [activity.items]);
   const [roundIndex, setRoundIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [correctCount, setCorrectCount] = useState(0);
@@ -80,8 +81,9 @@ export function TypingRushGame({ activity, onComplete }: GameProps) {
   function submit(event: FormEvent) {
     event.preventDefault();
     if (!round || locked || !input.trim()) return;
+    const matchOptions = { strictAccents: activity.strictAccents, acceptedAnswers: acceptedByItem.get(round.itemId) };
 
-    if (typingRushIsCorrect(input, round.correctAnswer)) {
+    if (typingRushIsCorrect(input, round.correctAnswer, matchOptions)) {
       setLocked(true);
       const responseMs = stop();
       const result = resolveTypingRushCorrect(responseMs, streak, attempt);
@@ -98,7 +100,7 @@ export function TypingRushGame({ activity, onComplete }: GameProps) {
     }
 
     if (attempt === 1) {
-      const near = typingRushIsNearMiss(input, round.correctAnswer);
+      const near = typingRushIsNearMiss(input, round.correctAnswer, matchOptions);
       setAttempt(2);
       setStreak(0);
       setFeedback(near ? "near" : "wrong");

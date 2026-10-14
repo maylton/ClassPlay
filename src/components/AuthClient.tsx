@@ -20,6 +20,7 @@ export function AuthClient({ nextPath = "/dashboard", initialMode = "signin" }: 
     event.preventDefault();
     const supabase = getBrowserSupabaseClient();
     if (!supabase) return setMessage("Supabase is not configured yet. Local mode remains available.");
+    if (mode === "signup" && password.length < 8) return setMessage("Use a password with at least 8 characters.");
     setBusy(true);
     setMessage("");
     try {
@@ -81,7 +82,7 @@ export function AuthClient({ nextPath = "/dashboard", initialMode = "signin" }: 
         <form onSubmit={submit} className="auth-form">
           {mode === "signup" && <label className="field"><span>Your name</span><input required value={name} onChange={(event) => setName(event.target.value)} placeholder="Teacher Maylton" /></label>}
           <label className="field"><span>Email</span><input type="email" required value={email} onChange={(event) => setEmail(event.target.value)} placeholder="teacher@example.com" /></label>
-          <label className="field"><span>Password</span><input type="password" required minLength={6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" /></label>
+          <label className="field"><span>Password</span><input type="password" required minLength={mode === "signup" ? 8 : 6} value={password} onChange={(event) => setPassword(event.target.value)} placeholder="••••••••" /></label>
           <button disabled={busy} className="button button-primary button-large">{busy ? "Working…" : mode === "signin" ? "Sign in →" : "Create account →"}</button>
           <button type="button" disabled={busy} className="button button-soft" onClick={magicLink}>✉ Send a magic link</button>
         </form>

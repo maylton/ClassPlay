@@ -151,7 +151,7 @@ function StudentLiveRoom({ credentials, initialJoin, onLeave }: { credentials: C
       questionKeyRef.current = nextKey;
       setSelected(null); setAnswerResult(null);
       setDynamiteWrongOptions([]); setDynamitePassed(false); setDynamiteExplosionName(null); setForcedTimeUp(false); setError("");
-      if (nextQuestion && snapshot.settings.readAloud && snapshot.settings.soundEnabled && nextQuestion.activePlayerId === credentials.playerId) speakEnglish(nextQuestion.prompt);
+      if (nextQuestion && snapshot.settings.readAloud && snapshot.settings.soundEnabled && nextQuestion.activePlayerId === credentials.playerId) speakEnglish(nextQuestion.prompt, nextQuestion.language);
     }
 
     const dynamite = snapshot.settings.dynamiteState ?? null;

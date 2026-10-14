@@ -40,8 +40,8 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
   const [boardKey, setBoardKey] = useState(0);
   const board = useMemo(() => {
     if (!source || !difficulty) return null;
-    return buildWordHuntBoard(source === "gap-fill" ? gapItems : quizItems, source, difficulty);
-  }, [difficulty, gapItems, quizItems, source]);
+    return buildWordHuntBoard(source === "gap-fill" ? gapItems : quizItems, source, difficulty, Math.random, { strictAccents: activity.strictAccents });
+  }, [activity.strictAccents, difficulty, gapItems, quizItems, source]);
 
   const [targetIndex, setTargetIndex] = useState(0);
   const [score, setScore] = useState(0);
@@ -227,8 +227,8 @@ export function WordHuntGame({ activity, onComplete }: GameProps) {
           </div>
           <h2>{target.prompt}</h2>
           {target.hint && <p className="hunt-source-hint">Hint: {target.hint}</p>}
-          <div className="hunt-answer-shape" aria-label={`${target.target.length} letters`}>
-            {Array.from({ length: target.target.length }, (_, index) => <i key={index} />)}
+          <div className="hunt-answer-shape" aria-label={`${target.path.length} letters`}>
+            {Array.from({ length: target.path.length }, (_, index) => <i key={index} />)}
           </div>
           <button type="button" className="hunt-hint-button" onClick={useHint} disabled={hinted || locked}><AppIcon name="lightbulb" /> {hinted ? "First letter revealed" : "Reveal first letter · −70 pts"}</button>
           <div className={`hunt-feedback feedback-${feedback ?? "idle"}`} aria-live="polite">

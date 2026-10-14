@@ -292,6 +292,7 @@ export function normalizeItemsForModes(items: ActivityItem[], modes: readonly Ga
       gapSentence: normalizeGapMarker(item.gapSentence),
       distractors: (item.distractors ?? []).map(clean).filter(Boolean),
       sentenceParts: (item.sentenceParts ?? []).map(clean).filter(Boolean),
+      acceptedAnswers: (item.acceptedAnswers ?? []).map(clean).filter(Boolean),
     };
   });
 }

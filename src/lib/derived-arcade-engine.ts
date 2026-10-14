@@ -48,6 +48,7 @@ function quizGapChoiceOptions(
       fallback,
       optionCount,
       random,
+      item.acceptedAnswers,
     );
   }
 
@@ -56,7 +57,7 @@ function quizGapChoiceOptions(
     .filter((candidate) => candidate.id !== item.id)
     .map((candidate) => candidate.answer);
   const curated = shouldUseCuratedQuizDistractors(item) ? (item.distractors ?? []) : [];
-  return buildChoiceOptions(correctAnswer, curated, fallback, optionCount, random);
+  return buildChoiceOptions(correctAnswer, curated, fallback, optionCount, random, item.acceptedAnswers);
 }
 
 export function buildQuizGapArcadeRounds(
