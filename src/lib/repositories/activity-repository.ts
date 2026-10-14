@@ -2,6 +2,7 @@
 
 import { SAMPLE_ACTIVITY } from "@/lib/sample-data";
 import { compatibleEnabledGames } from "@/lib/activity-intelligence";
+import { getDerivedArcadeReadiness } from "@/lib/derived-arcade";
 import {
   deleteActivity as deleteLocalActivity,
   duplicateActivity as duplicateLocalActivity,
@@ -175,6 +176,8 @@ async function persistCloudActivity(activity: ActivitySet, sourceLocalId?: strin
         accepted_answers: item.acceptedAnswers ?? [],
       })),
       games: smartGames,
+      // Single source of truth for the practice leaderboard's derived-mode rules (5.7).
+      derived_modes: getDerivedArcadeReadiness({ items: activity.items }).modes,
     },
   });
   if (isMissingRpc(rpcError)) await legacyPersist(supabase, user.id, id, resolvedSourceLocalId, { ...activity, items }, smartGames);

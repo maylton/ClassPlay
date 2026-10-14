@@ -13,24 +13,24 @@ Necessária antes de aplicar qualquer migration em produção.
 
 - [x] Instalar Node.js (22+) e Git na máquina de desenvolvimento.
 - [x] Trabalhar numa branch (`agent/remediation-phase-1`, etc.) — o CI já roda em `agent/**`.
-- [ ] Instalar o Supabase CLI e subir um banco local (`supabase start`) para testar migrations antes de produção.
-- [ ] Fazer backup do banco de produção antes de cada fase que traga migration.
+- [x] Banco local para testar migrations: substituído pelo Postgres embutido de `npm run test:db` (sem Docker).
+- [x] Backup do banco de produção antes de cada migration (exportação JSON em `Projetos/classplay-backups/`).
 
 ---
 
-## Fase 1 — Correções rápidas de alto impacto `[~]`
+## Fase 1 — Correções rápidas de alto impacto `[x]`
 
 Mudanças pequenas, sem alterar a arquitetura. Migration: `0023_phase1_integrity_fixes.sql`.
 
-**Status:** código implementado e testado na branch `agent/remediation-phase-1`; falta aplicar a migration.
+**Status:** concluída. Migration aplicada em produção em 13/10/2026; código na `main` (PR #28).
 
 - [x] `npm run test:remediation` (novo script `scripts/test-remediation-phase1.mjs`)
 - [x] `typecheck`, `lint`, `build` e todas as suítes existentes passando
 - [x] Comportamento do banco testado em Postgres real (`npm run test:db`). Contra as migrations antigas, o
       teste reproduz os bugs: o erro no Dynamite **adiantava** o relógio em vez de atrasar, e espaços
       repetidos não eram unificados.
-- [ ] Aplicar `0023_phase1_integrity_fixes.sql` no Supabase (com backup)
-- [ ] Conferir os critérios de aceite abaixo manualmente
+- [x] Aplicar `0023_phase1_integrity_fixes.sql` no Supabase (com backup)
+- [ ] Conferir os critérios de aceite abaixo manualmente (teste no navegador)
 
 | # | Problema | Correção | Arquivos |
 |---|----------|----------|----------|
@@ -52,17 +52,17 @@ Mudanças pequenas, sem alterar a arquitetura. Migration: `0023_phase1_integrity
 
 ---
 
-## Fases 2 e 3 — Moderação, integridade e modo ao vivo confiável `[~]`
+## Fases 2 e 3 — Moderação, integridade e modo ao vivo confiável `[x]`
 
 Branch `agent/remediation-phase-2-3` (empilhada sobre a Fase 1). Migration:
 `0024_phase2_3_moderation_and_live_sync.sql`.
 
-**Status:** código implementado e testado; falta aplicar a migration.
+**Status:** concluídas. Migration aplicada em produção em 13/10/2026; código na `main` (PR #28).
 
 - [x] `typecheck`, `lint`, `build` e todas as suítes passando
 - [x] `npm run test:remediation` (inclui `scripts/test-remediation-phase2-3.mjs`)
 - [x] `npm run test:db`: regras novas testadas em Postgres real
-- [ ] Aplicar `0023` (se ainda não aplicada) e depois `0024` no Supabase, com backup
+- [x] Aplicar `0023` e depois `0024` no Supabase, com backup
 - [ ] Teste manual numa sala ao vivo com 2–3 celulares (ver critérios abaixo)
 
 **Ordem de implantação:** aplicar a migration **antes** de publicar o código. Se o código chegar primeiro,
@@ -116,22 +116,22 @@ consulta ao banco.
 
 ---
 
-## Fases 4 e 5 — Privacidade, plataforma e suporte multilíngue `[~]`
+## Fases 4 e 5 — Privacidade, plataforma e suporte multilíngue `[x]`
 
 Branch `agent/remediation-phase-4-5` (empilhada sobre as Fases 2–3). Migration:
 `0025_phase4_5_privacy_and_languages.sql`.
 
-**Status:** código implementado e testado; falta aplicar a migration.
+**Status:** concluídas. Migration aplicada em produção em 13/10/2026 (o ensaio no banco real pegou e corrigiu um índice incompatível com imagens embutidas); código na `main` (PR #28). Pendências restantes resolvidas na rodada final, abaixo.
 
 - [x] `typecheck`, `lint`, `build` e todas as suítes passando
 - [x] `npm run test:remediation` (inclui `scripts/test-remediation-phase4-5.mjs`)
 - [x] `npm run test:db` (inclui `scripts/db/test-db-phase4-5.mjs`). O teste pegou um erro real de SQL
       no `save_activity` antes de ele chegar à produção.
-- [ ] Aplicar `0023`, `0024` e `0025`, nessa ordem, no Supabase (com backup)
+- [x] Aplicar `0023`, `0024` e `0025`, nessa ordem, no Supabase (com backup)
 - [ ] Ativar a extensão **pg_cron** (Dashboard → Database → Extensions) e agendar a limpeza (item 4.5):
       `select cron.schedule('classplay-purge-live-sessions', '17 3 * * *', 'select private.purge_expired_live_sessions(90)');`
       Se o pg_cron já estava ativo quando a 0025 rodou, isso já foi feito.
-- [ ] Ajustar o tamanho mínimo de senha para 8 em Supabase → Authentication → Providers → Email
+- [x] Tamanho mínimo de senha 8 no Supabase Auth (ajustado pela API na rodada final)
 - [ ] Teste manual: abrir um link de prática sem login, editar uma atividade compartilhada, criar uma
       atividade em espanhol e outra em japonês
 
@@ -183,18 +183,39 @@ não existir, ele usa o caminho antigo. Mesmo assim, o ideal é aplicar a migrat
 
 ---
 
-## Fase 6 — Testes de verdade `[~]`
+## Fase 6 — Testes de verdade `[x]`
 
 Os testes atuais conferem trechos de texto no código (regex). Eles passaram mesmo com o bug do item 1.4.
 
 - [x] Base criada: `scripts/db/` sobe um Postgres embutido (PGlite, sem Docker), aplica todas as
       migrations do zero e testa RLS e RPCs com os papéis `anon`/`authenticated` (`npm run test:db`, no CI).
-- [~] Ampliar a cobertura de banco: Fases 4–5 cobrem leitura anônima, storage, salvamento e limpeza;
-      faltam RLS de turmas/tarefas completa e as RPCs do Wildcard Grid.
-- [ ] Testes de comportamento para os motores (já existe a infraestrutura com `ts.transpileModule`).
-- [ ] Job de CI que sobe o Supabase local e aplica todas as migrations do zero.
+- [x] Ampliar a cobertura de banco: `test-db-phase6.mjs` cobre RLS de turmas/tarefas (professor A × B, membro ×
+      não membro, tarefa não publicada), respostas ao vivo (tempo, duplicidade, token forjado, jogador removido),
+      exportação e exclusão de conta e as regras unificadas de modos.
+- [x] Testes de comportamento para os motores: os testes de remediação executam os motores de verdade
+      (digitação, Word Hunt, opções, gerador de lacunas, qualidade, sincronização ao vivo).
+- [x] CI aplica todas as migrations do zero a cada push (`npm run test:db`, Postgres embutido).
 
 ---
+
+## Rodada final — pendências das Fases 4–6 `[x]`
+
+Migration `0026_phase4_5_6_data_rights_and_unified_modes.sql`.
+
+| # | O que foi feito | Onde |
+|---|-----------------|------|
+| 4.3 | CSP completa publicada em **modo só-relatório** (`Content-Security-Policy-Report-Only`): nada é bloqueado; violações aparecem nos logs da Vercel (busque `csp-violation`). Quando os logs ficarem limpos no uso real, troque o cabeçalho para `Content-Security-Policy`. | `next.config.ts`, `src/app/api/csp-report/route.ts` |
+| 4.5 | Página **Conta e dados** (`/account`), para professores e alunos: baixar todos os dados (JSON) e excluir a conta com tudo o que ela possui (as imagens são apagadas antes). Link no cabeçalho do professor (“Account”) e na área do aluno (“My data”). | migration 0026, `AccountClient.tsx`, `account-repository.ts` |
+| 4.5 | **Rascunho** da política de privacidade, baseado no que o app realmente coleta. **Não publicado:** precisa de revisão jurídica (dados de menores). | `docs/PRIVACY_POLICY_DRAFT.md` |
+| 4.6 | Senha mínima de 8 caracteres também no servidor (Supabase Auth). | configuração do projeto |
+| 5.7 | Regras unificadas: o app grava, ao salvar, quais modos Arcade a atividade libera (`derived_modes`), e o ranking de prática usa essa lista. Atividades salvas antes continuam com as regras antigas até serem salvas de novo. | migration 0026, `activity-repository.ts` |
+
+**Ainda dependem de decisão sua:**
+- Ativar o **pg_cron** para a limpeza de salas antigas (item 4.5).
+- Publicar a política de privacidade após revisão jurídica; definir idade mínima e consentimento dos responsáveis.
+- Promover a CSP de só-relatório para obrigatória, depois de alguns dias de logs limpos.
+- Plano pago do Supabase (o gratuito pausa o projeto após ~1 semana sem uso).
+- 3.3 (canais Realtime privados) segue opcional; com 3.1, um broadcast forjado só provoca releituras limitadas.
 
 ## Novas funcionalidades (depois das correções)
 
